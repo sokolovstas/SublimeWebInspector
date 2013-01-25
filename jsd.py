@@ -24,20 +24,20 @@ reload(sys.modules['wip.Debugger'])
 reload(sys.modules['wip.Network'])
 reload(sys.modules['wip.Page'])
 
-breaks = {}
+brk_object = {}
 buffers = {}
 protocol = None
 original_layout = None
 debug_view = None
 debug_url = None
-scriptId_url = {}
-url_scriptId = {}
+scriptId_fileName = {}
+fileName_scriptId = {}
 
 breakpoint_active_icon = '../JSD/icons/breakpoint_active'
 breakpoint_inactive_icon = '../JSD/icons/breakpoint_inactive'
 breakpoint_current_icon = '../JSD/icons/breakpoint_current'
 
-
+# Define protocol to communicate with remote debugger by web sockets
 class Protocol(object):
     def __init__(self):
         self.next_id = 0
@@ -56,12 +56,14 @@ class Protocol(object):
         thread = threading.Thread(target=self.thread_callback)
         thread.start()
 
+    # start connect with new thread
     def thread_callback(self):
         print 'JSD: Thread started'
         self.socket = websocket.WebSocketApp(self.url, on_message=self.message_callback, on_open=self.open_callback, on_close=self.close_callback)
         self.socket.run_forever()
         print 'JSD: Thread stoped'
 
+    # send command and increment command counter
     def send(self, command, callback=None, options=None):
         command.id = self.next_id
         command.callback = callback
@@ -71,13 +73,16 @@ class Protocol(object):
         print 'JSD: Send -- ' + json.dumps(command.request)
         self.socket.send(json.dumps(command.request))
 
+    # subscribe to notification with callback
     def subscribe(self, notification, callback):
         notification.callback = callback
         self.notifications[notification.name] = notification
 
+    # unsubscribe
     def unsubscribe(self, notification):
         del self.notifications[notification.name]
 
+    # unsubscribe
     def message_callback(self, ws, message):
         parsed = json.loads(message)
         if 'method' in parsed:
@@ -240,16 +245,14 @@ class JsDebugStartCommand(sublime_plugin.TextCommand):
 
     def scriptParsed(self, data, notification):
         if data['url'] != '':
-            url = data['url'].split('/')[-1]
+            file_name = data['url'].split('/')[-1]
             scriptId = str(data['scriptId'])
-            url_scriptId[url] = scriptId
-            scriptId_url[str(scriptId)] = url
+            fileName_scriptId[file_name] = scriptId
+            scriptId_fileName[str(scriptId)] = file_name
 
-            if url in breaks:
-                for line in breaks[url].keys():
-                    location = wip.Debugger.Location({'lineNumber': int(line), 'scriptId': scriptId})
-                    print location
-                    protocol.send(wip.Debugger.setBreakpoint(location), self.breakpointAdded)
+            for line in get_breakpoints_by_file_name(file_name).keys():
+                location = wip.Debugger.Location({'lineNumber': int(line), 'scriptId': scriptId})
+                protocol.send(wip.Debugger.setBreakpoint(location), self.breakpointAdded)
 
     def breakpointAdded(self, command):
         breakpointId = command.data['breakpointId']
@@ -257,23 +260,24 @@ class JsDebugStartCommand(sublime_plugin.TextCommand):
         lineNumber = command.data['actualLocation'].lineNumber
 
         try:
-            url = scriptId_url[str(scriptId)]
-            lineNumber = str(lineNumber)
-            breaks[url][lineNumber]['status'] = 'enabled'
-            breaks[url][lineNumber]['breakpointId'] = str(breakpointId)
+            breakpoint = get_breakpoints_by_scriptId(str(scriptId))[str(lineNumber)]
+            breakpoint['status'] = 'enabled'
+            breakpoint['breakpointId'] = str(breakpointId)
         except:
             pass
 
         try:
-            url = scriptId_url[str(scriptId)]
+            breaks = get_breakpoints_by_scriptId(str(scriptId))[str(lineNumber)]
+
             lineNumber = str(lineNumber)
             lineNumberSend = str(command.params['lineNumber'])
-            if lineNumberSend in breaks[url]:
-                breaks[url][lineNumber] = breaks[url][lineNumberSend].copy()
-                del breaks[url][lineNumberSend]
 
-            breaks[url][lineNumber]['status'] = 'enabled'
-            breaks[url][lineNumber]['breakpointId'] = str(breakpointId)
+            if lineNumberSend in breaks and lineNumber != lineNumberSend:
+                breaks[lineNumber] = breaks[lineNumberSend].copy()
+                del breaks[lineNumberSend]
+
+            breaks[lineNumber]['status'] = 'enabled'
+            breaks[lineNumber]['breakpointId'] = str(breakpointId)
         except:
             pass
 
@@ -295,22 +299,21 @@ class JsDebugBreakpointCommand(sublime_plugin.TextCommand):
     def run(self, edit):
         view = lookup_view(self.view)
         row = str(view.rows(view.lines())[0])
-        file_name = os.path.basename(os.path.realpath(self.view.file_name()))
-        if row in view.breaks:
+        init_breakpoint_for_file(view.file_name())
+        breaks = get_breakpoints_by_file_path(view.file_name())
+        if row in breaks:
             if protocol:
-                if file_name in breaks:
-                    if row in breaks[file_name]:
-                        print breaks[file_name][row]
-                        protocol.send(wip.Debugger.removeBreakpoint(breaks[file_name][row]['breakpointId']))
+                if row in breaks:
+                    protocol.send(wip.Debugger.removeBreakpoint(breaks[row]['breakpointId']))
 
-            view.del_breakpoint(row)
+            del_breakpoint_by_file_path(view.file_name(), row)
         else:
             if protocol:
-                if file_name in url_scriptId:
-                    location = wip.Debugger.Location({'lineNumber': int(row), 'scriptId': url_scriptId[file_name]})
-                    protocol.send(wip.Debugger.setBreakpoint(location), self.breakpointAdded)
+                if full_path_to_file_name(self.view.file_name()) in fileName_scriptId:
+                    location = wip.Debugger.Location({'lineNumber': int(row), 'scriptId': fileName_scriptId[full_path_to_file_name(self.view.file_name())]})
+                    protocol.send(wip.Debugger.setBreakpoint(location), self.breakpointAdded, view.file_name())
             else:
-                view.add_breakpoint(row)
+                set_breakpoint_by_file_path(view.file_name(), row)
 
         view.view_breakpoints()
 
@@ -319,20 +322,11 @@ class JsDebugBreakpointCommand(sublime_plugin.TextCommand):
         breakpointId = command.data['breakpointId']
         scriptId = command.data['actualLocation'].scriptId
         lineNumber = command.data['actualLocation'].lineNumber
-        file_name = scriptId_url[str(scriptId)]
 
-        if not file_name in breaks:
-            breaks[file_name] = {}
+        init_breakpoint_for_file(command.options)
 
-        if not lineNumber in breaks[file_name]:
-            breaks[file_name][lineNumber] = {}
-
-        breaks[file_name][lineNumber]['status'] = 'enabled'
-        breaks[file_name][lineNumber]['breakpointId'] = str(breakpointId)
-
+        sublime.set_timeout(lambda: set_breakpoint_by_scriptId(str(scriptId), str(lineNumber), 'enabled', breakpointId), 0)
         # Scroll to position where breakpoints have resolved
-        sublime.set_timeout(lambda: lookup_view(self.view).show(lookup_view(self.view).lines([lineNumber])[0]), 0)
-        sublime.set_timeout(lambda: save_breaks(), 0)
         sublime.set_timeout(lambda: lookup_view(self.view).view_breakpoints(), 0)
 
 
@@ -350,12 +344,7 @@ class JsDebugStopCommand(sublime_plugin.TextCommand):
 
         window.set_layout(original_layout)
 
-        for file_name in breaks:
-            for line in breaks[file_name]:
-                breaks[file_name][line]['status'] = 'disabled'
-                del breaks[file_name][line]['breakpointId']
-
-        save_breaks()
+        disable_all_breakpoints()
 
         lookup_view(self.view).view_breakpoints()
 
@@ -381,14 +370,7 @@ class JsDebugView(object):
         self.context_data = {}
 
     def __getattr__(self, attr):
-        if attr == 'breaks':
-            if not self.view.file_name():
-                return {}
-            file_name = os.path.basename(os.path.realpath(self.view.file_name()))
-            if not file_name in breaks:
-                breaks[file_name] = {}
 
-            return breaks[file_name]
         if hasattr(self.view, attr):
             return getattr(self.view, attr)
         if attr.startswith('on_'):
@@ -398,19 +380,21 @@ class JsDebugView(object):
     def __call__(self, *args, **kwargs):
         pass
 
-    def add_breakpoint(self, row, status='disabled', bid=None):
-        if not row in self.breaks:
-            self.breaks[row] = {}
-            self.breaks[row]['status'] = status
-            self.breaks[row]['breakpointId'] = str(bid)
-        self.view_breakpoints()
-        save_breaks()
+    # def add_breakpoint(self, row, status='disabled', bid=None):
+    #     file_name = os.path.basename(os.path.realpath(self.view.file_name()))
+    #     if not row in self.breaks:
+    #         self.breaks[row] = {}
+    #         self.breaks[row]['status'] = status
+    #         self.breaks[row]['breakpointId'] = str(bid)
+    #     self.view_breakpoints()
+    #     save_breaks()
 
-    def del_breakpoint(self, row):
-        if row in self.breaks:
-            del self.breaks[row]
-        self.view_breakpoints()
-        save_breaks()
+    # def del_breakpoint(self, row):
+    #     file_name = os.path.basename(os.path.realpath(self.view.file_name()))
+    #     if row in self.breaks:
+    #         del self.breaks[row]
+    #     self.view_breakpoints()
+    #     save_breaks()
 
     def uri(self):
         return 'file://' + os.path.realpath(self.view.file_name())
@@ -441,13 +425,21 @@ class JsDebugView(object):
         self.view.erase_regions('jsd_breakpoint_inactive')
         self.view.erase_regions('jsd_breakpoint_active')
 
+        if not self.view.file_name():
+            return
+
+        breaks = get_breakpoints_by_file_path(self.view.file_name())
+
+        if not breaks:
+            return
+
         enabled = []
         disabled = []
 
-        for key in self.breaks.keys():
-            if self.breaks[key]['status'] == 'enabled':
+        for key in breaks.keys():
+            if breaks[key]['status'] == 'enabled':
                 enabled.append(key)
-            if self.breaks[key]['status'] == 'disabled':
+            if breaks[key]['status'] == 'disabled':
                 disabled.append(key)
 
         self.view.add_regions('jsd_breakpoint_active', self.lines(enabled), get_setting('breakpoint_scope'), breakpoint_active_icon, sublime.HIDDEN)
@@ -505,8 +497,8 @@ class EventListener(sublime_plugin.EventListener):
                     return
 
     def on_activated(self, view):
-        lookup_view(view).view_breakpoints()
         lookup_view(view).on_activated()
+        lookup_view(view).view_breakpoints()
 
     def on_deactivated(self, view):
         lookup_view(view).on_deactivated()
@@ -686,29 +678,115 @@ def get_project():
     return project
 
 
+##############
+#####################
+##########################       All about breaks
+#####################
+##############
+
 def load_breaks():
     breaks_file = os.path.splitext(get_project())[0] + '-breaks.json'
+    global brk_object
     if not os.path.exists(breaks_file):
         with open(breaks_file, 'w') as f:
             f.write('{}')
 
     try:
         with open(breaks_file, 'r') as f:
-            global breaks
-            breaks = json.loads(f.read())
+            brk_object = json.loads(f.read())
     except:
-        breaks = {}
+        brk_object = {}
 
 
 def save_breaks():
-    print breaks
+    print brk_object
     breaks_file = os.path.splitext(get_project())[0] + '-breaks.json'
     try:
         with open(breaks_file, 'w') as f:
-            f.write(json.dumps(breaks))
+            f.write(json.dumps(brk_object))
     except:
         pass
 
     #print breaks
+
+
+def full_path_to_file_name(path):
+    return os.path.basename(os.path.realpath(path))
+
+
+def set_breakpoint_by_file_name(file_name, line, status='disabled', breakpointId=None):
+    breaks = get_breakpoints_by_file_name(file_name)
+
+    if not line in breaks:
+        breaks[line] = {}
+        breaks[line]['status'] = status
+        breaks[line]['breakpointId'] = str(breakpointId)
+    else:
+        breaks[line]['status'] = status
+        breaks[line]['breakpointId'] = str(breakpointId)
+    save_breaks()
+
+
+def del_breakpoint_by_file_name(file_name, line):
+    breaks = get_breakpoints_by_file_name(file_name)
+
+    if line in breaks:
+        del breaks[line]
+    save_breaks()
+
+
+def get_breakpoints_by_file_name(file_name):
+    for file_path in brk_object:
+        file_name_in_breaks = full_path_to_file_name(file_path)
+        if file_name_in_breaks == file_name:
+            return brk_object[file_path]
+
+    return None
+
+
+def set_breakpoint_by_scriptId(scriptId, line, status='disabled', breakpointId=None):
+    file_name = scriptId_fileName[str(scriptId)]
+    if file_name:
+        set_breakpoint_by_file_name(file_name, line, status, breakpointId)
+
+
+def del_breakpoint_by_scriptId(scriptId, line):
+    file_name = scriptId_fileName[str(scriptId)]
+    if file_name:
+        del_breakpoint_by_file_name(file_name, line)
+
+
+def get_breakpoints_by_scriptId(scriptId):
+    file_name = scriptId_fileName[str(scriptId)]
+    if file_name:
+        return get_breakpoints_by_file_name(file_name)
+
+    return None
+
+
+def set_breakpoint_by_file_path(file_path, line, status='disabled', breakpointId=None):
+    set_breakpoint_by_file_name(full_path_to_file_name(file_path), line, status, breakpointId)
+
+
+def del_breakpoint_by_file_path(file_path, line):
+    del_breakpoint_by_file_name(full_path_to_file_name(file_path), line)
+
+
+def get_breakpoints_by_file_path(file_path):
+    return get_breakpoints_by_file_name(full_path_to_file_name(file_path))
+
+
+def init_breakpoint_for_file(file_path):
+    if not file_path in brk_object:
+        brk_object[file_path] = {}
+
+
+def disable_all_breakpoints():
+    for file_name in brk_object:
+        for line in brk_object[file_name]:
+            brk_object[file_name][line]['status'] = 'disabled'
+            del brk_object[file_name][line]['breakpointId']
+
+    save_breaks()
 
 load_breaks()
