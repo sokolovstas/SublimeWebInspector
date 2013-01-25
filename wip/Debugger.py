@@ -29,6 +29,24 @@ def removeBreakpoint(breakpointId):
     return command
 
 
+def setBreakpoint(location, condition=None):
+    params = {}
+    params['location'] = location()
+
+    if condition:
+        params['condition'] = condition
+
+    command = Command('Debugger.setBreakpoint', params)
+    return command
+
+
+def setBreakpoint_parser(result):
+    data = {}
+    data['breakpointId'] = BreakpointId(result['breakpointId'])
+    data['actualLocation'] = Location(result['actualLocation'])
+    return data
+
+
 def setBreakpointByUrl(lineNumber, url=None, urlRegex=None, columnNumber=None, condition=None):
     params = {}
     params['lineNumber'] = lineNumber
@@ -73,7 +91,7 @@ class BreakpointId(WIPObject):
     def __str__(self):
         return self.value
 
-    def __repr__(self):
+    def __call__(self):
         return self.value
 
 
@@ -84,7 +102,7 @@ class CallFrameId(WIPObject):
     def __str__(self):
         return self.value
 
-    def __repr__(self):
+    def __call__(self):
         return self.value
 
 
@@ -95,7 +113,7 @@ class ScriptId(WIPObject):
     def __str__(self):
         return self.value
 
-    def __repr__(self):
+    def __call__(self):
         return self.value
 
 
@@ -110,6 +128,13 @@ class Location(WIPObject):
         self.set(value, 'columnNumber')
         self.set(value, 'lineNumber')
         self.set_class(value, 'scriptId', ScriptId)
+
+    def __call__(self):
+        obj = {}
+        obj['columnNumber'] = self.columnNumber
+        obj['lineNumber'] = self.lineNumber
+        obj['scriptId'] = self.scriptId()
+        return obj
 
 
 class CallFrame(WIPObject):

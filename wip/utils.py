@@ -8,6 +8,12 @@ class WIPObject(object):
         else:
             setattr(self, name, None)
 
+    def parse_to_class(self, obj, name, classObject):
+        if name in obj:
+            setattr(self, name, classObject.parse(obj[name]))
+        else:
+            setattr(self, name, None)
+
 
 class Notification(object):
     def __init__(self, notification_name):
@@ -33,7 +39,8 @@ class Command(object):
             self.parser = eval('wip.' + method_name + '_parser', {'wip': __import__('wip')})
         except:
             self.parser = Command.default_parser
-        self.options = params
+        self.params = params
+        self.options = None
         self.callback = None
         self.response = None
         self.error = None

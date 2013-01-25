@@ -32,7 +32,7 @@ def getProperties(expression, objectGroup=None, returnByValue=None):
 
 
 class RemoteObject(WIPObject):
-    def __init__(self, value):
+    def parse(self, value):
         self.set(value, 'className')
         self.set(value, 'description')
         self.set_class(value, 'objectId', RemoteObjectId)

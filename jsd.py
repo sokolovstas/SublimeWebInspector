@@ -229,12 +229,6 @@ class JsDebugStartCommand(sublime_plugin.TextCommand):
         protocol.send(wip.Console.enable())
         protocol.send(wip.Debugger.enable())
 
-        for file_name in breaks:
-            print file_name
-            for line in breaks[file_name].keys():
-                print line
-                protocol.send(wip.Debugger.setBreakpointByUrl(int(line), urlRegex=re.escape(file_name) + "$"), self.breakpointAdded)
-
     def messageAdded(self, data, notification):
         sublime.set_timeout(lambda: add_debug_info('console', str(data)), 0)
 
@@ -249,19 +243,41 @@ class JsDebugStartCommand(sublime_plugin.TextCommand):
             url = data['url'].split('/')[-1]
             scriptId = str(data['scriptId'])
             url_scriptId[url] = scriptId
-            scriptId_url[scriptId] = url
+            scriptId_url[str(scriptId)] = url
+
+            if url in breaks:
+                for line in breaks[url].keys():
+                    location = wip.Debugger.Location({'lineNumber': int(line), 'scriptId': scriptId})
+                    print location
+                    protocol.send(wip.Debugger.setBreakpoint(location), self.breakpointAdded)
 
     def breakpointAdded(self, command):
         breakpointId = command.data['breakpointId']
-        scriptId = command.data['locations'][0].scriptId
-        lineNumber = command.data['locations'][0].lineNumber
-        if str(scriptId) in scriptId_url:
-            url = scriptId_url[str(scriptId)]
-            if url in breaks:
-                if str(lineNumber) in breaks[url]:
-                    breaks[url][str(lineNumber)]['status'] = 'enabled'
-                    breaks[url][str(lineNumber)]['breakpointId'] = breakpointId
+        scriptId = command.data['actualLocation'].scriptId
+        lineNumber = command.data['actualLocation'].lineNumber
 
+        try:
+            url = scriptId_url[str(scriptId)]
+            lineNumber = str(lineNumber)
+            breaks[url][lineNumber]['status'] = 'enabled'
+            breaks[url][lineNumber]['breakpointId'] = str(breakpointId)
+        except:
+            pass
+
+        try:
+            url = scriptId_url[str(scriptId)]
+            lineNumber = str(lineNumber)
+            lineNumberSend = str(command.params['lineNumber'])
+            if lineNumberSend in breaks[url]:
+                breaks[url][lineNumber] = breaks[url][lineNumberSend].copy()
+                del breaks[url][lineNumberSend]
+
+            breaks[url][lineNumber]['status'] = 'enabled'
+            breaks[url][lineNumber]['breakpointId'] = str(breakpointId)
+        except:
+            pass
+
+        sublime.set_timeout(lambda: save_breaks(), 0)
         sublime.set_timeout(lambda: lookup_view(self.view).view_breakpoints(), 0)
 
 
@@ -290,20 +306,34 @@ class JsDebugBreakpointCommand(sublime_plugin.TextCommand):
             view.del_breakpoint(row)
         else:
             if protocol:
-                protocol.send(wip.Debugger.setBreakpointByUrl(int(row), urlRegex=re.escape(file_name) + "$"), self.breakpointAdded)
+                if file_name in url_scriptId:
+                    location = wip.Debugger.Location({'lineNumber': int(row), 'scriptId': url_scriptId[file_name]})
+                    protocol.send(wip.Debugger.setBreakpoint(location), self.breakpointAdded)
             else:
                 view.add_breakpoint(row)
 
         view.view_breakpoints()
 
     def breakpointAdded(self, command):
+        print command.data
         breakpointId = command.data['breakpointId']
-        scriptId = command.data['locations'][0].scriptId
-        lineNumber = command.data['locations'][0].lineNumber
+        scriptId = command.data['actualLocation'].scriptId
+        lineNumber = command.data['actualLocation'].lineNumber
+        file_name = scriptId_url[str(scriptId)]
 
-        sublime.set_timeout(lambda: lookup_view(self.view).add_breakpoint(str(lineNumber), 'enabled', breakpointId), 0)
-        sublime.set_timeout(lambda: lookup_view(self.view).view_breakpoints(), 0)
+        if not file_name in breaks:
+            breaks[file_name] = {}
+
+        if not lineNumber in breaks[file_name]:
+            breaks[file_name][lineNumber] = {}
+
+        breaks[file_name][lineNumber]['status'] = 'enabled'
+        breaks[file_name][lineNumber]['breakpointId'] = str(breakpointId)
+
+        # Scroll to position where breakpoints have resolved
         sublime.set_timeout(lambda: lookup_view(self.view).show(lookup_view(self.view).lines([lineNumber])[0]), 0)
+        sublime.set_timeout(lambda: save_breaks(), 0)
+        sublime.set_timeout(lambda: lookup_view(self.view).view_breakpoints(), 0)
 
 
 
@@ -323,6 +353,9 @@ class JsDebugStopCommand(sublime_plugin.TextCommand):
         for file_name in breaks:
             for line in breaks[file_name]:
                 breaks[file_name][line]['status'] = 'disabled'
+                del breaks[file_name][line]['breakpointId']
+
+        save_breaks()
 
         lookup_view(self.view).view_breakpoints()
 
@@ -370,13 +403,13 @@ class JsDebugView(object):
             self.breaks[row] = {}
             self.breaks[row]['status'] = status
             self.breaks[row]['breakpointId'] = str(bid)
-            self.view_breakpoints()
+        self.view_breakpoints()
         save_breaks()
 
     def del_breakpoint(self, row):
         if row in self.breaks:
             del self.breaks[row]
-            self.view_breakpoints()
+        self.view_breakpoints()
         save_breaks()
 
     def uri(self):
@@ -668,6 +701,7 @@ def load_breaks():
 
 
 def save_breaks():
+    print breaks
     breaks_file = os.path.splitext(get_project())[0] + '-breaks.json'
     try:
         with open(breaks_file, 'w') as f:
@@ -675,6 +709,6 @@ def save_breaks():
     except:
         pass
 
-    print breaks
+    #print breaks
 
 load_breaks()
