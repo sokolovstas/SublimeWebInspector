@@ -1,0 +1,532 @@
+import urllib2
+import sublime
+import sublime_plugin
+import threading
+import json
+import websocket
+import types
+import os
+import re
+
+buffers = {}
+protocol = None
+original_layout = None
+debug_view = None
+debug_url = None
+
+breakpoint_active_icon = '../JSD/icons/breakpoint_active'
+breakpoint_inactive_icon = '../JSD/icons/breakpoint_inactive'
+breakpoint_current_icon = '../JSD/icons/breakpoint_current'
+
+
+class Protocol(object):
+    def accept(self, url, message_callback, open_callback, close_callback):
+        websocket.enableTrace(False)
+        self.socket = websocket.WebSocketApp(url, on_message=message_callback, on_open=open_callback, on_close=close_callback)
+        self.socket.run_forever()
+        self.last_break = None
+        self.last_log_object = None
+
+
+class JsDebugCommand(sublime_plugin.TextCommand):
+    '''
+    The Xdebug main quick panel menu
+    '''
+    def run(self, edit):
+        print 'JsDebugCommand'
+        mapping = {
+            'js_debug_start_chrome': 'Start Chrome with remote debug port ' + get_setting('chrome_remote_port'),
+            'js_debug_clear_console': 'Clear console',
+            'js_debug_breakpoint': 'Add/Remove Breakpoint',
+            'js_debug_resume': 'Resume execution'
+
+            #'xdebug_clear_all_breakpoints': 'Clear all Breakpoints',
+        }
+
+        if protocol:
+            mapping['js_debug_stop'] = 'Stop debugging'
+        else:
+            mapping['js_debug_start'] = 'Start debugging'
+
+        self.cmds = mapping.keys()
+        self.items = mapping.values()
+        self.view.window().show_quick_panel(self.items, self.callback)
+
+    def callback_start_with_url(self, index):
+        if index == -1:
+            return
+
+        url = self.urls[index]
+
+        window = sublime.active_window()
+        window.run_command("show_panel", {"panel": "output.xdebug_inspect"})
+        global original_layout
+        original_layout = window.get_layout()
+        global debug_view
+        debug_view = window.active_view()
+        window.set_layout({
+             "cols": [0.0, 1.0],
+             "rows": [0.0, 0.7, 1.0],
+             "cells": [[0, 0, 1, 1], [0, 1, 1, 2]]
+        })
+        #views = window.views()
+
+        self.view.run_command('js_debug_start', {'url': url})
+
+    def callback(self, index):
+        if index == -1:
+            return
+
+        command = self.cmds[index]
+
+        if command == 'js_debug_start':
+            response = urllib2.urlopen('http://127.0.0.1:' + get_setting('chrome_remote_port') + '/json/')
+            pages = json.loads(response.read())
+            mapping = {}
+            for page in pages:
+                if 'webSocketDebuggerUrl' in page:
+                    if page['url'].find('chrome-extension://') == -1:
+                        mapping[page['webSocketDebuggerUrl']] = page['url']
+
+            self.urls = mapping.keys()
+            items = mapping.values()
+            self.view.window().show_quick_panel(items, self.callback_start_with_url)
+            return
+
+        if command == 'js_debug_stop':
+            window = sublime.active_window()
+            window.run_command('hide_panel', {"panel": 'output.xdebug_inspect'})
+            window.set_layout(original_layout)
+
+        self.view.run_command(command)
+
+
+class JsDebugStartChromeCommand(sublime_plugin.TextCommand):
+    def run(self, edit):
+        window = sublime.active_window()
+
+        window.run_command('exec', {
+            "cmd": [get_setting('chrome_path')[sublime.platform()], '--remote-debugging-port=' + get_setting('chrome_remote_port')]
+        })
+
+
+class JsDebugStopCommand(sublime_plugin.TextCommand):
+
+    '''
+    Start listening for Xdebug connections
+    '''
+    def run(self, edit):
+        global protocol
+        if protocol:
+            try:
+                protocol.socket.close()
+            except:
+                print 'cant close socket'
+            finally:
+                protocol = None
+
+
+class JsDebugClearConsoleCommand(sublime_plugin.TextCommand):
+
+    def run(self, edit):
+        sublime.set_timeout(lambda: add_debug_info('console', 'clear'), 0)
+
+
+class JsDebugBreakpointCommand(sublime_plugin.TextCommand):
+    '''
+    Toggle a breakpoint
+    '''
+    def run(self, edit):
+        view = lookup_view(self.view)
+        for row in view.rows(view.lines()):
+            if row in view.breaks:
+                view.try_del_breakpoint(row)
+            else:
+                view.try_add_breakpoint(row)
+        view.view_breakpoints()
+
+class JsDebugResumeCommand(sublime_plugin.TextCommand):
+
+    def run(self, edit):
+        if protocol:
+            protocol.socket.send(json.dumps({'id': 109, 'method': 'Debugger.resume'}))
+
+class JsDebugStartCommand(sublime_plugin.TextCommand):
+
+    '''
+    Start listening for Xdebug connections
+    '''
+    def run(self, edit, url):
+        print 'run'
+        self.url = url
+        global protocol
+        if(protocol):
+            print 'try close'
+            protocol.socket.close()
+        else:
+            print 'try open thread'
+            protocol = Protocol()
+            thread = threading.Thread(target=self.thread_callback)
+            thread.start()
+
+    def thread_callback(self):
+        print 'start thread'
+        protocol.accept(self.url, self.message_callback, self.open_callback, self.close_callback)
+        print 'stop thread'
+
+    def message_callback(self, ws, message):
+        print 'message'
+        jsonMessage = json.loads(message)
+        #print json.dumps(json.loads(message), sort_keys=True, indent=4, separators=(',', ': '))
+        parse_message(jsonMessage)
+
+    def open_callback(self, ws):
+        print 'open'
+        protocol.socket.send(json.dumps({'id': 100, 'method': 'Console.enable'}))
+        protocol.socket.send(json.dumps({'id': 200, 'method': 'Debugger.enable'}))
+
+    def close_callback(self, ws):
+        print 'close'
+
+
+class JsDebugView(object):
+    '''
+    The JsDebugView is sort of a normal view with some convenience methods.
+
+    See lookup_view.
+    '''
+    def __init__(self, view):
+        self.view = view
+        self.current_line = None
+        self.context_data = {}
+        self.breaks = {}  # line : meta { id: bleh }
+
+    def __getattr__(self, attr):
+        if hasattr(self.view, attr):
+            return getattr(self.view, attr)
+        if attr.startswith('on_'):
+            return self
+        raise(AttributeError, "%s does not exist" % attr)
+
+    def __call__(self, *args, **kwargs):
+        pass
+
+    def rows(self, lines):
+        if not type(lines) == types.ListType:
+            lines = [lines]
+        return [self.view.rowcol(line.begin())[0] + 1 for line in lines]
+
+    def try_add_breakpoint(self, row):
+        if not row in self.breaks:
+            new_break = {}
+
+            filename = os.path.basename(os.path.realpath(self.view.file_name()))
+            if protocol:
+                new_break['row'] = row
+                new_break['view'] = self
+                protocol.last_break = new_break
+                protocol.socket.send(json.dumps({'id': 212, 'method': 'Debugger.setBreakpointByUrl', 'params': {'lineNumber': row, 'urlRegex': '/' + re.escape(filename)}}))
+
+    def add_breakpoint(self, row, id):
+        if not row in self.breaks:
+            self.breaks[row] = {}
+            self.breaks[row]['id'] = id
+            self.breaks[row]['row'] = row
+            self.breaks[row]['view'] = self
+            self.view_breakpoints()
+
+    def try_del_breakpoint(self, row):
+        if row in self.breaks:
+            if protocol:
+                protocol.last_break = self.breaks[row]
+                protocol.socket.send(json.dumps({'id': 208, 'method': 'Debugger.removeBreakpoint', 'params': {'breakpointId': self.breaks[row]['id']}}))
+
+    def del_breakpoint(self, row):
+        if row in self.breaks:
+            del self.breaks[row]
+            self.view_breakpoints()
+
+    def uri(self):
+        return 'file://' + os.path.realpath(self.view.file_name())
+
+    def lines(self, data=None):
+        lines = []
+        if data is None:
+            regions = self.view.sel()
+        else:
+            if type(data) != types.ListType:
+                data = [data]
+            regions = []
+            for item in data:
+                if type(item) == types.IntType or item.isdigit():
+                    regions.append(self.view.line(self.view.text_point(int(item) - 1, 0)))
+                else:
+                    regions.append(item)
+        for region in regions:
+            lines.extend(self.view.split_by_newlines(region))
+        return [self.view.line(line) for line in lines]
+
+    def rows(self, lines):
+        if not type(lines) == types.ListType:
+            lines = [lines]
+        return [self.view.rowcol(line.begin())[0] + 1 for line in lines]
+
+    def view_breakpoints(self):
+        self.view.add_regions('xdebug_breakpoint', self.lines(self.breaks.keys()), get_setting('breakpoint_scope'), breakpoint_active_icon, sublime.HIDDEN)
+
+
+class EventListener(sublime_plugin.EventListener):
+    def on_pre_save(self, view):
+        lookup_view(view).on_pre_save()
+
+    def on_post_save(self, view):
+        if protocol:
+            print 'clearBrowserCache after file save'
+            protocol.socket.send(json.dumps({'id': 303, 'method': 'Network.clearBrowserCache'}))
+            if view.file_name().find('.css') == -1 and view.file_name().find('.less') == -1:
+                print 'reload'
+                protocol.socket.send(json.dumps({'id': 504, 'method': 'Page.reload'}))
+            else:
+                print 'reload css'
+                protocol.socket.send(json.dumps({'id': 602, 'method': 'Runtime.evaluate', 'params': {'expression': '$$JSD_reloadAll()'}}))
+        lookup_view(view).on_post_save()
+
+    def on_selection_modified(self, view):
+        selection = view.substr(view.sel()[0])
+        if selection.startswith('Object'):
+            parts = selection.split('_')
+            if len(parts) == 3 and protocol and protocol.last_log_object != selection:
+                try:
+                    objid = text_to_objectid(selection)
+                    protocol.socket.send(json.dumps({'id': 603, 'method': 'Runtime.getProperties', 'params': {'objectId': objid, 'ownProperties': True}}))
+                    protocol.last_log_object = selection
+                finally:
+                    return
+
+
+def objectid_to_text(objid):
+    objid = json.loads(objid)
+    return "{Object_%d_%d}" % (objid['injectedScriptId'], objid['id'])
+
+
+def text_to_objectid(objidtext):
+    parts = objidtext.split('_')
+    return '{"injectedScriptId":%s,"id":%s}' % (parts[1], parts[2])
+
+
+def parse_RemoteObject(obj):
+    if obj['type'] == 'string':
+        return obj['value']
+    if obj['type'] == 'undefined':
+        return 'undefined'
+    if obj['type'] == 'number':
+        return obj['value']
+    if obj['type'] == 'object':
+        return objectid_to_text(obj['objectId'])
+    if obj['type'] == 'function':
+        return obj['description'] + objectid_to_text(obj['objectId'])
+
+
+def parse_message(jsonMessage):
+    if 'error' in jsonMessage:
+        return protocol.last_breaky
+    if not 'method' in jsonMessage:
+        if jsonMessage['id'] == 603:
+            print 'parse properties'
+            print jsonMessage
+            params_string = []
+            for item in jsonMessage['result']['result']:
+                prop_descriptor = "%s: %s" % (item['name'], parse_RemoteObject(item['value']))
+                params_string.append(prop_descriptor)
+            text = ',\n'.join(params_string)
+
+            #message = json.dumps(jsonMessage, sort_keys=True, indent=4, separators=(',', ': '))
+            sublime.set_timeout(lambda: add_debug_info('console_getprop', text), 0)
+        elif jsonMessage['id'] == 100:
+            sublime.set_timeout(lambda: add_debug_info('console', '[T] JSD:0 Console enabled'), 0)
+        elif jsonMessage['id'] == 200:
+            sublime.set_timeout(lambda: add_debug_info('console', '[T] JSD:0 Debugger enabled'), 0)
+        elif jsonMessage['id'] == 212:
+            if len(jsonMessage['result']['locations']) == 1:
+                line_number = jsonMessage['result']['locations'][0]['lineNumber']
+                breakpoint_id = jsonMessage['result']['breakpointId']
+                view = protocol.last_break['view']
+
+                sublime.set_timeout(lambda: view.add_breakpoint(line_number, breakpoint_id), 0)
+        elif jsonMessage['id'] == 208:
+            view = protocol.last_break['view']
+            row = protocol.last_break['row']
+
+            sublime.set_timeout(lambda: view.del_breakpoint(row), 0)
+        else:
+            message = json.dumps(jsonMessage, sort_keys=True, indent=4, separators=(',', ': '))
+            sublime.set_timeout(lambda: add_debug_info('console', message), 0)
+    else:
+        method = jsonMessage['method']
+        if method == 'Console.messagesCleared':
+            sublime.set_timeout(lambda: add_debug_info('console', 'clear'), 0)
+
+        elif method == 'Console.messageRepeatCountUpdated':
+            print jsonMessage
+            sublime.set_timeout(lambda: add_debug_info('console_repeat', jsonMessage['params']['count']), 0)
+
+        elif method == 'Console.messageAdded':
+            message = jsonMessage['params']['message']
+
+            # Add level
+            level = message['level']
+            if level == 'debug':
+                level = "D"
+            if level == 'error':
+                level = "E"
+            if level == 'log':
+                level = "L"
+            if level == 'tip':
+                level = "T"
+            if level == 'warning':
+                level = "W"
+
+            # Add file and line
+            if 'url' in message:
+                url = message['url']
+                url = url.split('/')[-1]
+            else:
+                url = '-'
+
+            if 'line' in message:
+                line = message['line']
+            else:
+                line = '0'
+
+            # Add text
+            if 'parameters' in message:
+                message_params = message['parameters']
+                params_string = []
+                for element in message_params:
+                    params_string.append(parse_RemoteObject(element))
+                text = ' '.join(params_string)
+            else:
+                text = message['text']
+
+            log_message = "[%s] %s:%d %s" % (level, url, line, text)
+            sublime.set_timeout(lambda: add_debug_info('console', log_message), 0)
+
+            # Add text
+            if 'stackTrace' in message and level == "E":
+                stackTrace = message['stackTrace']
+                stack_strings = []
+                for stack in stackTrace:
+                    stack_message = "\t[S] %s:%d(%d) %s" % (stack['url'].split('/')[-1], stack['lineNumber'], stack['columnNumber'], stack['functionName'])
+                    stack_strings.append(stack_message)
+
+                sublime.set_timeout(lambda: add_debug_info('console_stack', '\r\n'.join(stack_strings)), 0)
+        elif method == 'Debugger.scriptParsed':
+            return
+        elif method == 'Debugger.paused':
+            message = json.dumps(jsonMessage, sort_keys=True, indent=4, separators=(',', ': '))
+            sublime.set_timeout(lambda: add_debug_info('console', message), 0)
+        else:
+            print 'unset method ' + method
+
+
+def lookup_view(v):
+    '''
+    Convert a Sublime View into an XdebugView
+    '''
+    if isinstance(v, JsDebugView):
+        return v
+    if isinstance(v, sublime.View):
+        id = v.buffer_id()
+        if id in buffers:
+            buffers[id].view = v
+        else:
+            buffers[id] = JsDebugView(v)
+        return buffers[id]
+    return None
+
+
+def get_setting(key):
+    '''
+    Get Xdebug setting
+    '''
+    s = sublime.load_settings("jsd.sublime-settings")
+    if s and s.has(key):
+        return s.get(key)
+
+
+def add_debug_info(name, data):
+    '''
+    Adds data to the debug output windows
+    '''
+    found = False
+    v = None
+    window = sublime.active_window()
+
+    if name.startswith('console'):
+        group = 1
+        fullName = "JSD Console"
+
+    if name == 'stack':
+        group = 1
+        fullName = "JSD Stack"
+
+    for v in window.views():
+        if v.name() == fullName:
+            found = True
+            break
+
+    if not found:
+        v = window.new_file()
+        v.set_scratch(True)
+        v.set_read_only(False)
+        v.set_name(fullName)
+        v.settings().set('word_wrap', False)
+        v.set_syntax_file('Packages/JSD/jsd_log.tmLanguage')
+        found = True
+
+    size_before = v.size()
+    if found:
+        v.set_read_only(False)
+        window.set_view_index(v, group, 0)
+        edit = v.begin_edit()
+        if name == "console_repeat":
+            if data > 2:
+                erase_to = v.size() - len(u' \u21AA Repeat:' + str(data - 1) + '\n')
+                v.erase(edit, sublime.Region(erase_to, v.size()))
+            v.insert(edit, v.size(), u' \u21AA Repeat:' + str(data) + '\n')
+            v.show(v.size())
+        elif name == "console_stack":
+            v.insert(edit, v.size(), data)
+            v.insert(edit, v.size(), '\n')
+            v.show(v.size())
+        elif name == "console":
+            v.insert(edit, v.size(), data)
+            v.insert(edit, v.size(), '\n')
+            v.show(v.size())
+            #v.erase(edit, sublime.Region(0, v.size()))
+            #v.insert(edit, 0, data)
+        elif name == "console_getprop":
+            selection = v.sel()[0]
+            tabs_count = v.substr(v.line(selection)).count("\t")
+            v.erase(edit, selection)
+            v.insert(edit, selection.a, '\n')
+            v.insert(edit, selection.a + 1, data)
+            v.insert(edit, selection.a + 1 + len(data), '\n')
+            if tabs_count - 1 >= 0:
+                v.insert(edit, selection.a + 1 + len(data) + 1, '\t' * (tabs_count - 1))
+            line_counter = 0
+            for line in v.lines(sublime.Region(selection.a + 1, selection.a + 1 + len(data))):
+                v.insert(edit, line.a + line_counter, '\t' * (tabs_count + 1))
+                line_counter += tabs_count + 1
+            window.run_command("indent")
+            v.show(selection.begin())
+        if data == 'clear':
+            v.erase(edit, sublime.Region(0, v.size()))
+
+        v.end_edit(edit)
+        v.set_read_only(False)
+
+        size_after = v.size()
+
+        if name == "console_stack":
+            v.fold(sublime.Region(size_before - 1, size_after - 1))
