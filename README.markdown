@@ -2,6 +2,8 @@
 
 Sublime Web Inspector works on top of WebInspectorProtocol. All information is displayed in console and text files. You can click on objects from console or stack trace to evaluate them. You can click on file name to goto file and line instantly. All clickable zone have borders to simply vizualize them.
 
+All feature request and bugs you can add to https://github.com/sokolovstas/SublimeWebInspector/issues
+
 ## Features
 
 - Breakpoints for project stored in file.
