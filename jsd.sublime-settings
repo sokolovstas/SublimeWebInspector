@@ -1,9 +1,0 @@
-{
-	"chrome_path": {
-		"osx": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-		"windows": "C:\\Program Files\\Google\\Chrome\\chrome.exe",
-		"linux": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-	},
-	"chrome_remote_port": "9222",
-	"breakpoint_scope": "jsd.breakpoint"
-}

@@ -16,23 +16,26 @@ def evaluate(expression, objectGroup=None, returnByValue=None):
     command = Command('Runtime.evaluate', params)
     return command
 
-def getProperties(expression, objectGroup=None, returnByValue=None):
+
+def getProperties(objectId, ownProperties=False):
     params = {}
 
-    params['expression'] = expression
+    params['objectId'] = str(objectId)
+    params['ownProperties'] = ownProperties
 
-    if(objectGroup):
-        params['objectGroup'] = objectGroup
-
-    if(returnByValue):
-        params['returnByValue'] = returnByValue
-
-    command = Command('Runtime.evaluate', params)
+    command = Command('Runtime.getProperties', params)
     return command
 
 
+def getProperties_parser(result):
+    data = []
+    for propertyDescriptor in result['result']:
+        data.append(PropertyDescriptor(propertyDescriptor))
+    return data
+
+
 class RemoteObject(WIPObject):
-    def parse(self, value):
+    def __init__(self, value):
         self.set(value, 'className')
         self.set(value, 'description')
         self.set_class(value, 'objectId', RemoteObjectId)
@@ -41,16 +44,33 @@ class RemoteObject(WIPObject):
         self.set(value, 'value')
 
     def __str__(self):
+        if self.type == 'boolean':
+            return str(self.value)
         if self.type == 'string':
-            return self.value
+            return str(self.value)
         if self.type == 'undefined':
             return 'undefined'
         if self.type == 'number':
-            return self.value
+            return str(self.value)
         if self.type == 'object':
-            return str(self.objectId)
+            return '{ ... }'
         if self.type == 'function':
-            return self.description
+            return self.description.split('\n')[0]
+
+
+class PropertyDescriptor(WIPObject):
+    def __init__(self, _value):
+        self.set(_value, 'configurable')
+        self.set(_value, 'enumerable')
+        #self.set_class(_value, 'get', RemoteObject)
+        #self.set_class(_value, 'set', RemoteObject)
+        self.set(_value, 'name')
+        self.set_class(_value, 'value', RemoteObject)
+        self.set(_value, 'wasThrown')
+        self.set(_value, 'writable')
+
+    def __str__(self):
+        return self.name
 
 
 class RemoteObjectId(WIPObject):
@@ -58,18 +78,13 @@ class RemoteObjectId(WIPObject):
         self.value = value
 
     def __str__(self):
-        if self.value == '':
-            return ''
-
-        objid = json.loads(self.value)
-        return "{Object_%d_%d}" % (objid['injectedScriptId'], objid['id'])
+        return self.value
 
     def dumps(self):
         objid = json.loads(self.value)
-        return "{Object_%d_%d}" % (objid['injectedScriptId'], objid['id'])
+        return "Object_%d_%d" % (objid['injectedScriptId'], objid['id'])
 
     def loads(self, text):
         parts = text.split('_')
         self.value = '{"injectedScriptId":%s,"id":%s}' % (parts[1], parts[2])
         return self.value
-

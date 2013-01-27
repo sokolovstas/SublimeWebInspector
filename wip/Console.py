@@ -70,40 +70,8 @@ class ConsoleMessage(WIPObject):
         self.set(value, 'text')
         self.set(value, 'url')
 
-    def __str__(self):
-        if self.level == 'debug':
-            level = "D"
-        if self.level == 'error':
-            level = "E"
-        if self.level == 'log':
-            level = "L"
-        if self.level == 'tip':
-            level = "T"
-        if self.level == 'warning':
-            level = "W"
-
-        # Add file and line
-
-        if self.url:
-            url = self.url.split('/')[-1]
-        else:
-            url = '-'
-
-        if self.line:
-            line = self.line
-        else:
-            line = 0
-
-        # Add text
-        if len(self.parameters) > 0:
-            params_string = []
-            for param in self.parameters:
-                params_string.append(str(param))
-            text = ' '.join(params_string)
-        else:
-            text = self.text
-
-        return "[%s] %s:%d %s" % (level, url, line, text)
+    #def __str__(self):
+        
         # sublime.set_timeout(lambda: add_debug_info('console', log_message), 0)
 
         # # Add text

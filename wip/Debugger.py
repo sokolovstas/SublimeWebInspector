@@ -1,5 +1,6 @@
 from utils import Command, Notification, WIPObject
 from Runtime import RemoteObject
+import json
 
 
 ### Console.clearMessages
@@ -17,8 +18,24 @@ def disable():
     command = Command('Debugger.disable', {})
     return command
 
+
 def resume():
     command = Command('Debugger.resume', {})
+    return command
+
+
+def stepInto():
+    command = Command('Debugger.stepInto', {})
+    return command
+
+
+def stepOut():
+    command = Command('Debugger.stepOut', {})
+    return command
+
+
+def stepOver():
+    command = Command('Debugger.stepOver', {})
     return command
 
 
@@ -84,6 +101,25 @@ def scriptParsed_parser(params):
     return {'scriptId': ScriptId(params['scriptId']), 'url': params['url']}
 
 
+def paused():
+    notification = Notification('Debugger.paused')
+    return notification
+
+
+def paused_parser(params):
+    data = {}
+    data['callFrames'] = []
+    for callFrame in params['callFrames']:
+        data['callFrames'].append(CallFrame(callFrame))
+    data['reason'] = params['reason']
+    return data
+
+
+def resumed():
+    notification = Notification('Debugger.resumed')
+    return notification
+
+
 class BreakpointId(WIPObject):
     def __init__(self, value):
         self.value = value
@@ -131,7 +167,8 @@ class Location(WIPObject):
 
     def __call__(self):
         obj = {}
-        obj['columnNumber'] = self.columnNumber
+        if self.columnNumber:
+            obj['columnNumber'] = self.columnNumber
         obj['lineNumber'] = self.lineNumber
         obj['scriptId'] = self.scriptId()
         return obj
@@ -144,6 +181,9 @@ class CallFrame(WIPObject):
         self.set_class(value, 'location', Location)
         self.scopeChain = []
         if 'scopeChain' in value:
-            for scope in value.scopeChain:
+            for scope in value['scopeChain']:
                 self.scopeChain.append(Scope(scope))
         self.set_class(value, 'this', RemoteObject)
+
+    def __str__(self):
+        return "%s:%d %s" % (self.location.scriptId, self.location.lineNumber, self.functionName)

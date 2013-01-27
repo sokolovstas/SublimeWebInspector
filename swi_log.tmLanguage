@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>name</key>
-	<string>JavaScriptDebug Log</string>
+	<string>Sublime Web Inspector (Log)</string>
 	<key>patterns</key>
 	<array>
 		<dict>
@@ -12,7 +12,7 @@
 				<key>1</key>
 				<dict>
 					<key>name</key>
-					<string>mcol_0088CCFF.settings</string>
+					<string>mcol_339900FF.settings</string>
 				</dict>
 				<key>2</key>
 				<dict>
@@ -84,7 +84,7 @@
 				<key>1</key>
 				<dict>
 					<key>name</key>
-					<string>mcol_339900FF.settings</string>
+					<string>mcol_0088CCFF.settings</string>
 				</dict>
 				<key>2</key>
 				<dict>
@@ -132,35 +132,6 @@
 				<key>1</key>
 				<dict>
 					<key>name</key>
-					<string>mcol_CC0000FF.settings</string>
-				</dict>
-				<key>2</key>
-				<dict>
-					<key>name</key>
-					<string>support.type.settings</string>
-				</dict>
-				<key>3</key>
-				<dict>
-					<key>name</key>
-					<string>variable.parameter.settings</string>
-				</dict>
-				<key>4</key>
-				<dict>
-					<key>name</key>
-					<string>variable.parameter.settings</string>
-				</dict>
-			</dict>
-			<key>match</key>
-			<string>^\t(\[S\])\s(.*?):(\d+)(\(\d+\))\s</string>
-			<key>name</key>
-			<string>jsd.log.stack</string>
-		</dict>
-		<dict>
-			<key>captures</key>
-			<dict>
-				<key>1</key>
-				<dict>
-					<key>name</key>
 					<string>variable.parameter.settings</string>
 				</dict>
 			</dict>
@@ -182,6 +153,34 @@
 			<string>Object_\d+_\d+</string>
 			<key>name</key>
 			<string>jsd.log.object_placeholder</string>
+		</dict>
+		<dict>
+			<key>captures</key>
+			<dict>
+				<key>1</key>
+				<dict>
+					<key>name</key>
+					<string>variable.parameter.settings</string>
+				</dict>
+			</dict>
+			<key>match</key>
+			<string>^(.*?:)\s(.*?)$</string>
+			<key>name</key>
+			<string>jsd.log.property</string>
+		</dict>
+		<dict>
+			<key>captures</key>
+			<dict>
+				<key>1</key>
+				<dict>
+					<key>name</key>
+					<string>entity.name.function</string>
+				</dict>
+			</dict>
+			<key>match</key>
+			<string>^(.*?)$</string>
+			<key>name</key>
+			<string>jsd.log.property_object_name</string>
 		</dict>
 	</array>
 	<key>scopeName</key>
