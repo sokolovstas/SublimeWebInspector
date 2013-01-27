@@ -4,6 +4,13 @@ Sublime Web Inspector works on top of WebInspectorProtocol. All information is d
 
 All feature request and bugs you can add to https://github.com/sokolovstas/SublimeWebInspector/issues
 
+*Thanks XDebug Authors for inspiration*
+
+## Instalation
+Do git clone git://github.com/sokolovstas/SublimeWebInspector.git in your Packages folder
+
+I prepare plugin to Package Manager after some testing
+
 ## Features
 
 - Breakpoints for project stored in file.
