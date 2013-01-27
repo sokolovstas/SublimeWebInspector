@@ -161,7 +161,7 @@ class SwiDebugCommand(sublime_plugin.TextCommand):
                 mapping['swi_debug_step_out'] = 'Step out'
                 mapping['swi_debug_step_over'] = 'Step over'
             else:
-                mapping['swi_debug_clear_all_breakpoint'] = 'Clear all Breakpoints'
+                #mapping['swi_debug_clear_all_breakpoint'] = 'Clear all Breakpoints'
                 mapping['swi_debug_breakpoint'] = 'Add/Remove Breakpoint'
 
             if protocol:
