@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>name</key>
-	<string>Sublime Web Inspector (Log)</string>
+	<string>Web Inspector (Log)</string>
 	<key>patterns</key>
 	<array>
 		<dict>

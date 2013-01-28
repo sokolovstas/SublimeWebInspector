@@ -43,9 +43,9 @@ current_line = None
 
 # scriptId_fileName = {}
 
-breakpoint_active_icon = '../SublimeWebInspector/icons/breakpoint_active'
-breakpoint_inactive_icon = '../SublimeWebInspector/icons/breakpoint_inactive'
-breakpoint_current_icon = '../SublimeWebInspector/icons/breakpoint_current'
+breakpoint_active_icon = '../Web Inspector/icons/breakpoint_active'
+breakpoint_inactive_icon = '../Web Inspector/icons/breakpoint_inactive'
+breakpoint_current_icon = '../Web Inspector/icons/breakpoint_current'
 
 
 ####################################################################################
@@ -689,13 +689,13 @@ def find_view(console_type, title=''):
     window.set_view_index(v, group, 0)
 
     if console_type.startswith('console'):
-        v.set_syntax_file('Packages/SublimeWebInspector/swi_log.tmLanguage')
+        v.set_syntax_file('Packages/Web Inspector/swi_log.tmLanguage')
 
     if console_type == 'stack':
-        v.set_syntax_file('Packages/SublimeWebInspector/swi_stack.tmLanguage')
+        v.set_syntax_file('Packages/Web Inspector/swi_stack.tmLanguage')
 
     if console_type.startswith('eval'):
-        v.set_syntax_file('Packages/SublimeWebInspector/swi_log.tmLanguage')
+        v.set_syntax_file('Packages/Web Inspector/swi_log.tmLanguage')
 
     window.focus_view(v)
 

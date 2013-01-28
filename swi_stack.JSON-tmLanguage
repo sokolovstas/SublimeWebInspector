@@ -1,4 +1,4 @@
-{ "name": "Sublime Web Inspector (Stack)",
+{ "name": "Web Inspector (Stack)",
   "scopeName": "jsd.stack",
   "patterns": [
       { "match": "^(.*?):(\\d+)(.*?)$",

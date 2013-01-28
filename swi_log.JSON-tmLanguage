@@ -1,5 +1,5 @@
 {
-  "name": "Sublime Web Inspector (Log)",
+  "name": "Web Inspector (Log)",
   "scopeName": "jsd.log",
   "patterns": [
     {
