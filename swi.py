@@ -280,7 +280,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
                         files = glob.glob(folder + "\\" + "\\".join(url_parts))
                     else:
                         files = glob.glob(folder + "/" + "/".join(url_parts))
-                        
+
                     if len(files) > 0 and files[0] != '':
                         file_name = files[0]
                         file_to_scriptId.append({'file': file_name, 'scriptId': str(scriptId), 'sha1': hashlib.sha1(data['url']).hexdigest()})
@@ -820,7 +820,7 @@ def console_print_properties(command):
                 v.insert_click(insert_position, insert_position + insert_length - 1, 'get_params', {'objectId': prop.value.objectId, 'name': prop.name, 'prev': prev})
 
     v.end_edit(edit)
-    v.show(v.size())
+    v.show(0)
 
 
 def console_show_stack(callFrames):
@@ -855,7 +855,7 @@ def console_show_stack(callFrames):
                 v.insert_click(insert_position, insert_position + insert_length - 1, 'get_params', {'objectId': scope.object.objectId, 'name': "%s:%s (%s)" % (file_name, line, scope.type)})
 
     v.end_edit(edit)
-    v.show(v.size())
+    v.show(0)
 
 
 ####################################################################################
