@@ -232,6 +232,7 @@ class SwiDebugStartChromeCommand(sublime_plugin.TextCommand):
 class SwiDebugStartCommand(sublime_plugin.TextCommand):
 
     def run(self, edit, url):
+        file_to_scriptId = []
         window = sublime.active_window()
         global project_folders
         project_folders = window.folders()
@@ -275,7 +276,11 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
             del url_parts[0:3]
             while len(url_parts) > 0:
                 for folder in project_folders:
-                    files = glob.glob(folder + "/" + "/".join(url_parts))
+                    if sublime.platform() == "windows":
+                        files = glob.glob(folder + "\\" + "\\".join(url_parts))
+                    else:
+                        files = glob.glob(folder + "/" + "/".join(url_parts))
+                        
                     if len(files) > 0 and files[0] != '':
                         file_name = files[0]
                         file_to_scriptId.append({'file': file_name, 'scriptId': str(scriptId), 'sha1': hashlib.sha1(data['url']).hexdigest()})
