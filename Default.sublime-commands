@@ -1,6 +1,6 @@
 [
     {
-        "caption": "Sublime Web Inspector",
+        "caption": "Web Inspector",
         "command": "swi_debug"
     }
 ]
