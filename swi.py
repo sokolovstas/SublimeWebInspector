@@ -859,6 +859,8 @@ def console_show_stack(callFrames):
 
 
 def get_project():
+    if not sublime.active_window():
+        return None
     win_id = sublime.active_window().id()
     project = None
     reg_session = os.path.join(sublime.packages_path(), "..", "Settings", "Session.sublime_session")
@@ -892,6 +894,10 @@ def get_project():
 
 
 def load_breaks():
+    if not get_project():
+        sublime.error_message('Can\' load breaks')
+        brk_object = {}
+        return
     breaks_file = os.path.splitext(get_project())[0] + '-breaks.json'
     global brk_object
     if not os.path.exists(breaks_file):
@@ -1035,5 +1041,4 @@ def focus_line_and_highlight(view, line_number):
     current_line = line_number
     lookup_view(view).view_breakpoints()
 
-
-load_breaks()
+sublime.set_timeout(lambda: load_breaks(), 1000)
