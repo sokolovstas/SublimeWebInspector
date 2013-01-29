@@ -939,7 +939,7 @@ def save_breaks():
     breaks_file = os.path.splitext(get_project())[0] + '-breaks.json'
     try:
         with open(breaks_file, 'w') as f:
-            f.write(json.dumps(brk_object))
+            f.write(json.dumps(brk_object, sort_keys=True, indent=4, separators=(',', ': ')))
     except:
         pass
 
