@@ -7,7 +7,8 @@ All feature request and bugs you can add to https://github.com/sokolovstas/Subli
 *Thanks XDebug Authors for inspiration*
 
 ## Instalation
-Do git clone git://github.com/sokolovstas/SublimeWebInspector.git in your Packages folder
+Do in your Packages folder:
+```git clone git://github.com/sokolovstas/SublimeWebInspector.git Web\ Inpsector``` 
 
 I prepare plugin to Package Manager after some testing
 
