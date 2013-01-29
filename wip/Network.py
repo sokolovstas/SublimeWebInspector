@@ -6,6 +6,16 @@ def clearBrowserCache():
     return command
 
 
+def canClearBrowserCache():
+    command = Command('Network.canClearBrowserCache', {})
+    return command
+
+
+def setCacheDisabled(value):
+    command = Command('Network.setCacheDisabled', {'cacheDisabled': value})
+    return command
+
+
 class RequestId(WIPObject):
     def __init__(self, value):
         self.value = value

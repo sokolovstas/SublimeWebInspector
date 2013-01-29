@@ -232,6 +232,7 @@ class SwiDebugStartChromeCommand(sublime_plugin.TextCommand):
 class SwiDebugStartCommand(sublime_plugin.TextCommand):
 
     def run(self, edit, url):
+        global file_to_scriptId
         file_to_scriptId = []
         window = sublime.active_window()
         global project_folders
@@ -460,7 +461,7 @@ class SwiDebugReloadCommand(sublime_plugin.TextCommand):
     def run(self, view):
         if(protocol):
             protocol.send(Network.clearBrowserCache())
-            protocol.send(Page.reload())
+            protocol.send(Page.reload(), on_reload)
 
 
 ####################################################################################
@@ -533,6 +534,9 @@ class SwiDebugView(object):
         del regions[index]
         self.view.add_regions('swi_log_clicks', regions, get_setting('interactive_scope'), sublime.DRAW_EMPTY_AS_OVERWRITE | sublime.DRAW_OUTLINED)
 
+    def clear_clicks(self):
+        self.clicks = []
+
     def view_breakpoints(self):
         self.view.erase_regions('swi_breakpoint_inactive')
         self.view.erase_regions('swi_breakpoint_active')
@@ -602,7 +606,7 @@ class EventListener(sublime_plugin.EventListener):
         if protocol:
             protocol.send(Network.clearBrowserCache())
             if view.file_name().find('.css') == -1 and view.file_name().find('.less') == -1:
-                protocol.send(Page.reload())
+                protocol.send(Page.reload(), on_reload)
             else:
                 protocol.send(Runtime.evaluate('$$SWI_reloadAll()'))
         lookup_view(view).on_post_save()
@@ -649,6 +653,15 @@ class EventListener(sublime_plugin.EventListener):
 
     def on_query_context(self, view, key, operator, operand, match_all):
         lookup_view(view).on_query_context(key, operator, operand, match_all)
+
+
+####################################################################################
+#   GLOBAL HANDLERS
+####################################################################################
+
+def on_reload(command):
+    global file_to_scriptId
+    file_to_scriptId = []
 
 
 ####################################################################################
@@ -713,6 +726,8 @@ def console_clear():
 
     v.end_edit(edit)
     v.show(v.size())
+    window.focus_group(0)
+    lookup_view(v).clear_clicks()
 
 
 def console_repeat_message(count):
@@ -727,6 +742,7 @@ def console_repeat_message(count):
 
     v.end_edit(edit)
     v.show(v.size())
+    window.focus_group(0)
 
 
 def console_add_message(message):
@@ -784,6 +800,7 @@ def console_add_message(message):
 
     v.end_edit(edit)
     v.show(v.size())
+    window.focus_group(0)
 
 
 def console_add_properties(command):
@@ -821,6 +838,7 @@ def console_print_properties(command):
 
     v.end_edit(edit)
     v.show(0)
+    window.focus_group(0)
 
 
 def console_show_stack(callFrames):
@@ -856,6 +874,7 @@ def console_show_stack(callFrames):
 
     v.end_edit(edit)
     v.show(0)
+    window.focus_group(0)
 
 
 ####################################################################################

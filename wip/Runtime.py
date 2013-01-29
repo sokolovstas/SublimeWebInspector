@@ -53,7 +53,10 @@ class RemoteObject(WIPObject):
         if self.type == 'number':
             return str(self.value)
         if self.type == 'object':
-            return '{ ... }'
+            if not self.objectId():
+                return 'null'
+            else:
+                return '{ ... }'
         if self.type == 'function':
             return self.description.split('\n')[0]
 
@@ -78,6 +81,9 @@ class RemoteObjectId(WIPObject):
         self.value = value
 
     def __str__(self):
+        return self.value
+
+    def __call__(self):
         return self.value
 
     def dumps(self):
