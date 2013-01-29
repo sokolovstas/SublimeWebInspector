@@ -12,6 +12,7 @@ import types
 import os
 import re
 import wip
+import time
 from wip import utils
 from wip import Console
 from wip import Runtime
@@ -39,6 +40,10 @@ project_folders = []
 last_clicked = None
 paused = False
 current_line = None
+reload_on_start = False
+reload_on_save = False
+open_stack_current_in_new_tab = True
+timing = time.time()
 
 
 # scriptId_fileName = {}
@@ -248,6 +253,15 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
             protocol = Protocol()
             protocol.connect(self.url, self.connected)
 
+        global reload_on_start
+        reload_on_start = get_setting('reload_on_start')
+
+        global reload_on_save
+        reload_on_save = get_setting('reload_on_start')
+
+        global open_stack_current_in_new_tab
+        open_stack_current_in_new_tab = get_setting('open_stack_current_in_new_tab')
+
     def connected(self):
         protocol.subscribe(wip.Console.messageAdded(), self.messageAdded)
         protocol.subscribe(wip.Console.messageRepeatCountUpdate(), self.messageRepeatCountUpdate)
@@ -257,6 +271,9 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         protocol.subscribe(wip.Debugger.resumed(), self.resumed)
         protocol.send(wip.Debugger.enable())
         protocol.send(wip.Console.enable())
+        if reload_on_start:
+            protocol.send(Network.clearBrowserCache())
+            protocol.send(Page.reload(), on_reload)
 
     def messageAdded(self, data, notification):
         sublime.set_timeout(lambda: console_add_message(data), 0)
@@ -301,7 +318,11 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         line_number = data['callFrames'][0].location.lineNumber
         file_name = find_script(str(scriptId))
         first_scope = data['callFrames'][0].scopeChain[0]
-        virtual_click = {'objectId': first_scope.object.objectId, 'name': "%s:%s (%s)" % (file_name, line_number, first_scope.type)}
+
+        if open_stack_current_in_new_tab:
+            virtual_click = {'objectId': first_scope.object.objectId, 'name': "%s:%s (%s)" % (file_name, line_number, first_scope.type)}
+        else:
+            virtual_click = {'objectId': first_scope.object.objectId, 'name': "Breakpoint Local"}
 
         sublime.set_timeout(lambda: protocol.send(wip.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, virtual_click), 30)
         sublime.set_timeout(lambda: open_script_and_focus_line(scriptId, line_number), 100)
@@ -529,6 +550,10 @@ class SwiDebugView(object):
         regions.append(new_region)
         self.view.add_regions('swi_log_clicks', regions, get_setting('interactive_scope'), sublime.DRAW_EMPTY_AS_OVERWRITE | sublime.DRAW_OUTLINED)
 
+    def print_click(self, edit, position, text, click_type, data):
+        insert_length = self.insert(edit, position, text)
+        self.insert_click(position, position + insert_length, click_type, data)
+
     def remove_click(self, index):
         regions = self.view.get_regions('swi_log_clicks')
         del regions[index]
@@ -563,6 +588,36 @@ class SwiDebugView(object):
         self.view.add_regions('swi_breakpoint_inactive', self.lines(disabled), get_setting('breakpoint_scope'), breakpoint_inactive_icon, sublime.HIDDEN)
         if current_line:
             self.view.add_regions('swi_breakpoint_current', self.lines([current_line]), get_setting('current_line_scope'), breakpoint_current_icon, sublime.DRAW_EMPTY)
+
+    def check_click(self):
+        if not self.name().startswith('SWI'):
+            return
+
+        cursor = self.sel()[0].a
+
+        if cursor == self.prev_click_position:
+            return
+
+        self.prev_click_position = cursor
+        click_counter = 0
+        click_regions = self.get_regions('swi_log_clicks')
+        print cursor
+        for click in click_regions:
+            if cursor > click.a and cursor < click.b:
+                click = self.clicks[click_counter]
+
+                if click['click_type'] == 'goto_file_line':
+                    open_script_and_focus_line(click['data']['scriptId'], click['data']['line'])
+
+                if click['click_type'] == 'get_params':
+                    protocol.send(wip.Runtime.getProperties(click['data']['objectId'], True), console_add_properties, click['data'])
+                    #v.remove_click(click_counter)
+
+                if click['click_type'] == 'command':
+                    print click['data']
+                    self.run_command(click['data'])
+
+            click_counter += 1
 
 
 def lookup_view(v):
@@ -603,7 +658,7 @@ class EventListener(sublime_plugin.EventListener):
         lookup_view(view).on_pre_save()
 
     def on_post_save(self, view):
-        if protocol:
+        if protocol and reload_on_save:
             protocol.send(Network.clearBrowserCache())
             if view.file_name().find('.css') == -1 and view.file_name().find('.less') == -1:
                 protocol.send(Page.reload(), on_reload)
@@ -616,33 +671,14 @@ class EventListener(sublime_plugin.EventListener):
         lookup_view(view).view_breakpoints()
 
     def on_selection_modified(self, view):
-        lookup_view(view).on_selection_modified()
-
-        if not view.name().startswith('SWI'):
-            return
-
-        v = lookup_view(view)
-        cursor = view.sel()[0].a
-
-        if cursor != v.prev_click_position:
-            v.prev_click_position = cursor
-            return
-
-        click_counter = 0
-        click_regions = view.get_regions('swi_log_clicks')
-        for click in click_regions:
-            if cursor > click.a and cursor < click.b:
-
-                click = v.clicks[click_counter]
-
-                if click['click_type'] == 'goto_file_line':
-                    open_script_and_focus_line(click['data']['scriptId'], click['data']['line'])
-
-                if click['click_type'] == 'get_params':
-                    protocol.send(wip.Runtime.getProperties(click['data']['objectId'], True), console_add_properties, click['data'])
-                    #v.remove_click(click_counter)
-
-            click_counter += 1
+        #lookup_view(view).on_selection_modified()
+        global timing
+        now = time.time()
+        if now - timing > 0.08:
+            timing = now
+            sublime.set_timeout(lambda: lookup_view(view).check_click(), 0)
+        else:
+            timing = now
 
     def on_activated(self, view):
         lookup_view(view).on_activated()
@@ -847,6 +883,13 @@ def console_show_stack(callFrames):
 
     edit = v.begin_edit()
     v.erase(edit, sublime.Region(0, v.size()))
+
+    v.insert(edit, v.size(), "\n")
+    v.print_click(edit, v.size(), "\tResume\t", 'command', 'swi_debug_resume')
+    v.print_click(edit, v.size(), "\tStep Over\t", 'command', 'swi_debug_step_over')
+    v.print_click(edit, v.size(), "\tStep Into\t", 'command', 'swi_debug_step_into')
+    v.print_click(edit, v.size(), "\tStep Out\t", 'command', 'swi_debug_step_out')
+    v.insert(edit, v.size(), "\n\n")
 
     for callFrame in callFrames:
         line = str(callFrame.location.lineNumber)
