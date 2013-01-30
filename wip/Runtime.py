@@ -36,7 +36,6 @@ def getProperties_parser(result):
 
 class RemoteObject(WIPObject):
     def __init__(self, value):
-        print value
         self.set(value, 'className')
         self.set(value, 'description')
         self.set_class(value, 'objectId', RemoteObjectId)

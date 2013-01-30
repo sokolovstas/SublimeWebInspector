@@ -1092,8 +1092,6 @@ def open_script_and_focus_line(scriptId, line_number):
 
 
 def open_script_and_show_current_breakpoint(scriptId, line_number):
-    print scriptId
-    print line_number
     file_name = find_script(str(scriptId))
     window.focus_group(0)
     view = window.open_file(file_name, sublime.TRANSIENT)
