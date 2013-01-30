@@ -36,6 +36,7 @@ def getProperties_parser(result):
 
 class RemoteObject(WIPObject):
     def __init__(self, value):
+        print value
         self.set(value, 'className')
         self.set(value, 'description')
         self.set_class(value, 'objectId', RemoteObjectId)
@@ -56,6 +57,10 @@ class RemoteObject(WIPObject):
             if not self.objectId():
                 return 'null'
             else:
+                if self.className:
+                    return self.className
+                if self.description:
+                    return self.description
                 return '{ ... }'
         if self.type == 'function':
             return self.description.split('\n')[0]

@@ -601,21 +601,21 @@ class SwiDebugView(object):
         self.prev_click_position = cursor
         click_counter = 0
         click_regions = self.get_regions('swi_log_clicks')
-        print cursor
         for click in click_regions:
             if cursor > click.a and cursor < click.b:
-                click = self.clicks[click_counter]
 
-                if click['click_type'] == 'goto_file_line':
-                    open_script_and_focus_line(click['data']['scriptId'], click['data']['line'])
+                if click_counter < len(self.clicks):
+                    click = self.clicks[click_counter]
 
-                if click['click_type'] == 'get_params':
-                    protocol.send(wip.Runtime.getProperties(click['data']['objectId'], True), console_add_properties, click['data'])
-                    #v.remove_click(click_counter)
+                    if click['click_type'] == 'goto_file_line':
+                        open_script_and_focus_line(click['data']['scriptId'], click['data']['line'])
 
-                if click['click_type'] == 'command':
-                    print click['data']
-                    self.run_command(click['data'])
+                    if click['click_type'] == 'get_params':
+                        if protocol:
+                            protocol.send(wip.Runtime.getProperties(click['data']['objectId'], True), console_add_properties, click['data'])
+
+                    if click['click_type'] == 'command':
+                        self.run_command(click['data'])
 
             click_counter += 1
 
@@ -874,7 +874,6 @@ def console_print_properties(command):
 
     v.end_edit(edit)
     v.show(0)
-    window.focus_group(0)
 
 
 def console_show_stack(callFrames):
@@ -979,8 +978,8 @@ def load_breaks():
 
 
 def save_breaks():
-    breaks_file = os.path.splitext(get_project())[0] + '-breaks.json'
     try:
+        breaks_file = os.path.splitext(get_project())[0] + '-breaks.json'
         with open(breaks_file, 'w') as f:
             f.write(json.dumps(brk_object, sort_keys=True, indent=4, separators=(',', ': ')))
     except:
