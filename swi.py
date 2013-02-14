@@ -663,7 +663,7 @@ class EventListener(sublime_plugin.EventListener):
             if view.file_name().find('.css') == -1 and view.file_name().find('.less') == -1:
                 protocol.send(Page.reload(), on_reload)
             else:
-                protocol.send(Runtime.evaluate('$$SWI_reloadAll()'))
+                protocol.send(wip.Runtime.evaluate("var files = document.getElementsByTagName('link');var links = [];for (var a = 0, l = files.length; a < l; a++) {var elem = files[a];var rel = elem.rel;if (typeof rel != 'string' || rel.length === 0 || rel === 'stylesheet') {links.push({'elem': elem,'href': elem.getAttribute('href').split('?')[0],'last': false});}}for ( a = 0, l = links.length; a < l; a++) {var link = links[a];link.elem.setAttribute('href', (link.href + '?x=' + Math.random()));}"))
         lookup_view(view).on_post_save()
 
     def on_modified(self, view):
