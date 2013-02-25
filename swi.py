@@ -960,30 +960,35 @@ def get_project():
 
 
 def load_breaks():
-    if not get_project():
-        sublime.error_message('Can\' load breaks')
-        brk_object = {}
-        return
-    breaks_file = os.path.splitext(get_project())[0] + '-breaks.json'
-    global brk_object
-    if not os.path.exists(breaks_file):
-        with open(breaks_file, 'w') as f:
-            f.write('{}')
+    # if not get_project():
+    #     sublime.error_message('Can\' load breaks')
+    #     brk_object = {}
+    #     return
+    # breaks_file = os.path.splitext(get_project())[0] + '-breaks.json'
+    # global brk_object
+    # if not os.path.exists(breaks_file):
+    #     with open(breaks_file, 'w') as f:
+    #         f.write('{}')
 
-    try:
-        with open(breaks_file, 'r') as f:
-            brk_object = json.loads(f.read())
-    except:
-        brk_object = {}
+    # try:
+    #     with open(breaks_file, 'r') as f:
+    #         brk_object = json.loads(f.read())
+    # except:
+    #     brk_object = {}
+    global brk_object
+    brk_object = get_setting('breaks')
 
 
 def save_breaks():
-    try:
-        breaks_file = os.path.splitext(get_project())[0] + '-breaks.json'
-        with open(breaks_file, 'w') as f:
-            f.write(json.dumps(brk_object, sort_keys=True, indent=4, separators=(',', ': ')))
-    except:
-        pass
+    # try:
+    #     breaks_file = os.path.splitext(get_project())[0] + '-breaks.json'
+    #     with open(breaks_file, 'w') as f:
+    #         f.write(json.dumps(brk_object, sort_keys=True, indent=4, separators=(',', ': ')))
+    # except:
+    #     pass
+    s = sublime.load_settings("swi.sublime-settings")
+    s.set('breaks', brk_object)
+    sublime.save_settings("swi.sublime-settings")
 
     #print breaks
 
