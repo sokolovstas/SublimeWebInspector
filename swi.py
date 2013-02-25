@@ -155,7 +155,7 @@ class SwiDebugCommand(sublime_plugin.TextCommand):
     def run(self, editswi):
         mapping = {}
         try:
-            urllib2.urlopen('http://127.0.0.1:' + get_setting('chrome_remote_port') + '/json/')
+            urllib2.urlopen('http://127.0.0.1:' + get_setting('chrome_remote_port') + '/json')
 
             mapping = {}
             mapping['swi_debug_clear_console'] = 'Clear console'
@@ -188,7 +188,7 @@ class SwiDebugCommand(sublime_plugin.TextCommand):
         command = self.cmds[index]
 
         if command == 'swi_debug_start':
-            response = urllib2.urlopen('http://127.0.0.1:' + get_setting('chrome_remote_port') + '/json/')
+            response = urllib2.urlopen('http://127.0.0.1:' + get_setting('chrome_remote_port') + '/json')
             pages = json.loads(response.read())
             mapping = {}
             for page in pages:
