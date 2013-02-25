@@ -14,7 +14,7 @@ I prepare plugin to Package Manager after some testing
 
 ## Features
 
-- Breakpoints for project stored in file.
+- Breakpoints for project stored in user settings with absolute paths.
 - Console.
 - Debugger steps and breakpoints.
 - Stack trace.
