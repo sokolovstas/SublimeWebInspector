@@ -43,6 +43,8 @@ current_line = None
 reload_on_start = False
 reload_on_save = False
 set_script_source = False
+current_call_frame = None
+current_call_frame_position = None
 open_stack_current_in_new_tab = True
 timing = time.time()
 
@@ -164,6 +166,7 @@ class SwiDebugCommand(sublime_plugin.TextCommand):
 
             if paused:
                 mapping['swi_debug_resume'] = 'Resume execution'
+                mapping['swi_debug_evaluate_on_call_frame'] = 'Evaluate selection'
                 #mapping['swi_debug_step_into'] = 'Step into'
                 #mapping['swi_debug_step_out'] = 'Step out'
                 #mapping['swi_debug_step_over'] = 'Step over'
@@ -331,11 +334,17 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         first_scope = data['callFrames'][0].scopeChain[0]
 
         if open_stack_current_in_new_tab:
-            virtual_click = {'objectId': first_scope.object.objectId, 'name': "%s:%s (%s)" % (file_name, line_number, first_scope.type)}
+            title = {'objectId': first_scope.object.objectId, 'name': "%s:%s (%s)" % (file_name, line_number, first_scope.type)}
         else:
-            virtual_click = {'objectId': first_scope.object.objectId, 'name': "Breakpoint Local"}
+            title = {'objectId': first_scope.object.objectId, 'name': "Breakpoint Local"}
 
-        sublime.set_timeout(lambda: protocol.send(wip.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, virtual_click), 30)
+        global current_call_frame
+        current_call_frame = data['callFrames'][0].callFrameId
+
+        global current_call_frame_position
+        current_call_frame_position = "%s:%s" % (file_name, line_number)
+
+        sublime.set_timeout(lambda: protocol.send(wip.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, title), 30)
         sublime.set_timeout(lambda: open_script_and_focus_line(scriptId, line_number), 100)
 
         global paused
@@ -348,6 +357,12 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
 
         global current_line
         current_line = None
+
+        global current_call_frame
+        current_call_frame = None
+
+        global current_call_frame_position
+        current_call_frame_position = None
 
         sublime.set_timeout(lambda: lookup_view(self.view).view_breakpoints(), 50)
 
@@ -418,6 +433,22 @@ class SwiDebugClearConsoleCommand(sublime_plugin.TextCommand):
 
     def run(self, edit):
         sublime.set_timeout(lambda: console_clear(), 0)
+
+
+class SwiDebugEvaluateOnCallFrameCommand(sublime_plugin.TextCommand):
+
+    def run(self, edit):
+        for region in self.view.sel():
+            title = self.view.substr(region)
+            if current_call_frame_position:
+                title = "%s on %s" % (self.view.substr(region), current_call_frame_position)
+            protocol.send(wip.Debugger.evaluateOnCallFrame(current_call_frame, self.view.substr(region)), self.evaluated, {'name': title})
+
+    def evaluated(self, command):
+        if command.data.type == 'object':
+            protocol.send(wip.Runtime.getProperties(command.data.objectId, True), console_add_properties, command.options)
+        else:
+            sublime.set_timeout(lambda: console_add_evaluate(command.data), 0)
 
 
 class SwiDebugBreakpointCommand(sublime_plugin.TextCommand):
@@ -626,6 +657,30 @@ class SwiDebugView(object):
                     if click['click_type'] == 'goto_file_line':
                         open_script_and_focus_line(click['data']['scriptId'], click['data']['line'])
 
+                    if click['click_type'] == 'goto_call_frame':
+                        callFrame = click['data']['callFrame']
+
+                        scriptId = callFrame.location.scriptId
+                        line_number = callFrame.location.lineNumber
+                        file_name = find_script(str(scriptId))
+
+                        open_script_and_focus_line(scriptId, line_number)
+
+                        first_scope = callFrame.scopeChain[0]
+
+                        if open_stack_current_in_new_tab:
+                            title = {'objectId': first_scope.object.objectId, 'name': "%s:%s (%s)" % (file_name.split('/')[-1], line_number, first_scope.type)}
+                        else:
+                            title = {'objectId': first_scope.object.objectId, 'name': "Breakpoint Local"}
+
+                        sublime.set_timeout(lambda: protocol.send(wip.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, title), 30)
+
+                        global current_call_frame
+                        current_call_frame = callFrame.callFrameId
+
+                        global current_call_frame_position
+                        current_call_frame_position = "%s:%s" % (file_name.split('/')[-1], line_number)
+
                     if click['click_type'] == 'get_params':
                         if protocol:
                             protocol.send(wip.Runtime.getProperties(click['data']['objectId'], True), console_add_properties, click['data'])
@@ -731,11 +786,11 @@ class EventListener(sublime_plugin.EventListener):
         first_scope = data['callFrames'][0].scopeChain[0]
 
         if open_stack_current_in_new_tab:
-            virtual_click = {'objectId': first_scope.object.objectId, 'name': "%s:%s (%s)" % (file_name, line_number, first_scope.type)}
+            title = {'objectId': first_scope.object.objectId, 'name': "%s:%s (%s)" % (file_name, line_number, first_scope.type)}
         else:
-            virtual_click = {'objectId': first_scope.object.objectId, 'name': "Breakpoint Local"}
+            title = {'objectId': first_scope.object.objectId, 'name': "Breakpoint Local"}
 
-        sublime.set_timeout(lambda: protocol.send(wip.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, virtual_click), 30)
+        sublime.set_timeout(lambda: protocol.send(wip.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, title), 30)
         sublime.set_timeout(lambda: open_script_and_focus_line(scriptId, line_number), 100)
 
 
@@ -823,6 +878,21 @@ def console_repeat_message(count):
         erase_to = v.size() - len(u' \u21AA Repeat:' + str(count - 1) + '\n')
         v.erase(edit, sublime.Region(erase_to, v.size()))
     v.insert(edit, v.size(), u' \u21AA Repeat:' + str(count) + '\n')
+
+    v.end_edit(edit)
+    v.show(v.size())
+    window.focus_group(0)
+
+
+def console_add_evaluate(eval_object):
+    v = find_view('console')
+
+    edit = v.begin_edit()
+
+    insert_position = v.size()
+    v.insert(edit, insert_position, str(eval_object) + ' ')
+
+    v.insert(edit, v.size(), "\n")
 
     v.end_edit(edit)
     v.show(v.size())
@@ -922,6 +992,7 @@ def console_print_properties(command):
 
     v.end_edit(edit)
     v.show(0)
+    window.focus_group(0)
 
 
 def console_show_stack(callFrames):
@@ -951,7 +1022,7 @@ def console_show_stack(callFrames):
         insert_length = v.insert(edit, insert_position, "%s:%s" % (file_name, line))
 
         if file_name != '-':
-            v.insert_click(insert_position, insert_position + insert_length, 'goto_file_line', {'scriptId': callFrame.location.scriptId, 'line': line})
+            v.insert_click(insert_position, insert_position + insert_length, 'goto_call_frame', {'callFrame': callFrame})
 
         v.insert(edit, v.size(), " %s\n" % (callFrame.functionName))
 

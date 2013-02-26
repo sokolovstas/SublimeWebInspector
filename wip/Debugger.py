@@ -14,6 +14,19 @@ def enable():
     return command
 
 
+def evaluateOnCallFrame(callFrameId, expression):
+    params = {}
+    params['callFrameId'] = callFrameId()
+    params['expression'] = expression
+    command = Command('Debugger.evaluateOnCallFrame', params)
+    return command
+
+
+def evaluateOnCallFrame_parser(result):
+    data = RemoteObject(result['result'])
+    return data
+
+
 def disable():
     command = Command('Debugger.disable', {})
     return command
