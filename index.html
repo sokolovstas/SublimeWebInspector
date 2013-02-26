@@ -1,74 +1,78 @@
 <!DOCTYPE html>
 <html>
-
   <head>
     <meta charset='utf-8' />
     <meta http-equiv="X-UA-Compatible" content="chrome=1" />
-    <meta name="description" content="Sublimewebinspector : Web Inspector allow you debug Javascript right in the editor" />
-
+    <meta name="description" content="Sublimewebinspector : Web Inspector allow you debug Javascript right in the editor"
+    />
     <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
-
     <title>Sublimewebinspector</title>
   </head>
-
   <body>
-
     <!-- HEADER -->
     <div id="header_wrap" class="outer">
-        <header class="inner">
-          <a id="forkme_banner" href="https://github.com/sokolovstas/SublimeWebInspector">View on GitHub</a>
-
-          <h1 id="project_title">Sublimewebinspector</h1>
-          <h2 id="project_tagline">Web Inspector allow you debug Javascript right in the editor</h2>
-
-            <section id="downloads">
-              <a class="zip_download_link" href="https://github.com/sokolovstas/SublimeWebInspector/zipball/master">Download this project as a .zip file</a>
-              <a class="tar_download_link" href="https://github.com/sokolovstas/SublimeWebInspector/tarball/master">Download this project as a tar.gz file</a>
-            </section>
-        </header>
+      <header class="inner">
+        <a id="forkme_banner" href="https://github.com/sokolovstas/SublimeWebInspector">View on GitHub</a>
+        <h1 id="project_title">Sublime Web Inspector</h1>
+        <h2 id="project_tagline">Debug Javascript right in the Sublime Text editor</h2>
+      </header>
     </div>
-
     <!-- MAIN CONTENT -->
     <div id="main_content_wrap" class="outer">
       <section id="main_content" class="inner">
-        <h3>Welcome to GitHub Pages.</h3>
-
-<p>This automatic page generator is the easiest way to create beautiful pages for all of your projects. Author your page content here using GitHub Flavored Markdown, select a template crafted by a designer, and publish. After your page is generated, you can check out the new branch:</p>
-
-<pre><code>$ cd your_repo_root/repo_name
-$ git fetch origin
-$ git checkout gh-pages
-</code></pre>
-
-<p>If you're using the GitHub for Mac, simply sync your repository and you'll see the new branch.</p>
-
-<h3>Designer Templates</h3>
-
-<p>We've crafted some handsome templates for you to use. Go ahead and continue to layouts to browse through them. You can easily go back to edit your page before publishing. After publishing your page, you can revisit the page generator and switch to another theme. Your Page content will be preserved if it remained markdown format.</p>
-
-<h3>Rather Drive Stick?</h3>
-
-<p>If you prefer to not use the automatic generator, push a branch named <code>gh-pages</code> to your repository to create a page manually. In addition to supporting regular HTML content, GitHub Pages support Jekyll, a simple, blog aware static site generator written by our own Tom Preston-Werner. Jekyll makes it easy to create site-wide headers and footers without having to copy them across every page. It also offers intelligent blog support and other advanced templating features.</p>
-
-<h3>Authors and Contributors</h3>
-
-<p>You can <a href="https://github.com/blog/821" class="user-mention">@mention</a> a GitHub username to generate a link to their profile. The resulting <code>&lt;a&gt;</code> element will link to the contributor's GitHub Profile. For example: In 2007, Chris Wanstrath (<a href="https://github.com/defunkt" class="user-mention">@defunkt</a>), PJ Hyett (<a href="https://github.com/pjhyett" class="user-mention">@pjhyett</a>), and Tom Preston-Werner (<a href="https://github.com/mojombo" class="user-mention">@mojombo</a>) founded GitHub.</p>
-
-<h3>Support or Contact</h3>
-
-<p>Having trouble with Pages? Check out the documentation at <a href="http://help.github.com/pages">http://help.github.com/pages</a> or contact <a href="mailto:support@github.com">support@github.com</a> and we’ll help you sort it out.</p>
+        <h2>Let me introduce you Web Inspector!</h2>
+        <h3>Breakpoints</h3>
+        <p>You can set and remove breakpoints right in the editor</p>
+        <img src="images/breakpoints.png">
+        <h3>Console</h3>
+        <p>See all console messages with level</p>
+        <img src="images/console.png">
+        <h3>Interactivity</h3>
+        <p>Click on <code>name:line</code> region bring you right to file and line, and if you
+          click on <code>Object</code> you can see object properties</p>
+        <img src="images/object.png">
+        <h3>Debugger</h3>
+        <p>On breakpoints you can see a stack and all variables (local, global, closure)</p>
+        <img src="images/debug.png">
+        <h3>Evaluating on call frame</h3>
+        <p>Evaluate selection on current call frame</p>
+        <img src="images/eval.png">
+          <h3>Live Reload</h3>
+          <p>On file save cache will be cleared and page reloaded. If you save .css
+            or .less file then styles only will be reloaded</p>
+          <h2>Installation</h2>
+          <p>Use package manger and install "Web Inspector"</p>
       </section>
     </div>
+    <script type="text/javascript">
+        var _gaq = _gaq || [];
+        _gaq.push(['_setAccount', 'UA-37247858-2']);
+        _gaq.push(['_trackPageview']);
 
-    <!-- FOOTER  -->
+        (function() {
+          if (window.parent.logged) return;
+          var ga = document.createElement('script');
+          ga.type = 'text/javascript';
+          ga.async = true;
+          ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+          var s = document.getElementsByTagName('script')[0];
+          s.parentNode.insertBefore(ga, s);
+        })();
+
+
+        
+      </script>
+    <!-- FOOTER -->
     <div id="footer_wrap" class="outer">
       <footer class="inner">
-        <p class="copyright">Sublimewebinspector maintained by <a href="https://github.com/sokolovstas">sokolovstas</a></p>
-        <p>Published with <a href="http://pages.github.com">GitHub Pages</a></p>
+        <p class="copyright">SublimeWebInspector maintained by
+          <a href="https://github.com/sokolovstas">sokolovstas</a>
+        </p>
+        <p>Published with
+          <a href="http://pages.github.com">GitHub Pages</a>
+        </p>
       </footer>
     </div>
-
-    
-
   </body>
+
 </html>
