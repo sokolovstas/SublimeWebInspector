@@ -163,9 +163,9 @@ class SwiDebugCommand(sublime_plugin.TextCommand):
 
             if paused:
                 mapping['swi_debug_resume'] = 'Resume execution'
-                mapping['swi_debug_step_into'] = 'Step into'
-                mapping['swi_debug_step_out'] = 'Step out'
-                mapping['swi_debug_step_over'] = 'Step over'
+                #mapping['swi_debug_step_into'] = 'Step into'
+                #mapping['swi_debug_step_out'] = 'Step out'
+                #mapping['swi_debug_step_over'] = 'Step over'
             else:
                 #mapping['swi_debug_clear_all_breakpoint'] = 'Clear all Breakpoints'
                 mapping['swi_debug_breakpoint'] = 'Add/Remove Breakpoint'
@@ -273,8 +273,8 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         protocol.send(wip.Debugger.enable())
         protocol.send(wip.Console.enable())
         if reload_on_start:
-            protocol.send(Network.clearBrowserCache())
-            protocol.send(Page.reload(), on_reload)
+            protocol.send(wip.Network.clearBrowserCache())
+            protocol.send(wip.Page.reload(), on_reload)
 
     def messageAdded(self, data, notification):
         sublime.set_timeout(lambda: console_add_message(data), 0)
@@ -487,8 +487,8 @@ class SwiDebugStopCommand(sublime_plugin.TextCommand):
 class SwiDebugReloadCommand(sublime_plugin.TextCommand):
     def run(self, view):
         if(protocol):
-            protocol.send(Network.clearBrowserCache())
-            protocol.send(Page.reload(), on_reload)
+            protocol.send(wip.Network.clearBrowserCache())
+            protocol.send(wip.Page.reload(), on_reload)
 
 
 ####################################################################################
