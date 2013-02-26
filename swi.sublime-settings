@@ -20,6 +20,7 @@
 	},
 	"reload_on_start": true,
 	"reload_on_save": true,
+	"set_script_source": false,
 	"open_stack_current_in_new_tab": false,
 	"breaks": {}
 }

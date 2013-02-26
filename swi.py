@@ -42,6 +42,7 @@ paused = False
 current_line = None
 reload_on_start = False
 reload_on_save = False
+set_script_source = False
 open_stack_current_in_new_tab = True
 timing = time.time()
 
@@ -260,6 +261,9 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         global reload_on_save
         reload_on_save = get_setting('reload_on_start')
 
+        global set_script_source
+        set_script_source = get_setting('set_script_source')
+
         global open_stack_current_in_new_tab
         open_stack_current_in_new_tab = get_setting('open_stack_current_in_new_tab')
 
@@ -272,6 +276,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         protocol.subscribe(wip.Debugger.resumed(), self.resumed)
         protocol.send(wip.Debugger.enable())
         protocol.send(wip.Console.enable())
+        protocol.send(wip.Debugger.canSetScriptSource(), self.canSetScriptSource)
         if reload_on_start:
             protocol.send(wip.Network.clearBrowserCache())
             protocol.send(wip.Page.reload(), on_reload)
@@ -378,6 +383,11 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
 
         sublime.set_timeout(lambda: save_breaks(), 0)
         sublime.set_timeout(lambda: lookup_view(self.view).view_breakpoints(), 0)
+
+    def canSetScriptSource(self, command):
+        global set_script_source
+        if set_script_source:
+            set_script_source = command.data['result']
 
 
 class SwiDebugResumeCommand(sublime_plugin.TextCommand):
@@ -664,12 +674,20 @@ class EventListener(sublime_plugin.EventListener):
         lookup_view(view).on_pre_save()
 
     def on_post_save(self, view):
+        print view.file_name().find('.js')
         if protocol and reload_on_save:
-            protocol.send(Network.clearBrowserCache())
-            if view.file_name().find('.css') == -1 and view.file_name().find('.less') == -1:
-                protocol.send(Page.reload(), on_reload)
-            else:
+            protocol.send(wip.Network.clearBrowserCache())
+            if view.file_name().find('.css') > 0 or view.file_name().find('.less') > 0:
                 protocol.send(wip.Runtime.evaluate("var files = document.getElementsByTagName('link');var links = [];for (var a = 0, l = files.length; a < l; a++) {var elem = files[a];var rel = elem.rel;if (typeof rel != 'string' || rel.length === 0 || rel === 'stylesheet') {links.push({'elem': elem,'href': elem.getAttribute('href').split('?')[0],'last': false});}}for ( a = 0, l = links.length; a < l; a++) {var link = links[a];link.elem.setAttribute('href', (link.href + '?x=' + Math.random()));}"))
+            elif view.file_name().find('.js') > 0:
+                scriptId = find_script(view.file_name())
+                if scriptId and set_script_source:
+                    scriptSource = view.substr(sublime.Region(0, view.size()))
+                    protocol.send(wip.Debugger.setScriptSource(scriptId, scriptSource), self.paused)
+                else:
+                    protocol.send(wip.Page.reload(), on_reload)
+            else:
+                protocol.send(wip.Page.reload(), on_reload)
         lookup_view(view).on_post_save()
 
     def on_modified(self, view):
@@ -695,6 +713,30 @@ class EventListener(sublime_plugin.EventListener):
 
     def on_query_context(self, view, key, operator, operand, match_all):
         lookup_view(view).on_query_context(key, operator, operand, match_all)
+
+    def paused(self, command):
+        global paused
+
+        if not paused:
+            return
+
+        data = command.data
+        sublime.set_timeout(lambda: window.set_layout(get_setting('stack_layout')), 0)
+
+        sublime.set_timeout(lambda: console_show_stack(data['callFrames']), 0)
+
+        scriptId = data['callFrames'][0].location.scriptId
+        line_number = data['callFrames'][0].location.lineNumber
+        file_name = find_script(str(scriptId))
+        first_scope = data['callFrames'][0].scopeChain[0]
+
+        if open_stack_current_in_new_tab:
+            virtual_click = {'objectId': first_scope.object.objectId, 'name': "%s:%s (%s)" % (file_name, line_number, first_scope.type)}
+        else:
+            virtual_click = {'objectId': first_scope.object.objectId, 'name': "Breakpoint Local"}
+
+        sublime.set_timeout(lambda: protocol.send(wip.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, virtual_click), 30)
+        sublime.set_timeout(lambda: open_script_and_focus_line(scriptId, line_number), 100)
 
 
 ####################################################################################

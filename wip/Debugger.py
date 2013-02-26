@@ -64,6 +64,23 @@ def setBreakpoint_parser(result):
     return data
 
 
+def setScriptSource(scriptId, scriptSource):
+    params = {}
+    params['scriptId'] = scriptId
+    params['scriptSource'] = scriptSource
+
+    command = Command('Debugger.setScriptSource', params)
+    return command
+
+
+def setScriptSource_parser(result):
+    data = {}
+    data['callFrames'] = []
+    for callFrame in result['callFrames']:
+        data['callFrames'].append(CallFrame(callFrame))
+    return data
+
+
 def setBreakpointByUrl(lineNumber, url=None, urlRegex=None, columnNumber=None, condition=None):
     params = {}
     params['lineNumber'] = lineNumber
