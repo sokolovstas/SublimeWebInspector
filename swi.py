@@ -119,6 +119,7 @@ class Protocol(object):
                 print 'SWI: New unsubscrib notification --- ' + parsed['method']
         else:
             if parsed['id'] in self.commands:
+
                 command = self.commands[parsed['id']]
 
                 if 'error' in parsed:
@@ -291,18 +292,23 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
             scriptId = str(data['scriptId'])
             file_name = ''
 
-            del url_parts[0:3]
-            while len(url_parts) > 0:
-                for folder in project_folders:
-                    if sublime.platform() == "windows":
-                        files = glob.glob(folder + "\\" + "\\".join(url_parts))
-                    else:
-                        files = glob.glob(folder + "/" + "/".join(url_parts))
+            script = get_script(hashlib.sha1(data['url']).hexdigest())
 
-                    if len(files) > 0 and files[0] != '':
-                        file_name = files[0]
-                        file_to_scriptId.append({'file': file_name, 'scriptId': str(scriptId), 'sha1': hashlib.sha1(data['url']).hexdigest()})
-                del url_parts[0]
+            if script:
+                script['scriptId'] = str(scriptId)
+            else:
+                del url_parts[0:3]
+                while len(url_parts) > 0:
+                    for folder in project_folders:
+                        if sublime.platform() == "windows":
+                            files = glob.glob(folder + "\\" + "\\".join(url_parts))
+                        else:
+                            files = glob.glob(folder + "/" + "/".join(url_parts))
+
+                        if len(files) > 0 and files[0] != '':
+                            file_name = files[0]
+                            file_to_scriptId.append({'file': file_name, 'scriptId': str(scriptId), 'sha1': hashlib.sha1(data['url']).hexdigest()})
+                    del url_parts[0]
 
             if get_breakpoints_by_full_path(file_name):
                 for line in get_breakpoints_by_full_path(file_name).keys():
@@ -1078,6 +1084,17 @@ def find_script(scriptId_or_file_or_sha1):
             return item['scriptId']
         if item['sha1'] == scriptId_or_file_or_sha1:
             return item['scriptId']
+
+    return None
+
+def get_script(scriptId_or_file_or_sha1):
+    for item in file_to_scriptId:
+        if item['scriptId'] == scriptId_or_file_or_sha1:
+            return item
+        if item['file'] == scriptId_or_file_or_sha1:
+            return item
+        if item['sha1'] == scriptId_or_file_or_sha1:
+            return item
 
     return None
 
