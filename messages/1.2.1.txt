@@ -1,0 +1,4 @@
+Added stack trace to console
+Fix message displaying in console
+
+Moved to custom packages.json

@@ -1,0 +1,3 @@
+Use Web Inspector command.
+
+More details http://sokolovstas.github.com/SublimeWebInspector/
