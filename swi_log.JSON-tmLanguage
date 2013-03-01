@@ -78,20 +78,17 @@
       }
     },
     {
-      "match": "\\t+(.*?):",
+      "match": "^\\t(.+)\\s(.*?):(\\d+)",
       "name": "jsd.log.object",
       "captures": {
         "1": {
+          "name": "mcol_CC0000FF.settings"
+        },
+        "2": {
+          "name": "support.type.settings"
+        },
+        "3": {
           "name": "variable.parameter.settings"
-        }
-      }
-    },
-    {
-      "match": "Object_\\d+_\\d+",
-      "name": "jsd.log.object_placeholder",
-      "captures": {
-        "0": {
-          "name": "mcol_4682b4FF.settings"
         }
       }
     },

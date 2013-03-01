@@ -32,9 +32,9 @@ def messageAdded_parser(params):
     return result
 
 
-### Console.messageRepeatCountUpdate
-def messageRepeatCountUpdate():
-    notification = Notification('Console.messageRepeatCountUpdate')
+### Console.messageRepeatCountUpdated
+def messageRepeatCountUpdated():
+    notification = Notification('Console.messageRepeatCountUpdated')
     return notification
 
 
@@ -69,18 +69,6 @@ class ConsoleMessage(WIPObject):
         self.set_class(value, 'stackTrace', StackTrace)
         self.set(value, 'text')
         self.set(value, 'url')
-
-    #def __str__(self):
-        
-        # sublime.set_timeout(lambda: add_debug_info('console', log_message), 0)
-
-        # # Add text
-        # if 'stackTrace' in message and level == "E":
-        #     stackTrace = message['stackTrace']
-        #     stack_strings = []
-        #     for stack in stackTrace:
-        #         stack_message = "\t[S] %s:%d(%d) %s" % (stack['url'].split('/')[-1], stack['lineNumber'], stack['columnNumber'], stack['functionName'])
-        #         stack_strings.append(stack_message)
 
 
 class StackTrace(list):

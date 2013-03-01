@@ -1,4 +1,3 @@
-from array import array
 import hashlib
 import functools
 import glob
@@ -93,7 +92,7 @@ class Protocol(object):
         command.options = options
         self.commands[command.id] = command
         self.next_id += 1
-        print 'SWI: ->> ' + json.dumps(command.request)
+        # print 'SWI: ->> ' + json.dumps(command.request)
         self.socket.send(json.dumps(command.request))
 
     # subscribe to notification with callback
@@ -118,8 +117,8 @@ class Protocol(object):
                 else:
                     data = None
                 notification.callback(data, notification)
-            else:
-                print 'SWI: New unsubscrib notification --- ' + parsed['method']
+            # else:
+                # print 'SWI: New unsubscrib notification --- ' + parsed['method']
         else:
             if parsed['id'] in self.commands:
 
@@ -135,7 +134,7 @@ class Protocol(object):
 
                     if command.callback:
                         command.callback(command)
-            print 'SWI: Command response with ID ' + str(parsed['id'])
+            # print 'SWI: Command response with ID ' + str(parsed['id'])
 
     def open_callback(self, ws):
         if self.on_open:
@@ -162,7 +161,6 @@ class SwiDebugCommand(sublime_plugin.TextCommand):
             urllib2.urlopen('http://127.0.0.1:' + get_setting('chrome_remote_port') + '/json')
 
             mapping = {}
-            mapping['swi_debug_clear_console'] = 'Clear console'
 
             if paused:
                 mapping['swi_debug_resume'] = 'Resume execution'
@@ -175,6 +173,7 @@ class SwiDebugCommand(sublime_plugin.TextCommand):
                 mapping['swi_debug_breakpoint'] = 'Add/Remove Breakpoint'
 
             if protocol:
+                mapping['swi_debug_clear_console'] = 'Clear console'
                 mapping['swi_debug_stop'] = 'Stop debugging'
                 mapping['swi_debug_reload'] = 'Reload page'
             else:
@@ -216,7 +215,7 @@ class SwiDebugCommand(sublime_plugin.TextCommand):
 
         global window
         window = sublime.active_window()
-        
+
         global original_layout
         original_layout = window.get_layout()
 
@@ -224,7 +223,6 @@ class SwiDebugCommand(sublime_plugin.TextCommand):
         debug_view = window.active_view()
 
         window.set_layout(get_setting('console_layout'))
-        views = window.views()
 
         load_breaks()
         self.view.run_command('swi_debug_start', {'url': url})
@@ -256,7 +254,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         else:
             print 'SWI: Creating protocol'
             protocol = Protocol()
-            protocol.connect(self.url, self.connected)
+            protocol.connect(self.url, self.connected, self.disconnected)
 
         global reload_on_start
         reload_on_start = get_setting('reload_on_start')
@@ -272,7 +270,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
 
     def connected(self):
         protocol.subscribe(wip.Console.messageAdded(), self.messageAdded)
-        protocol.subscribe(wip.Console.messageRepeatCountUpdate(), self.messageRepeatCountUpdate)
+        protocol.subscribe(wip.Console.messageRepeatCountUpdated(), self.messageRepeatCountUpdated)
         protocol.subscribe(wip.Console.messagesCleared(), self.messagesCleared)
         protocol.subscribe(wip.Debugger.scriptParsed(), self.scriptParsed)
         protocol.subscribe(wip.Debugger.paused(), self.paused)
@@ -284,11 +282,14 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
             protocol.send(wip.Network.clearBrowserCache())
             protocol.send(wip.Page.reload(), on_reload)
 
+    def disconnected(self):
+        sublime.set_timeout(lambda: debug_view.run_command('swi_debug_stop'), 0)
+
     def messageAdded(self, data, notification):
         sublime.set_timeout(lambda: console_add_message(data), 0)
 
-    def messageRepeatCountUpdate(self, data, notification):
-        sublime.set_timeout(lambda: console_repeat_message(count), 0)
+    def messageRepeatCountUpdated(self, data, notification):
+        sublime.set_timeout(lambda: console_repeat_message(data['count']), 0)
 
     def messagesCleared(self, data, notification):
         sublime.set_timeout(lambda: console_clear(), 0)
@@ -300,7 +301,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
             scriptId = str(data['scriptId'])
             file_name = ''
 
-            script = get_script(hashlib.sha1(data['url']).hexdigest())
+            script = get_script(data['url'])
 
             if script:
                 script['scriptId'] = str(scriptId)
@@ -492,7 +493,7 @@ class SwiDebugBreakpointCommand(sublime_plugin.TextCommand):
 class SwiDebugStopCommand(sublime_plugin.TextCommand):
 
     def run(self, edit):
-        window = sublime.active_window()
+        global window
 
         window.focus_group(1)
         for view in window.views_in_group(1):
@@ -900,6 +901,7 @@ def console_add_evaluate(eval_object):
 
 
 def console_add_message(message):
+    print message
     v = find_view('console')
 
     edit = v.begin_edit()
@@ -919,7 +921,7 @@ def console_add_message(message):
     # Add file and line
     scriptId = None
     if message.url:
-        scriptId = find_script(hashlib.sha1(message.url).hexdigest())
+        scriptId = find_script(message.url)
         if scriptId:
             url = message.url.split("/")[-1]
         else:
@@ -948,9 +950,27 @@ def console_add_message(message):
             if param.type == 'object':
                 v.insert_click(insert_position, insert_position + insert_length - 1, 'get_params', {'objectId': param.objectId})
     else:
-        text = message.text
+        v.insert(edit, v.size(), message.text)
 
     v.insert(edit, v.size(), "\n")
+
+    if level == "E" and message.stackTrace:
+        stack_start = v.size()
+
+        for callFrame in message.stackTrace:
+            scriptId = find_script(callFrame.url)
+            file_name = callFrame.url.split('/')[-1]
+
+            v.insert(edit, v.size(),  u'\t\u21E1 ')
+
+            if scriptId:
+                v.print_click(edit, v.size(), "%s:%s %s" % (file_name, callFrame.lineNumber, callFrame.functionName), 'goto_file_line', {'scriptId': scriptId, 'line': str(callFrame.lineNumber)})
+            else:
+                v.insert(edit, v.size(),  "%s:%s %s" % (file_name, callFrame.lineNumber, callFrame.functionName))
+
+            v.insert(edit, v.size(), "\n")
+
+        v.fold(sublime.Region(stack_start-1, v.size()-1))
 
     v.end_edit(edit)
     v.show(v.size())
@@ -1189,24 +1209,26 @@ def get_setting(key):
         return s.get(key)
 
 
-def find_script(scriptId_or_file_or_sha1):
+def find_script(scriptId_or_file_or_url):
+    sha = hashlib.sha1(scriptId_or_file_or_url).hexdigest()
     for item in file_to_scriptId:
-        if item['scriptId'] == scriptId_or_file_or_sha1:
+        if item['scriptId'] == scriptId_or_file_or_url:
             return item['file']
-        if item['file'] == scriptId_or_file_or_sha1:
+        if item['file'] == scriptId_or_file_or_url:
             return item['scriptId']
-        if item['sha1'] == scriptId_or_file_or_sha1:
+        if item['sha1'] == sha:
             return item['scriptId']
 
     return None
 
-def get_script(scriptId_or_file_or_sha1):
+def get_script(scriptId_or_file_or_url):
+    sha = hashlib.sha1(scriptId_or_file_or_url).hexdigest()
     for item in file_to_scriptId:
-        if item['scriptId'] == scriptId_or_file_or_sha1:
+        if item['scriptId'] == scriptId_or_file_or_url:
             return item
-        if item['file'] == scriptId_or_file_or_sha1:
+        if item['file'] == scriptId_or_file_or_url:
             return item
-        if item['sha1'] == scriptId_or_file_or_sha1:
+        if item['sha1'] == sha:
             return item
 
     return None

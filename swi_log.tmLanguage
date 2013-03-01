@@ -132,27 +132,23 @@
 				<key>1</key>
 				<dict>
 					<key>name</key>
+					<string>mcol_CC0000FF.settings</string>
+				</dict>
+				<key>2</key>
+				<dict>
+					<key>name</key>
+					<string>support.type.settings</string>
+				</dict>
+				<key>3</key>
+				<dict>
+					<key>name</key>
 					<string>variable.parameter.settings</string>
 				</dict>
 			</dict>
 			<key>match</key>
-			<string>\t+(.*?):</string>
+			<string>^\t(.+)\s(.*?):(\d+)</string>
 			<key>name</key>
 			<string>jsd.log.object</string>
-		</dict>
-		<dict>
-			<key>captures</key>
-			<dict>
-				<key>0</key>
-				<dict>
-					<key>name</key>
-					<string>mcol_4682b4FF.settings</string>
-				</dict>
-			</dict>
-			<key>match</key>
-			<string>Object_\d+_\d+</string>
-			<key>name</key>
-			<string>jsd.log.object_placeholder</string>
 		</dict>
 		<dict>
 			<key>captures</key>
