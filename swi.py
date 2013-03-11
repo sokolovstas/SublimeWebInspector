@@ -733,7 +733,7 @@ class EventListener(sublime_plugin.EventListener):
         print view.file_name().find('.js')
         if protocol and reload_on_save:
             protocol.send(wip.Network.clearBrowserCache())
-            if view.file_name().find('.css') > 0 or view.file_name().find('.less') > 0:
+            if view.file_name().find('.css') > 0 or view.file_name().find('.less') > 0 or view.file_name().find('.sass') > 0 or view.file_name().find('.scss') > 0:
                 protocol.send(wip.Runtime.evaluate("var files = document.getElementsByTagName('link');var links = [];for (var a = 0, l = files.length; a < l; a++) {var elem = files[a];var rel = elem.rel;if (typeof rel != 'string' || rel.length === 0 || rel === 'stylesheet') {links.push({'elem': elem,'href': elem.getAttribute('href').split('?')[0],'last': false});}}for ( a = 0, l = links.length; a < l; a++) {var link = links[a];link.elem.setAttribute('href', (link.href + '?x=' + Math.random()));}"))
             elif view.file_name().find('.js') > 0:
                 scriptId = find_script(view.file_name())
