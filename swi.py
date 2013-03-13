@@ -292,7 +292,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         sublime.set_timeout(lambda: console_repeat_message(data['count']), 0)
 
     def messagesCleared(self, data, notification):
-        sublime.set_timeout(lambda: console_clear(), 0)
+        sublime.set_timeout(lambda: clear_view('console'), 0)
 
     def scriptParsed(self, data, notification):
         url = data['url']
@@ -305,6 +305,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
 
             if script:
                 script['scriptId'] = str(scriptId)
+                file_name = script['file']
             else:
                 del url_parts[0:3]
                 while len(url_parts) > 0:
@@ -352,9 +353,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         paused = True
 
     def resumed(self, data, notification):
-        sublime.set_timeout(lambda: window.focus_group(2), 0)
-        sublime.set_timeout(lambda: window.run_command("close"), 0)
-        sublime.set_timeout(lambda: window.set_layout(get_setting('console_layout')), 0)
+        sublime.set_timeout(lambda: clear_view('stack'), 0)
 
         global current_line
         current_line = None
@@ -433,7 +432,7 @@ class SwiDebugStepOverCommand(sublime_plugin.TextCommand):
 class SwiDebugClearConsoleCommand(sublime_plugin.TextCommand):
 
     def run(self, edit):
-        sublime.set_timeout(lambda: console_clear(), 0)
+        sublime.set_timeout(lambda: clear_view('console'), 0)
 
 
 class SwiDebugEvaluateOnCallFrameCommand(sublime_plugin.TextCommand):
@@ -687,6 +686,7 @@ class SwiDebugView(object):
                             protocol.send(wip.Runtime.getProperties(click['data']['objectId'], True), console_add_properties, click['data'])
 
                     if click['click_type'] == 'command':
+                        self.remove_click(click_counter)
                         self.run_command(click['data'])
 
             click_counter += 1
@@ -857,8 +857,8 @@ def find_view(console_type, title=''):
     return lookup_view(v)
 
 
-def console_clear():
-    v = find_view('console')
+def clear_view(view):
+    v = find_view(view)
 
     edit = v.begin_edit()
 
@@ -901,7 +901,6 @@ def console_add_evaluate(eval_object):
 
 
 def console_add_message(message):
-    print message
     v = find_view('console')
 
     edit = v.begin_edit()
