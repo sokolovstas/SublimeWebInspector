@@ -260,7 +260,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         reload_on_start = get_setting('reload_on_start')
 
         global reload_on_save
-        reload_on_save = get_setting('reload_on_start')
+        reload_on_save = get_setting('reload_on_save')
 
         global set_script_source
         set_script_source = get_setting('set_script_source')
