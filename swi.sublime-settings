@@ -4,6 +4,7 @@
 		"windows": "C:\\Program Files\\Google\\Chrome\\chrome.exe",
 		"linux": "/usr/bin/google-chrome"
 	},
+	"chrome_profile": "Default",
 	"chrome_remote_port": "9222",
 	"breakpoint_scope": "swi.breakpoint",
 	"current_line_scope": "swi.current",
