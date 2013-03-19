@@ -6,12 +6,27 @@
 			"description": "JavaScript debbuging in Sublime Text",
 			"author": "Stanislav Sokolov",
 			"homepage": "http://sokolovstas.github.com/SublimeWebInspector",
-			"last_modified": "2012-02-28 00:00:00",
+			"last_modified": "2012-03-20 00:00:00",
 			"platforms": {
 				"*": [
 					{
 						"version": "1.4",
 						"url": "https://nodeload.github.com/sokolovstas/SublimeWebInspector/zip/1.4"
+					}
+				]
+			}
+		},
+		{
+			"name": "Web Inspector ST3",
+			"description": "JavaScript debbuging in Sublime Text 3",
+			"author": "Stanislav Sokolov",
+			"homepage": "http://sokolovstas.github.com/SublimeWebInspector",
+			"last_modified": "2012-03-20 00:00:00",
+			"platforms": {
+				"*": [
+					{
+						"version": "1.5",
+						"url": "https://nodeload.github.com/sokolovstas/SublimeWebInspector/zip/ST3"
 					}
 				]
 			}
