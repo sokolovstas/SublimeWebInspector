@@ -1,16 +1,18 @@
 # Sublime Web Inspector (SWI)
 
-Sublime Web Inspector works on top of WebInspectorProtocol. All information is displayed in console and text files. You can click on objects from console or stack trace to evaluate them. You can click on file name to goto file and line instantly. All clickable zone have borders to simply vizualize them.
+Sublime Web Inspector works on top of WebInspectorProtocol. All information is displayed in console and text files. 
+You can click on objects from console or stack trace to evaluate them. You can also click on a file name to 
+goto the file and line instantly. All clickable zones have borders to simply vizualize them.
 
-All feature request and bugs you can add to https://github.com/sokolovstas/SublimeWebInspector/issues
+You can add feature requests or bugs to https://github.com/sokolovstas/SublimeWebInspector/issues
 
 *Thanks XDebug Authors for inspiration*
 
-## Instalation
-Do in your Packages folder:
+## Installation
+Execute the following command in your Sublime Packages folder:
 ```git clone git://github.com/sokolovstas/SublimeWebInspector.git Web\ Inspector``` 
 
-I prepare plugin to Package Manager after some testing
+*I will prepare a plugin to Package Manager after additional testing*
 
 ## Features
 
@@ -22,7 +24,7 @@ I prepare plugin to Package Manager after some testing
 
 ## Commands
 
-All commands you can find in "Sublime Web Inspector" command. And here a complete list:
+You can find all commands in the "Sublime Web Inspector" namespace. Here is a complete list:
 
 ### Command for controlling debugger
 - swi\_debug\_resume
@@ -45,7 +47,7 @@ All commands you can find in "Sublime Web Inspector" command. And here a complet
 
 ## Settings
 
-In settings you can change layouts for debugger, some color and path to Google Chrome
+You can change layouts for the debugger, color options, and path to Google Chrome in settings.
 
-## PS
-*Close Google Chrome befor run it in remote debugger mode.*
+## Additional Notes
+*Close Google Chrome before you run it in remote debugger mode.*
