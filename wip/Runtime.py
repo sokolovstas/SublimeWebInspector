@@ -1,5 +1,5 @@
 import json
-from utils import WIPObject, Command
+from .utils import WIPObject, Command
 
 
 def evaluate(expression, objectGroup=None, returnByValue=None):

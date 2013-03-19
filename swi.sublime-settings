@@ -19,8 +19,10 @@
 	    "rows": [0.0, 0.7, 1.0],
 	    "cells": [[0, 0, 2, 1], [0, 1, 1, 2], [1, 1, 2, 2]]
 	},
-	"reload_on_start": true,
+	"reload_on_start": false,
 	"reload_on_save": true,
+	"reload_timeout": 0,
+	"user_agent": "",
 	"set_script_source": false,
 	"open_stack_current_in_new_tab": false,
 	"breaks": {}

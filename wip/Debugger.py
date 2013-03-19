@@ -1,5 +1,5 @@
-from utils import Command, Notification, WIPObject
-from Runtime import RemoteObject
+from .utils import Command, Notification, WIPObject
+from .Runtime import RemoteObject
 import json
 
 

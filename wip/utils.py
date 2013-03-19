@@ -27,7 +27,7 @@ class Notification(object):
 
     @staticmethod
     def default_parser(params):
-        print params
+        print (params)
         return params
 
 

@@ -1,6 +1,6 @@
-from utils import Command, Notification, WIPObject
-from Runtime import RemoteObject
-from Network import RequestId
+from .utils import Command, Notification, WIPObject
+from .Runtime import RemoteObject
+from .Network import RequestId
 
 
 ### Console.clearMessages

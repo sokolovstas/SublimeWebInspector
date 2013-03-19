@@ -1,4 +1,4 @@
-from utils import WIPObject, Command
+from .utils import WIPObject, Command
 
 
 def clearBrowserCache():
@@ -13,6 +13,10 @@ def canClearBrowserCache():
 
 def setCacheDisabled(value):
     command = Command('Network.setCacheDisabled', {'cacheDisabled': value})
+    return command
+
+def setUserAgentOverride(value):
+    command = Command('Network.setUserAgentOverride', {'userAgent': value})
     return command
 
 
