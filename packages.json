@@ -17,8 +17,8 @@
 			}
 		},
 		{
-			"name": "Web Inspector ST3",
-			"description": "JavaScript debbuging in Sublime Text 3",
+			"name": "Web Inspector",
+			"description": "SUBLIME TEXT 3",
 			"author": "Stanislav Sokolov",
 			"homepage": "http://sokolovstas.github.com/SublimeWebInspector",
 			"last_modified": "2012-03-20 00:00:00",
