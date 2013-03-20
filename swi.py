@@ -323,7 +323,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
             file_name = ''
             script = get_script(data['url'])
             if script:
-                print('finded and change')
+                #print('finded and change')
                 if scriptId > int(script['scriptId']):
                     script['scriptId'] = str(scriptId)
                 file_name = script['file']
@@ -357,7 +357,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         scriptId = data['callFrames'][0].location.scriptId
         line_number = data['callFrames'][0].location.lineNumber
         file_name = find_script(str(scriptId))
-        print(str(scriptId), file_name)
+        #print(str(scriptId), file_name)
         first_scope = data['callFrames'][0].scopeChain[0]
 
         if open_stack_current_in_new_tab:
@@ -399,9 +399,6 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         scriptId = command.data['actualLocation'].scriptId
         lineNumber = command.data['actualLocation'].lineNumber
 
-        print('added')
-        
-
         try:
             breakpoint = get_breakpoints_by_scriptId(str(scriptId))[str(lineNumber)]
             breakpoint['status'] = 'enabled'
@@ -411,17 +408,11 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         
         try:
             breaks = get_breakpoints_by_scriptId(str(scriptId))
-            print('breaks', breaks)
-
-
-
             lineNumber = str(lineNumber)
             lineNumberSend = str(command.params['location']['lineNumber'])
-            print(breaks)
             if lineNumberSend in breaks and lineNumber != lineNumberSend:
                 breaks[lineNumber] = breaks[lineNumberSend].copy()
                 del breaks[lineNumberSend]
-            print(breaks)
             breaks[lineNumber]['status'] = 'enabled'
             breaks[lineNumber]['breakpointId'] = str(breakpointId)
         except:
@@ -762,7 +753,7 @@ class EventListener(sublime_plugin.EventListener):
     def reload_styles(self):
         protocol.send(wip.Runtime.evaluate("var files = document.getElementsByTagName('link');var links = [];for (var a = 0, l = files.length; a < l; a++) {var elem = files[a];var rel = elem.rel;if (typeof rel != 'string' || rel.length === 0 || rel === 'stylesheet') {links.push({'elem': elem,'href': elem.getAttribute('href').split('?')[0],'last': false});}}for ( a = 0, l = links.length; a < l; a++) {var link = links[a];link.elem.setAttribute('href', (link.href + '?x=' + Math.random()));}"))
 
-    def reload_set_script_source(self):
+    def reload_set_script_source(self, scriptId, scriptSource):
         protocol.send(wip.Debugger.setScriptSource(scriptId, scriptSource), self.paused)
 
     def reload_page(self):
@@ -777,7 +768,7 @@ class EventListener(sublime_plugin.EventListener):
                 scriptId = find_script(view.file_name())
                 if scriptId and set_script_source:
                     scriptSource = view.substr(sublime.Region(0, view.size()))
-                    self.reload_set_script_source()
+                    self.reload_set_script_source(scriptId, scriptSource)
                 else:
                     sublime.set_timeout(lambda: self.reload_page(), reload_timeout)
             else:
@@ -923,7 +914,6 @@ def console_repeat_message(count):
 
 class SwiConsoleRepeatMessageCommand(sublime_plugin.TextCommand):
     def run(self, edit, count):
-        print(count)
         if count > 2:
             erase_to = self.view.size() - len(' \u21AA Repeat:' + str(count - 1) + '\n')
             self.view.erase(edit, sublime.Region(erase_to, self.view.size()))
@@ -971,8 +961,6 @@ class SwiConsoleAddMessageCommand(sublime_plugin.TextCommand):
     def run(self, edit):
         v = lookup_view(self.view)
         message = message_queue.pop(0)
-
-        print(message)
 
         if message.level == 'debug':
             level = "D"
@@ -1217,7 +1205,7 @@ def save_breaks():
     s.set('breaks', brk_object)
     sublime.save_settings("swi.sublime-settings")
 
-    #print (breaks)
+    #print(breaks)
 
 
 def full_path_to_file_name(path):
@@ -1246,7 +1234,6 @@ def del_breakpoint_by_full_path(file_name, line):
 
 
 def get_breakpoints_by_full_path(file_name):
-    print(file_name, brk_object.get(file_name, None))
     return brk_object.get(file_name, None)
 
 
