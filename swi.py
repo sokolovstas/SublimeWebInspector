@@ -1040,7 +1040,7 @@ class SwiConsoleAddMessageCommand(sublime_plugin.TextCommand):
 
             v.fold(sublime.Region(stack_start-1, v.size()-1))
 
-        if message.repeatCount and message.repeatCount > 0:
+        if message.repeatCount and message.repeatCount > 1:
             self.view.insert(edit, self.view.size(), ' \u21AA Repeat:' + str(message.repeatCount) + '\n')
 
 
