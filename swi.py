@@ -249,6 +249,8 @@ class SwiDebugStartChromeCommand(sublime_plugin.TextCommand):
 class SwiDebugStartCommand(sublime_plugin.TextCommand):
 
     def run(self, edit, url):
+        global debugger_enabled
+        debugger_enabled = False
         global file_to_scriptId
         file_to_scriptId = []
         window = sublime.active_window()
@@ -292,7 +294,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         protocol.subscribe(wip.Debugger.paused(), self.paused)
         protocol.subscribe(wip.Debugger.resumed(), self.resumed)
 
-        protocol.send(wip.Debugger.enable())
+        protocol.send(wip.Debugger.enable(), self.enabled)
         protocol.send(wip.Console.enable())
         protocol.send(wip.Debugger.canSetScriptSource(), self.canSetScriptSource)
 
@@ -322,9 +324,9 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
             scriptId = str(data['scriptId'])
             file_name = ''
             script = get_script(data['url'])
+
             if script:
-                #print('finded and change')
-                if scriptId > int(script['scriptId']):
+                if int(scriptId) > int(script['scriptId']):
                     script['scriptId'] = str(scriptId)
                 file_name = script['file']
             else:
@@ -338,15 +340,11 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
 
                         if len(files) > 0 and files[0] != '':
                             file_name = files[0]
-                            #print('added')
-                            file_to_scriptId.append({'file': file_name, 'scriptId': str(scriptId), 'sha1': hashlib.sha1(data['url'].encode('utf-8')).hexdigest()})
+                            file_to_scriptId.append({'file': file_name, 'scriptId': str(scriptId), 'url': data['url']})
                     del url_parts[0]
 
-            #print(file_name, scriptId, url)
-            if get_breakpoints_by_full_path(file_name):
-                for line in list(get_breakpoints_by_full_path(file_name).keys()):
-                    location = wip.Debugger.Location({'lineNumber': int(line), 'scriptId': scriptId})
-                    protocol.send(wip.Debugger.setBreakpoint(location), self.breakpointAdded)
+            if debugger_enabled:
+                self.add_breakpoints_to_file(file_name)
 
     def paused(self, data, notification):
         
@@ -357,7 +355,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         scriptId = data['callFrames'][0].location.scriptId
         line_number = data['callFrames'][0].location.lineNumber
         file_name = find_script(str(scriptId))
-        #print(str(scriptId), file_name)
+
         first_scope = data['callFrames'][0].scopeChain[0]
 
         if open_stack_current_in_new_tab:
@@ -394,11 +392,24 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         global paused
         paused = False
 
+    def enabled(self, command):
+        global debugger_enabled
+        debugger_enabled = True
+        for file_to_script_object in file_to_scriptId:
+            self.add_breakpoints_to_file(file_to_script_object['file'])
+
+    def add_breakpoints_to_file(self, file):
+        breakpoints = get_breakpoints_by_full_path(file)
+        scriptId = find_script(file)
+        if breakpoints:
+            for line in list(breakpoints.keys()):
+                location = wip.Debugger.Location({'lineNumber': int(line), 'scriptId': scriptId})
+                protocol.send(wip.Debugger.setBreakpoint(location), self.breakpointAdded)
+
     def breakpointAdded(self, command):
         breakpointId = command.data['breakpointId']
         scriptId = command.data['actualLocation'].scriptId
         lineNumber = command.data['actualLocation'].lineNumber
-
         try:
             breakpoint = get_breakpoints_by_scriptId(str(scriptId))[str(lineNumber)]
             breakpoint['status'] = 'enabled'
@@ -531,6 +542,9 @@ class SwiDebugStopCommand(sublime_plugin.TextCommand):
 
         global paused
         paused = False
+
+        global debugger_enabled
+        debugger_enabled = False
 
         global current_line
         current_line = None
@@ -1283,25 +1297,25 @@ def get_setting(key):
 
 
 def find_script(scriptId_or_file_or_url):
-    sha = hashlib.sha1(scriptId_or_file_or_url.encode('utf-8')).hexdigest()
+    #sha = hashlib.sha1(scriptId_or_file_or_url.encode('utf-8')).hexdigest()
     for item in file_to_scriptId:
         if item['scriptId'] == scriptId_or_file_or_url:
             return item['file']
         if item['file'] == scriptId_or_file_or_url:
             return item['scriptId']
-        if item['sha1'] == sha:
+        if item['url'] == scriptId_or_file_or_url:
             return item['scriptId']
 
     return None
 
 def get_script(scriptId_or_file_or_url):
-    sha = hashlib.sha1(scriptId_or_file_or_url.encode('utf-8')).hexdigest()
+    #sha = hashlib.sha1(scriptId_or_file_or_url.encode('utf-8')).hexdigest()
     for item in file_to_scriptId:
         if item['scriptId'] == scriptId_or_file_or_url:
             return item
         if item['file'] == scriptId_or_file_or_url:
             return item
-        if item['sha1'] == sha:
+        if item['url'] == scriptId_or_file_or_url:
             return item
 
     return None
