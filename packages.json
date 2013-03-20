@@ -2,7 +2,7 @@
 	"schema_version": "1.2",
 	"packages": [
 		{
-			"name": "Web Inspector",
+			"name": "Web Inspector 3",
 			"description": "JavaScript debbuging in Sublime Text",
 			"author": "Stanislav Sokolov",
 			"homepage": "http://sokolovstas.github.com/SublimeWebInspector",
@@ -10,8 +10,8 @@
 			"platforms": {
 				"*": [
 					{
-						"version": "1.4",
-						"url": "https://nodeload.github.com/sokolovstas/SublimeWebInspector/zip/1.4"
+						"version": "1.5",
+						"url": "https://nodeload.github.com/sokolovstas/SublimeWebInspector/zip/ST3"
 					}
 				]
 			}
