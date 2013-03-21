@@ -13,6 +13,10 @@ def enable():
     command = Command('Debugger.enable', {})
     return command
 
+def setPauseOnExceptions(state):
+    command = Command('Debugger.setPauseOnExceptions', {"state": state})
+    return command
+
 
 def evaluateOnCallFrame(callFrameId, expression):
     params = {}

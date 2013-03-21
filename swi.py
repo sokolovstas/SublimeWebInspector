@@ -38,7 +38,6 @@ imp.reload(sys.modules['wip.Page'])
 brk_object = {}
 buffers = {}
 protocol = None
-reload_timeout = 0
 original_layout = None
 window = None
 debug_view = None
@@ -48,12 +47,9 @@ project_folders = []
 last_clicked = None
 paused = False
 current_line = None
-reload_on_start = False
-reload_on_save = False
 set_script_source = False
 current_call_frame = None
 current_call_frame_position = None
-open_stack_current_in_new_tab = True
 timing = time.time()
 
 
@@ -101,7 +97,8 @@ class Protocol(object):
         command.options = options
         self.commands[command.id] = command
         self.next_id += 1
-        # print ('SWI: ->> ' + json.dumps(command.request))
+        if get_setting('debug_mode'):
+            print ('SWI: ->> ' + json.dumps(command.request, sort_keys=True, indent=4, separators=(',', ': ')))
         self.socket.send(json.dumps(command.request))
 
     # subscribe to notification with callback
@@ -116,8 +113,8 @@ class Protocol(object):
     # unsubscribe
     def message_callback(self, ws, message):
         parsed = json.loads(message)
-        # print ('SWI: <<- ' + message)
-        # print ('')
+        if get_setting('debug_mode'):
+            print ('SWI: <<- ' + json.dumps(parsed, sort_keys=True, indent=4, separators=(',', ': ')))
         if 'method' in parsed:
             if parsed['method'] in self.notifications:
                 notification = self.notifications[parsed['method']]
@@ -268,41 +265,27 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
             protocol = Protocol()
             protocol.connect(self.url, self.connected, self.disconnected)
 
-        global reload_on_start
-        reload_on_start = get_setting('reload_on_start')
-
-        global reload_on_save
-        reload_on_save = get_setting('reload_on_save')
-
-        global reload_timeout
-        reload_timeout = get_setting('reload_timeout')
-
-        global user_agent
-        user_agent = get_setting('user_agent')
-
         global set_script_source
         set_script_source = get_setting('set_script_source')
 
-        global open_stack_current_in_new_tab
-        open_stack_current_in_new_tab = get_setting('open_stack_current_in_new_tab')
-
     def connected(self):
-        
         protocol.subscribe(wip.Console.messageAdded(), self.messageAdded)
         protocol.subscribe(wip.Console.messageRepeatCountUpdated(), self.messageRepeatCountUpdated)
         protocol.subscribe(wip.Console.messagesCleared(), self.messagesCleared)
         protocol.subscribe(wip.Debugger.scriptParsed(), self.scriptParsed)
         protocol.subscribe(wip.Debugger.paused(), self.paused)
         protocol.subscribe(wip.Debugger.resumed(), self.resumed)
-
+        
         protocol.send(wip.Debugger.enable(), self.enabled)
+        protocol.send(wip.Debugger.setPauseOnExceptions(get_setting('pause_on_exceptions')))
         protocol.send(wip.Console.enable())
         protocol.send(wip.Debugger.canSetScriptSource(), self.canSetScriptSource)
 
-        if user_agent is not "":
-            protocol.send(wip.Network.setUserAgentOverride(user_agent))
 
-        if reload_on_start:
+        if get_setting('user_agent') is not "":
+            protocol.send(wip.Network.setUserAgentOverride(get_setting('user_agent')))
+
+        if get_setting('reload_on_start'):
             protocol.send(wip.Network.clearBrowserCache())
             protocol.send(wip.Page.reload(), on_reload)
 
@@ -359,7 +342,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
 
         first_scope = data['callFrames'][0].scopeChain[0]
 
-        if open_stack_current_in_new_tab:
+        if get_setting('open_stack_current_in_new_tab'):
             title = {'objectId': first_scope.object.objectId, 'name': "%s:%s (%s)" % (file_name, line_number, first_scope.type)}
         else:
             title = {'objectId': first_scope.object.objectId, 'name': "Breakpoint Local"}
@@ -713,7 +696,7 @@ class SwiDebugView(object):
 
                         first_scope = callFrame.scopeChain[0]
 
-                        if open_stack_current_in_new_tab:
+                        if get_setting('open_stack_current_in_new_tab'):
                             title = {'objectId': first_scope.object.objectId, 'name': "%s:%s (%s)" % (file_name.split('/')[-1], line_number, first_scope.type)}
                         else:
                             title = {'objectId': first_scope.object.objectId, 'name': "Breakpoint Local"}
@@ -784,19 +767,19 @@ class EventListener(sublime_plugin.EventListener):
         protocol.send(wip.Page.reload(), on_reload)
 
     def on_post_save(self, view):
-        if protocol and reload_on_save:
+        if protocol and get_setting('reload_on_save'):
             protocol.send(wip.Network.clearBrowserCache())
             if view.file_name().find('.css') > 0 or view.file_name().find('.less') > 0 or view.file_name().find('.sass') > 0 or view.file_name().find('.scss') > 0:
-                sublime.set_timeout(lambda: self.reload_styles(), reload_timeout)
+                sublime.set_timeout(lambda: self.reload_styles(), get_setting('reload_timeout'))
             elif view.file_name().find('.js') > 0:
                 scriptId = find_script(view.file_name())
                 if scriptId and set_script_source:
                     scriptSource = view.substr(sublime.Region(0, view.size()))
                     self.reload_set_script_source(scriptId, scriptSource)
                 else:
-                    sublime.set_timeout(lambda: self.reload_page(), reload_timeout)
+                    sublime.set_timeout(lambda: self.reload_page(), get_setting('reload_timeout'))
             else:
-                sublime.set_timeout(lambda: self.reload_page(), reload_timeout)
+                sublime.set_timeout(lambda: self.reload_page(), get_setting('reload_timeout'))
                 
         lookup_view(view).on_post_save()
 
@@ -840,7 +823,7 @@ class EventListener(sublime_plugin.EventListener):
         file_name = find_script(str(scriptId))
         first_scope = data['callFrames'][0].scopeChain[0]
 
-        if open_stack_current_in_new_tab:
+        if get_setting('open_stack_current_in_new_tab'):
             title = {'objectId': first_scope.object.objectId, 'name': "%s:%s (%s)" % (file_name, line_number, first_scope.type)}
         else:
             title = {'objectId': first_scope.object.objectId, 'name': "Breakpoint Local"}
