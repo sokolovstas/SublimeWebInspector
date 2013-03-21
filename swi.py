@@ -101,7 +101,7 @@ class Protocol(object):
         command.options = options
         self.commands[command.id] = command
         self.next_id += 1
-        print ('SWI: ->> ' + json.dumps(command.request))
+        # print ('SWI: ->> ' + json.dumps(command.request))
         self.socket.send(json.dumps(command.request))
 
     # subscribe to notification with callback
@@ -173,7 +173,6 @@ class SwiDebugCommand(sublime_plugin.TextCommand):
 
             if paused:
                 mapping['swi_debug_resume'] = 'Resume execution'
-                mapping['swi_debug_evaluate_on_call_frame'] = 'Evaluate selection'
                 #mapping['swi_debug_step_into'] = 'Step into'
                 #mapping['swi_debug_step_out'] = 'Step out'
                 #mapping['swi_debug_step_over'] = 'Step over'
@@ -182,6 +181,7 @@ class SwiDebugCommand(sublime_plugin.TextCommand):
                 mapping['swi_debug_breakpoint'] = 'Add/Remove Breakpoint'
 
             if protocol:
+                mapping['swi_debug_evaluate'] = 'Evaluate selection'
                 mapping['swi_debug_clear_console'] = 'Clear console'
                 mapping['swi_debug_stop'] = 'Stop debugging'
                 mapping['swi_debug_reload'] = 'Reload page'
@@ -468,14 +468,17 @@ class SwiDebugClearConsoleCommand(sublime_plugin.TextCommand):
         sublime.set_timeout(lambda: clear_view('console'), 0)
 
 
-class SwiDebugEvaluateOnCallFrameCommand(sublime_plugin.TextCommand):
+class SwiDebugEvaluateCommand(sublime_plugin.TextCommand):
 
     def run(self, edit):
         for region in self.view.sel():
             title = self.view.substr(region)
-            if current_call_frame_position:
-                title = "%s on %s" % (self.view.substr(region), current_call_frame_position)
-            protocol.send(wip.Debugger.evaluateOnCallFrame(current_call_frame, self.view.substr(region)), self.evaluated, {'name': title})
+            if paused:
+                if current_call_frame_position:
+                    title = "%s on %s" % (self.view.substr(region), current_call_frame_position)
+                protocol.send(wip.Debugger.evaluateOnCallFrame(current_call_frame, self.view.substr(region)), self.evaluated, {'name': title})
+            else:
+                protocol.send(wip.Runtime.evaluate(self.view.substr(region)), self.evaluated, {'name': title})
 
     def evaluated(self, command):
         if command.data.type == 'object':
