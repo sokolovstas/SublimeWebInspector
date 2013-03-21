@@ -335,9 +335,9 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
                 while len(url_parts) > 0:
                     for folder in project_folders:
                         if sublime.platform() == "windows":
-                            files = glob.glob(folder + "\\" + "\\".join(url_parts))
+                            files = glob.glob(folder + "\\*\\" + "\\".join(url_parts))
                         else:
-                            files = glob.glob(folder + "/" + "/".join(url_parts))
+                            files = glob.glob(folder + "/*/" + "/".join(url_parts))
 
                         if len(files) > 0 and files[0] != '':
                             file_name = files[0]
