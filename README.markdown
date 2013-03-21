@@ -27,23 +27,25 @@ Execute the following command in your Sublime Packages folder:
 You can find all commands in the "Sublime Web Inspector" namespace. Here is a complete list:
 
 ### Command for controlling debugger
-- swi\_debug\_resume
-- swi\_debug\_step\_into
-- swi\_debug\_step\_out
-- swi\_debug\_step\_over
+- swi\_debug\_resume: Resume from pause
+- swi\_debug\_step\_into: Step into debugger
+- swi\_debug\_step\_out: Step out debugger
+- swi\_debug\_step\_over: Step over debugger
+- swi\_debug\_evaluate: Evaluate selection (if paused on call frame)
 
 ### Breakpoints
-- swi\_debug\_breakpoint
+- swi\_debug\_breakpoint: Add remove breakpoints
 
 ### Page
-- swi\_debug\_reload
+- swi\_debug\_reload: Reload connected page
 
 ### Start-stop
-- swi\_debug\_start
-- swi\_debug\_stop
+- swi\_debug\_start: Start debugger
+- swi\_debug\_stop: Stop debugger
 
 ### Utils
-- swi\_debug\_start\_chrome
+- swi\_debug\_start\_chrome: Start Google Chrome
+- swi\_show\_file\_mapping: Show mapping local file to url
 
 ## Settings
 
