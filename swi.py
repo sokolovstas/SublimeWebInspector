@@ -318,9 +318,9 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
                 while len(url_parts) > 0:
                     for folder in project_folders:
                         if sublime.platform() == "windows":
-                            files = glob.glob(folder + "\\*\\" + "\\".join(url_parts))
+                            files = glob.glob(folder + "\\*\\" + "\\".join(url_parts)) + glob.glob(folder + "\\" + "\\".join(url_parts))
                         else:
-                            files = glob.glob(folder + "/*/" + "/".join(url_parts))
+                            files = glob.glob(folder + "/*/" + "/".join(url_parts)) + glob.glob(folder + "/" + "/".join(url_parts))
 
                         if len(files) > 0 and files[0] != '':
                             file_name = files[0]
@@ -769,9 +769,9 @@ class EventListener(sublime_plugin.EventListener):
     def on_post_save(self, view):
         if protocol and get_setting('reload_on_save'):
             protocol.send(wip.Network.clearBrowserCache())
-            if view.file_name().find('.css') > 0 or view.file_name().find('.less') > 0 or view.file_name().find('.sass') > 0 or view.file_name().find('.scss') > 0:
+            if view.file_name().endswith('.css') or view.file_name().endswith('.less') or view.file_name().endswith('.sass') or view.file_name().endswith('.scss'):
                 sublime.set_timeout(lambda: self.reload_styles(), get_setting('reload_timeout'))
-            elif view.file_name().find('.js') > 0:
+            elif view.file_name().endswith('.js'):
                 scriptId = find_script(view.file_name())
                 if scriptId and set_script_source:
                     scriptSource = view.substr(sublime.Region(0, view.size()))
