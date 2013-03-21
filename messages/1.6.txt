@@ -1,0 +1,2 @@
+Added command Show file mapping
+Now you can showhow you file mapped to url

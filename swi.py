@@ -185,6 +185,7 @@ class SwiDebugCommand(sublime_plugin.TextCommand):
                 mapping['swi_debug_clear_console'] = 'Clear console'
                 mapping['swi_debug_stop'] = 'Stop debugging'
                 mapping['swi_debug_reload'] = 'Reload page'
+                mapping['swi_show_file_mapping'] = 'Show file mapping'
             else:
                 mapping['swi_debug_start'] = 'Start debugging'
         except:
@@ -561,10 +562,16 @@ class SwiDebugStopCommand(sublime_plugin.TextCommand):
 
 
 class SwiDebugReloadCommand(sublime_plugin.TextCommand):
-    def run(self, view):
+    def run(self):
         if(protocol):
             protocol.send(wip.Network.clearBrowserCache())
             protocol.send(wip.Page.reload(), on_reload)
+
+
+class SwiShowFileMapping(sublime_plugin.TextCommand):
+    def run(self, edit):
+        v = find_view('mapping')
+        v.insert(edit, 0, json.dumps(file_to_scriptId, sort_keys=True, indent=4, separators=(',', ': ')))
 
 
 ####################################################################################
@@ -869,6 +876,10 @@ def find_view(console_type, title=''):
         group = 1
         fullName = "SWI Object evaluate"
 
+    if console_type.startswith('mapping'):
+        group = 0
+        fullName = "File mapping"
+
     window.focus_group(group)
     fullName = fullName + ' ' + title
 
@@ -876,6 +887,7 @@ def find_view(console_type, title=''):
         if v.name() == fullName:
             found = True
             break
+
 
     if not found:
         v = window.new_file()

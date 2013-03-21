@@ -10,7 +10,7 @@
 			"platforms": {
 				"*": [
 					{
-						"version": "1.5",
+						"version": "1.6",
 						"url": "https://nodeload.github.com/sokolovstas/SublimeWebInspector/zip/ST3"
 					}
 				]
