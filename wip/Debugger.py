@@ -17,6 +17,13 @@ def setPauseOnExceptions(state):
     command = Command('Debugger.setPauseOnExceptions', {"state": state})
     return command
 
+def setOverlayMessage(message=None):
+    if message:
+        command = Command('Debugger.setOverlayMessage', {"message":"Paused in Sublime Web Inspector"})
+    else:
+        command = Command('Debugger.setOverlayMessage', {})
+    return command
+
 
 def evaluateOnCallFrame(callFrameId, expression):
     params = {}

@@ -331,6 +331,8 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
                 self.add_breakpoints_to_file(file_name)
 
     def paused(self, data, notification):
+
+        protocol.send(wip.Debugger.setOverlayMessage('Paused in Sublime Web Inspector'))
         
         sublime.set_timeout(lambda: window.set_layout(get_setting('stack_layout')), 0)
 
@@ -361,6 +363,8 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
 
     def resumed(self, data, notification):
         sublime.set_timeout(lambda: clear_view('stack'), 0)
+
+        protocol.send(wip.Debugger.setOverlayMessage())
 
         global current_line
         current_line = None
@@ -761,7 +765,7 @@ class EventListener(sublime_plugin.EventListener):
         protocol.send(wip.Runtime.evaluate("var files = document.getElementsByTagName('link');var links = [];for (var a = 0, l = files.length; a < l; a++) {var elem = files[a];var rel = elem.rel;if (typeof rel != 'string' || rel.length === 0 || rel === 'stylesheet') {links.push({'elem': elem,'href': elem.getAttribute('href').split('?')[0],'last': false});}}for ( a = 0, l = links.length; a < l; a++) {var link = links[a];link.elem.setAttribute('href', (link.href + '?x=' + Math.random()));}"))
 
     def reload_set_script_source(self, scriptId, scriptSource):
-        protocol.send(wip.Debugger.setScriptSource(scriptId, scriptSource), self.paused)
+        protocol.send(wip.Debugger.setScriptSource(scriptId, scriptSource), self.update_stack)
 
     def reload_page(self):
         protocol.send(wip.Page.reload(), on_reload)
@@ -807,7 +811,7 @@ class EventListener(sublime_plugin.EventListener):
     def on_query_context(self, view, key, operator, operand, match_all):
         lookup_view(view).on_query_context(key, operator, operand, match_all)
 
-    def paused(self, command):
+    def update_stack(self, command):
         global paused
 
         if not paused:
