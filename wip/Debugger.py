@@ -214,6 +214,7 @@ class CallFrame(WIPObject):
         self.set_class(value, 'callFrameId', CallFrameId)
         self.set(value, 'functionName')
         self.set_class(value, 'location', Location)
+        self.location.lineNumber = self.location.lineNumber+1
         self.scopeChain = []
         if 'scopeChain' in value:
             for scope in value['scopeChain']:
