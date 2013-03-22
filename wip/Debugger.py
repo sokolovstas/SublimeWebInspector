@@ -61,6 +61,8 @@ def removeBreakpoint(breakpointId):
 
 def setBreakpoint(location, condition=None):
     params = {}
+
+    location.lineNumber = location.lineNumber-1
     params['location'] = location()
 
     if condition:
@@ -74,6 +76,7 @@ def setBreakpoint_parser(result):
     data = {}
     data['breakpointId'] = BreakpointId(result['breakpointId'])
     data['actualLocation'] = Location(result['actualLocation'])
+    data['actualLocation'].lineNumber = data['actualLocation'].lineNumber+1
     return data
 
 
@@ -96,7 +99,7 @@ def setScriptSource_parser(result):
 
 def setBreakpointByUrl(lineNumber, url=None, urlRegex=None, columnNumber=None, condition=None):
     params = {}
-    params['lineNumber'] = lineNumber
+    params['lineNumber'] = lineNumber-1
     if url:
         params['url'] = url
 
@@ -118,7 +121,9 @@ def setBreakpointByUrl_parser(result):
     data['breakpointId'] = BreakpointId(result['breakpointId'])
     data['locations'] = []
     for location in result['locations']:
-        data['locations'].append(Location(location))
+        finded_location = Location(location)
+        finded_location.lineNumber = finded_location.lineNumber+1
+        data['locations'].append(finded_location)
     return data
 
 
