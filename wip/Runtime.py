@@ -53,7 +53,7 @@ class RemoteObject(WIPObject):
         if self.type == 'number':
             return str(self.value)
         if self.type == 'object':
-            if not self.objectId():
+            if not self.objectId:
                 return 'null'
             else:
                 if self.className:
