@@ -238,9 +238,13 @@ class SwiDebugCommand(sublime_plugin.TextCommand):
 class SwiDebugStartChromeCommand(sublime_plugin.TextCommand):
     def run(self, edit):
         window = sublime.active_window()
+        key = sublime.platform()
+
+        if key == "windows" and sublime.arch() == "x64":
+            key += "_x64"
 
         window.run_command('exec', {
-            "cmd": [os.getenv('GOOGLE_CHROME_PATH', '')+get_setting('chrome_path')[sublime.platform()], '--remote-debugging-port=' + get_setting('chrome_remote_port'), '--profile-directory='+ get_setting('chrome_profile'), '']
+            "cmd": [os.getenv('GOOGLE_CHROME_PATH', '') + get_setting('chrome_path')[key], '--remote-debugging-port=' + get_setting('chrome_remote_port'), '--profile-directory=' + get_setting('chrome_profile'), '']
         })
 
 
@@ -275,7 +279,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         protocol.subscribe(wip.Debugger.scriptParsed(), self.scriptParsed)
         protocol.subscribe(wip.Debugger.paused(), self.paused)
         protocol.subscribe(wip.Debugger.resumed(), self.resumed)
-        
+
         protocol.send(wip.Debugger.enable(), self.enabled)
         protocol.send(wip.Debugger.setPauseOnExceptions(get_setting('pause_on_exceptions')))
         protocol.send(wip.Console.enable())
@@ -333,7 +337,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
     def paused(self, data, notification):
 
         protocol.send(wip.Debugger.setOverlayMessage('Paused in Sublime Web Inspector'))
-        
+
         sublime.set_timeout(lambda: window.set_layout(get_setting('stack_layout')), 0)
 
         sublime.set_timeout(lambda: console_show_stack(data['callFrames']), 0)
@@ -404,7 +408,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
             breakpoint['breakpointId'] = str(breakpointId)
         except:
             pass
-        
+
         try:
             breaks = get_breakpoints_by_scriptId(str(scriptId))
             lineNumber = str(lineNumber)
@@ -784,7 +788,7 @@ class EventListener(sublime_plugin.EventListener):
                     sublime.set_timeout(lambda: self.reload_page(), get_setting('reload_timeout'))
             else:
                 sublime.set_timeout(lambda: self.reload_page(), get_setting('reload_timeout'))
-                
+
         lookup_view(view).on_post_save()
 
     def on_modified(self, view):
@@ -908,7 +912,7 @@ def clear_view(view):
     v = find_view(view)
 
     v.run_command('swi_clear_view')
-    
+
     v.show(v.size())
     window.focus_group(0)
     lookup_view(v).clear_clicks()
@@ -944,7 +948,7 @@ def console_add_evaluate(eval_object):
 
     eval_object_queue.append(eval_object)
     v.run_command('swi_console_add_evaluate')
-    
+
     v.show(v.size())
     window.focus_group(0)
 
