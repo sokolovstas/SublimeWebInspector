@@ -2,7 +2,7 @@
 	// Path to google chrome
 	"chrome_path": {
 		"osx": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-		"windows_x32": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+		"windows": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
 		"windows_x64": "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
 		"linux": "/usr/bin/google-chrome"
 	},
