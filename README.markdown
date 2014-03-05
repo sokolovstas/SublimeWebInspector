@@ -10,7 +10,12 @@ You can add feature requests or bugs to https://github.com/sokolovstas/SublimeWe
 
 ## Installation
 Execute the following command in your Sublime Packages folder:
+
+- Sublime 2
 ```git clone git://github.com/sokolovstas/SublimeWebInspector.git Web\ Inspector``` 
+
+- Sublime 3
+```git clone git://github.com/sokolovstas/SublimeWebInspector.git -b ST3 Web\ Inspector```
 
 *I will prepare a plugin to Package Manager after additional testing*
 
