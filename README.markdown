@@ -9,17 +9,13 @@ You can add feature requests or bugs to https://github.com/sokolovstas/SublimeWe
 *Thanks XDebug Authors for inspiration*
 
 ## Installation
-Execute the following command in your Sublime Packages folder:
+Find "Web Inspector" package in Package Manager
 
-- Sublime 2
-    
-  ```git clone git://github.com/sokolovstas/SublimeWebInspector.git Web\ Inspector``` 
-
-- Sublime 3
-
-  ```git clone git://github.com/sokolovstas/SublimeWebInspector.git -b ST3 Web\ Inspector```
-
-*I will prepare a plugin to Package Manager after additional testing*
+## Getting started
+- Close Google Chrome!
+- Press CTRL+SHIFT+R and select "Start Google Chrome with remote debug port 9222"
+- After starting google chrome open new tab with your application in browser (you need to open url with your application, site or just file)
+- Go to sublime press CTRL+SHIFT+R and select "Start debugging" and select your tab in list
 
 ## Features
 
@@ -57,6 +53,3 @@ You can find all commands in the "Sublime Web Inspector" namespace. Here is a co
 ## Settings
 
 You can change layouts for the debugger, color options, and path to Google Chrome in settings.
-
-## Additional Notes
-*Close Google Chrome before you run it in remote debugger mode.*
