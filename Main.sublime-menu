@@ -12,13 +12,13 @@
                 "children":
                 [
                     {
-                        "caption": "Web Inspector 3",
+                        "caption": "Web Inspector",
                         "children":
                         [
                             {
                                 "command": "open_file",
                                 "args": {
-                                    "file": "${packages}/Web Inspector 3/Default (OSX).sublime-keymap",
+                                    "file": "${packages}/Web Inspector/Default (OSX).sublime-keymap",
                                     "platform": "OSX"
                                 },
                                 "caption": "Key Bindings – Default"
@@ -26,7 +26,7 @@
                             {
                                 "command": "open_file",
                                 "args": {
-                                    "file": "${packages}/Web Inspector 3/Default (Linux).sublime-keymap",
+                                    "file": "${packages}/Web Inspector/Default (Linux).sublime-keymap",
                                     "platform": "Linux"
                                 },
                                 "caption": "Key Bindings – Default"
@@ -34,7 +34,7 @@
                             {
                                 "command": "open_file",
                                 "args": {
-                                    "file": "${packages}/Web Inspector 3/Default (Windows).sublime-keymap",
+                                    "file": "${packages}/Web Inspector/Default (Windows).sublime-keymap",
                                     "platform": "Windows"
                                 },
                                 "caption": "Key Bindings – Default"

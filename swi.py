@@ -55,9 +55,9 @@ timing = time.time()
 
 # scriptId_fileName = {}
 
-breakpoint_active_icon = 'Packages/Web Inspector 3/icons/breakpoint_active.png'
-breakpoint_inactive_icon = 'Packages/Web Inspector 3/icons/breakpoint_inactive.png'
-breakpoint_current_icon = 'Packages/Web Inspector 3/icons/breakpoint_current.png'
+breakpoint_active_icon = 'Packages/Web Inspector/icons/breakpoint_active.png'
+breakpoint_inactive_icon = 'Packages/Web Inspector/icons/breakpoint_inactive.png'
+breakpoint_current_icon = 'Packages/Web Inspector/icons/breakpoint_current.png'
 
 
 ####################################################################################
@@ -893,13 +893,13 @@ def find_view(console_type, title=''):
     window.set_view_index(v, group, 0)
 
     if console_type.startswith('console'):
-        v.set_syntax_file('Packages/Web Inspector 3/swi_log.tmLanguage')
+        v.set_syntax_file('Packages/Web Inspector/swi_log.tmLanguage')
 
     if console_type == 'stack':
-        v.set_syntax_file('Packages/Web Inspector 3/swi_stack.tmLanguage')
+        v.set_syntax_file('Packages/Web Inspector/swi_stack.tmLanguage')
 
     if console_type.startswith('eval'):
-        v.set_syntax_file('Packages/Web Inspector 3/swi_log.tmLanguage')
+        v.set_syntax_file('Packages/Web Inspector/swi_log.tmLanguage')
 
     window.focus_view(v)
 
