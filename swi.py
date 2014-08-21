@@ -164,6 +164,9 @@ class SwiDebugCommand(sublime_plugin.TextCommand):
     def run(self, editswi):
         mapping = {}
         try:
+            proxy = urllib.request.ProxyHandler({});
+            opener = urllib.request.build_opener(proxy);
+            urllib.request.install_opener(opener);
             urllib.request.urlopen('http://127.0.0.1:' + get_setting('chrome_remote_port') + '/json')
 
             mapping = {}
@@ -199,6 +202,9 @@ class SwiDebugCommand(sublime_plugin.TextCommand):
         command = self.cmds[index]
 
         if command == 'swi_debug_start':
+            proxy = urllib.request.ProxyHandler({});
+            opener = urllib.request.build_opener(proxy);
+            urllib.request.install_opener(opener);
             response = urllib.request.urlopen('http://127.0.0.1:' + get_setting('chrome_remote_port') + '/json')
             pages = json.loads(response.read().decode('utf-8'))
             mapping = {}
