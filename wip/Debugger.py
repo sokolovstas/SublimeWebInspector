@@ -19,9 +19,9 @@ def setPauseOnExceptions(state):
 
 def setOverlayMessage(message=None):
     if message:
-        command = Command('Debugger.setOverlayMessage', {"message":"Paused in Sublime Web Inspector"})
+        command = Command('Page.setOverlayMessage', {"message":"Paused in Sublime Web Inspector"})
     else:
-        command = Command('Debugger.setOverlayMessage', {})
+        command = Command('Page.setOverlayMessage', {})
     return command
 
 
