@@ -53,3 +53,7 @@ You can find all commands in the "Sublime Web Inspector" namespace. Here is a co
 ## Settings
 
 You can change layouts for the debugger, color options, and path to Google Chrome in settings.
+
+By default, after "Start Chrome" you must navigate to your site. To do this automatically, add a setting like this to your user settings for the plugin:
+
+"chrome_url": "http://localhost/your/site"
