@@ -376,6 +376,9 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         global current_call_frame_position
         current_call_frame_position = "%s:%s" % (file_name, line_number)
 
+        global current_line
+        current_line = line_number
+
         sublime.set_timeout(lambda: protocol.send(wip.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, title), 30)
         sublime.set_timeout(lambda: open_script_and_focus_line(scriptId, line_number), 100)
 
@@ -1358,21 +1361,10 @@ def open_script_and_focus_line(scriptId, line_number):
     window = sublime.active_window()
     window.focus_group(0)
     view = window.open_file(file_name, sublime.TRANSIENT)
-    do_when(lambda: not view.is_loading(), lambda: view.run_command("goto_line", {"line": line_number}))
-
-
-def open_script_and_show_current_breakpoint(scriptId, line_number):
-    file_name = find_script(str(scriptId))
-    window.focus_group(0)
-    view = window.open_file(file_name, sublime.TRANSIENT)
-    do_when(lambda: not view.is_loading(), lambda: view.run_command("goto_line", {"line": line_number}))
-    #do_when(lambda: not view.is_loading(), lambda: focus_line_and_highlight(view, line_number))
-
+    do_when(lambda: not view.is_loading(), lambda: focus_line_and_highlight(view, line_number))
 
 def focus_line_and_highlight(view, line_number):
     view.run_command("goto_line", {"line": line_number})
-    global current_line
-    current_line = line_number
     lookup_view(view).view_breakpoints()
 
 sublime.set_timeout(lambda: load_breaks(), 1000)
