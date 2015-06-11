@@ -246,7 +246,8 @@ class SwiDebugStartChromeCommand(sublime_plugin.TextCommand):
         window = sublime.active_window()
         key = sublime.platform()
 
-        if key == "windows" and sublime.arch() == "x64":
+        # sublime.arch() is x86 on x64 Windows, presumably because it's a 32 bit app
+        if key == "windows" and (sublime.arch() == "x64" or sublime.executable_path().find('(x86)') >= 0):
             key += "_x64"
 
         window.run_command('exec', {
