@@ -666,7 +666,7 @@ class SwiDebugView(object):
         if not self.view.file_name():
             return
 
-        breaks = get_breakpoints_by_full_path(self.view.file_name())
+        breaks = get_breakpoints_by_full_path(self.view.file_name()) or {}
 
         enabled = []
         disabled = []
@@ -680,12 +680,13 @@ class SwiDebugView(object):
         self.view.add_regions('swi_breakpoint_active', self.lines(enabled), get_setting('breakpoint_scope'), icon=breakpoint_active_icon, flags=sublime.HIDDEN)
         self.view.add_regions('swi_breakpoint_inactive', self.lines(disabled), get_setting('breakpoint_scope'), icon=breakpoint_inactive_icon, flags=sublime.HIDDEN)
 
-        if (str(current_line) in breaks and breaks[str(current_line)]['status'] == 'enabled'): # always draw current line region, but selectively draw icon
-            current_icon = breakpoint_current_icon
-        else:
-            current_icon = ''
+        if current_line:
+            if (str(current_line) in breaks and breaks[str(current_line)]['status'] == 'enabled'): # always draw current line region, but selectively draw icon
+                current_icon = breakpoint_current_icon
+            else:
+                current_icon = ''
 
-        self.view.add_regions('swi_breakpoint_current', self.lines([current_line]), get_setting('current_line_scope'), current_icon, flags=sublime.DRAW_EMPTY)
+            self.view.add_regions('swi_breakpoint_current', self.lines([current_line]), get_setting('current_line_scope'), current_icon, flags=sublime.DRAW_EMPTY)
 
     def check_click(self):
         if not self.name().startswith('SWI'):
