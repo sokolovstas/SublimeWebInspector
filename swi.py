@@ -311,6 +311,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
     def messagesCleared(self, data, notification):
         sublime.set_timeout(lambda: clear_view('console'), 0)
 
+    # build table of mappings from local to server
     def scriptParsed(self, data, notification):
         url = data['url']
         if url != '':
@@ -328,14 +329,19 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
                 while len(url_parts) > 0:
                     for folder in project_folders:
                         if sublime.platform() == "windows":
-                            files = glob.glob(folder + "\\*\\" + "\\".join(url_parts)) + glob.glob(folder + "\\" + "\\".join(url_parts))
+                            # eg., folder is c:\site and url is http://localhost/app.js
+                            # glob for c:\site\app.js (primary) and c:\site\*\app.js (fallback only - there may be a c:\site\foo\app.js)
+                            files =  glob.glob(folder + "\\" + "\\".join(url_parts)) + glob.glob(folder + "\\*\\" + "\\".join(url_parts))
                         else:
-                            files = glob.glob(folder + "/*/" + "/".join(url_parts)) + glob.glob(folder + "/" + "/".join(url_parts))
+                            files = glob.glob(folder + "/" + "/".join(url_parts)) + glob.glob(folder + "/*/" + "/".join(url_parts))
 
                         if len(files) > 0 and files[0] != '':
                             file_name = files[0]
                             file_to_scriptId.append({'file': file_name, 'scriptId': str(scriptId), 'url': data['url']})
-                    del url_parts[0]
+                            # don't try to match shorter fragments, we already found a match
+                            url_parts = []
+                    if len(url_parts) > 0:
+                        del url_parts[0]
 
             if debugger_enabled:
                 self.add_breakpoints_to_file(file_name)
