@@ -4,12 +4,12 @@
         {
             "name": "Web Inspector",
             "details": "https://github.com/sokolovstas/SublimeWebInspector",
-            "labels": ["debugging", "diagnostics"]
+            "labels": ["debugging", "diagnostics"],
             "releases": [
                  {
                   "sublime_text": "<3000",
                   "tags": "st2-"
-                 }
+                 },
                  {
                   "sublime_text": ">=3000",
                   "tags": "st3-"
