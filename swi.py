@@ -520,12 +520,27 @@ class SwiDebugBreakpointCommand(sublime_plugin.TextCommand):
                 # scriptId = find_script(view.file_name())
                 if scriptUrl:
                     # location = wip.Debugger.Location({'lineNumber': int(row), 'scriptId': scriptId})
-                    protocol.send(wip.Debugger.setBreakpointByUrl(int(row), scriptUrl), self.breakpointAdded, view.file_name())
+                    protocol.send(wip.Debugger.setBreakpointByUrl(int(row), scriptUrl), self.breakpointsAdded, view.file_name())
                     # protocol.send(wip.Debugger.setBreakpoint(location), self.breakpointAdded, view.file_name())
             else:
                 set_breakpoint_by_full_path(view.file_name(), row)
 
         view.view_breakpoints()
+
+    def breakpointsAdded(self, command):
+        breakpointId = command.data['breakpointId']
+        init_breakpoint_for_file(command.options)
+        locations = command.data['locations']
+
+        for location in locations:
+            scriptId = location.scriptId
+            lineNumber = location.lineNumber
+            columnNumber = location.columnNumber
+
+            sublime.set_timeout(lambda: set_breakpoint_by_scriptId(str(scriptId), str(lineNumber), 'enabled', breakpointId), 0)
+
+        # Scroll to position where breakpoints have resolved
+        sublime.set_timeout(lambda: lookup_view(self.view).view_breakpoints(), 0)
 
     def breakpointAdded(self, command):
         breakpointId = command.data['breakpointId']
