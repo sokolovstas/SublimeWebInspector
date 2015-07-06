@@ -164,10 +164,11 @@ class SwiDebugCommand(sublime_plugin.TextCommand):
     def run(self, editswi):
         mapping = {}
         try:
-            proxy = urllib.request.ProxyHandler({})
-            opener = urllib.request.build_opener(proxy)
-            urllib.request.install_opener(opener)
-            urllib.request.urlopen('http://127.0.0.1:' + get_setting('chrome_remote_port') + '/json')
+            if not paused and not protocol:
+                proxy = urllib.request.ProxyHandler({})
+                opener = urllib.request.build_opener(proxy)
+                urllib.request.install_opener(opener)
+                urllib.request.urlopen('http://127.0.0.1:' + get_setting('chrome_remote_port') + '/json')
 
             mapping = {}
 
@@ -515,10 +516,12 @@ class SwiDebugBreakpointCommand(sublime_plugin.TextCommand):
             del_breakpoint_by_full_path(view.file_name(), row)
         else:
             if protocol:
-                scriptId = find_script(view.file_name())
-                if scriptId:
-                    location = wip.Debugger.Location({'lineNumber': int(row), 'scriptId': scriptId})
-                    protocol.send(wip.Debugger.setBreakpoint(location), self.breakpointAdded, view.file_name())
+                scriptUrl = find_script_url(view.file_name())
+                # scriptId = find_script(view.file_name())
+                if scriptUrl:
+                    # location = wip.Debugger.Location({'lineNumber': int(row), 'scriptId': scriptId})
+                    protocol.send(wip.Debugger.setBreakpointByUrl(int(row), scriptUrl), self.breakpointAdded, view.file_name())
+                    # protocol.send(wip.Debugger.setBreakpoint(location), self.breakpointAdded, view.file_name())
             else:
                 set_breakpoint_by_full_path(view.file_name(), row)
 
@@ -1324,15 +1327,24 @@ def get_setting(key):
     if s and s.has(key):
         return s.get(key)
 
+def find_script_url(scriptId_or_file):
+    #sha = hashlib.sha1(scriptId_or_file_or_url.encode('utf-8')).hexdigest()
+    for item in file_to_scriptId:
+        if item['scriptId'].lower() == scriptId_or_file.lower():
+            return item['url']
+        if item['file'].lower() == scriptId_or_file.lower():
+            return item['url']
+
+    return None
 
 def find_script(scriptId_or_file_or_url):
     #sha = hashlib.sha1(scriptId_or_file_or_url.encode('utf-8')).hexdigest()
     for item in file_to_scriptId:
-        if item['scriptId'] == scriptId_or_file_or_url:
+        if item['scriptId'].lower() == scriptId_or_file_or_url.lower():
             return item['file']
-        if item['file'] == scriptId_or_file_or_url:
+        if item['file'].lower() == scriptId_or_file_or_url.lower():
             return item['scriptId']
-        if item['url'] == scriptId_or_file_or_url:
+        if item['url'].lower() == scriptId_or_file_or_url.lower():
             return item['scriptId']
 
     return None
