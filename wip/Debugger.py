@@ -108,20 +108,23 @@ def setScriptSource_parser(result):
     return data
 
 
-def setBreakpointByUrl(lineNumber, url=None, urlRegex=None, columnNumber=None, condition=None):
+def setBreakpointByUrl(lineNumber, url, urlRegex=None, columnNumber=None, condition=None):
     params = {}
     params['lineNumber'] = lineNumber-1
-    if url:
-        params['url'] = url
+    params['url'] = url
 
     if urlRegex:
         params['urlRegex'] = urlRegex
 
     if columnNumber:
         params['columnNumber'] = columnNumber
+    else:
+        params['columnNumber'] = 0
 
     if condition:
         params['condition'] = condition
+    else:
+        params['condition'] = ''
 
     command = Command('Debugger.setBreakpointByUrl', params)
     return command
@@ -230,7 +233,7 @@ class CallFrame(WIPObject):
         if 'scopeChain' in value:
             for scope in value['scopeChain']:
                 self.scopeChain.append(Scope(scope))
-        self.set_class(value, 'this', RemoteObject)
+        # self.set_class(value, 'this', RemoteObject)
 
     def __str__(self):
         return "%s:%d %s" % (self.location.scriptId, self.location.lineNumber, self.functionName)
