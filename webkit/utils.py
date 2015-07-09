@@ -1,4 +1,4 @@
-class WIPObject(object):
+﻿class WIPObject(object):
     def set(self, obj, name, default=None):
         setattr(self, name, obj.get(name, default))
 
@@ -19,7 +19,7 @@ class Notification(object):
     def __init__(self, notification_name):
         self.name = notification_name
         try:
-            self.parser = eval('wip.' + notification_name + '_parser', {'wip': __import__('wip')})
+            self.parser = eval('webkit.' + notification_name + '_parser', {'webkit': __import__('webkit')})
         except:
             self.parser = Notification.default_parser
         self.lastResponse = None
@@ -36,7 +36,7 @@ class Command(object):
         self.request = {'id': 0, 'method': '', 'params': params}
         self.method = method_name
         try:
-            self.parser = eval('wip.' + method_name + '_parser', {'wip': __import__('wip')})
+            self.parser = eval('webkit.' + method_name + '_parser', {'webkit': __import__('webkit')})
         except:
             self.parser = Command.default_parser
         self.params = params

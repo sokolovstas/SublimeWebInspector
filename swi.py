@@ -18,22 +18,22 @@ if not swi_folder in sys.path:
     sys.path.append(swi_folder)
 
 
-import wip
+import webkit
 import websocket
 
-from wip import utils
-from wip import Console
-from wip import Runtime
-from wip import Debugger
-from wip import Network
-from wip import Page
+from webkit import utils
+from webkit import Console
+from webkit import Runtime
+from webkit import Debugger
+from webkit import Network
+from webkit import Page
 
-imp.reload(sys.modules['wip.utils'])
-imp.reload(sys.modules['wip.Console'])
-imp.reload(sys.modules['wip.Runtime'])
-imp.reload(sys.modules['wip.Debugger'])
-imp.reload(sys.modules['wip.Network'])
-imp.reload(sys.modules['wip.Page'])
+imp.reload(sys.modules['webkit.utils'])
+imp.reload(sys.modules['webkit.Console'])
+imp.reload(sys.modules['webkit.Runtime'])
+imp.reload(sys.modules['webkit.Debugger'])
+imp.reload(sys.modules['webkit.Network'])
+imp.reload(sys.modules['webkit.Page'])
 
 brk_object = {}
 buffers = {}
@@ -285,25 +285,25 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         set_script_source = get_setting('set_script_source')
 
     def connected(self):
-        protocol.subscribe(wip.Console.messageAdded(), self.messageAdded)
-        protocol.subscribe(wip.Console.messageRepeatCountUpdated(), self.messageRepeatCountUpdated)
-        protocol.subscribe(wip.Console.messagesCleared(), self.messagesCleared)
-        protocol.subscribe(wip.Debugger.scriptParsed(), self.scriptParsed)
-        protocol.subscribe(wip.Debugger.paused(), self.paused)
-        protocol.subscribe(wip.Debugger.resumed(), self.resumed)
+        protocol.subscribe(webkit.Console.messageAdded(), self.messageAdded)
+        protocol.subscribe(webkit.Console.messageRepeatCountUpdated(), self.messageRepeatCountUpdated)
+        protocol.subscribe(webkit.Console.messagesCleared(), self.messagesCleared)
+        protocol.subscribe(webkit.Debugger.scriptParsed(), self.scriptParsed)
+        protocol.subscribe(webkit.Debugger.paused(), self.paused)
+        protocol.subscribe(webkit.Debugger.resumed(), self.resumed)
 
-        protocol.send(wip.Debugger.enable(), self.enabled)
-        protocol.send(wip.Debugger.setPauseOnExceptions(get_setting('pause_on_exceptions')))
-        protocol.send(wip.Console.enable())
-        protocol.send(wip.Debugger.canSetScriptSource(), self.canSetScriptSource)
+        protocol.send(webkit.Debugger.enable(), self.enabled)
+        protocol.send(webkit.Debugger.setPauseOnExceptions(get_setting('pause_on_exceptions')))
+        protocol.send(webkit.Console.enable())
+        protocol.send(webkit.Debugger.canSetScriptSource(), self.canSetScriptSource)
 
 
         if get_setting('user_agent') is not "":
-            protocol.send(wip.Network.setUserAgentOverride(get_setting('user_agent')))
+            protocol.send(webkit.Network.setUserAgentOverride(get_setting('user_agent')))
 
         if get_setting('reload_on_start'):
-            protocol.send(wip.Network.clearBrowserCache())
-            protocol.send(wip.Page.reload(), on_reload)
+            protocol.send(webkit.Network.clearBrowserCache())
+            protocol.send(webkit.Page.reload(), on_reload)
 
     def disconnected(self):
         sublime.set_timeout(lambda: debug_view.run_command('swi_debug_stop'), 0)
@@ -354,7 +354,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
 
     def paused(self, data, notification):
 
-        protocol.send(wip.Debugger.setOverlayMessage('Paused in Sublime Web Inspector'))
+        protocol.send(webkit.Debugger.setOverlayMessage('Paused in Sublime Web Inspector'))
 
         sublime.set_timeout(lambda: window.set_layout(get_setting('stack_layout')), 0)
 
@@ -380,7 +380,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         global current_line
         current_line = line_number
 
-        sublime.set_timeout(lambda: protocol.send(wip.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, title), 30)
+        sublime.set_timeout(lambda: protocol.send(webkit.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, title), 30)
         sublime.set_timeout(lambda: open_script_and_focus_line(scriptId, line_number), 100)
 
         global paused
@@ -389,7 +389,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
     def resumed(self, data, notification):
         sublime.set_timeout(lambda: clear_view('stack'), 0)
 
-        protocol.send(wip.Debugger.setOverlayMessage())
+        protocol.send(webkit.Debugger.setOverlayMessage())
 
         global current_line
         current_line = None
@@ -416,8 +416,8 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         scriptId = find_script(file)
         if breakpoints:
             for line in list(breakpoints.keys()):
-                location = wip.Debugger.Location({'lineNumber': int(line), 'scriptId': scriptId})
-                protocol.send(wip.Debugger.setBreakpoint(location), self.breakpointAdded)
+                location = webkit.Debugger.Location({'lineNumber': int(line), 'scriptId': scriptId})
+                protocol.send(webkit.Debugger.setBreakpoint(location), self.breakpointAdded)
 
     def breakpointAdded(self, command):
         breakpointId = command.data['breakpointId']
@@ -453,25 +453,25 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
 class SwiDebugResumeCommand(sublime_plugin.TextCommand):
 
     def run(self, edit):
-        protocol.send(wip.Debugger.resume())
+        protocol.send(webkit.Debugger.resume())
 
 
 class SwiDebugStepIntoCommand(sublime_plugin.TextCommand):
 
     def run(self, edit):
-        protocol.send(wip.Debugger.stepInto())
+        protocol.send(webkit.Debugger.stepInto())
 
 
 class SwiDebugStepOutCommand(sublime_plugin.TextCommand):
 
     def run(self, edit):
-        protocol.send(wip.Debugger.stepOut())
+        protocol.send(webkit.Debugger.stepOut())
 
 
 class SwiDebugStepOverCommand(sublime_plugin.TextCommand):
 
     def run(self, edit):
-        protocol.send(wip.Debugger.stepOver())
+        protocol.send(webkit.Debugger.stepOver())
 
 
 class SwiDebugClearConsoleCommand(sublime_plugin.TextCommand):
@@ -488,13 +488,13 @@ class SwiDebugEvaluateCommand(sublime_plugin.TextCommand):
             if paused:
                 if current_call_frame_position:
                     title = "%s on %s" % (self.view.substr(region), current_call_frame_position)
-                protocol.send(wip.Debugger.evaluateOnCallFrame(current_call_frame, self.view.substr(region)), self.evaluated, {'name': title})
+                protocol.send(webkit.Debugger.evaluateOnCallFrame(current_call_frame, self.view.substr(region)), self.evaluated, {'name': title})
             else:
-                protocol.send(wip.Runtime.evaluate(self.view.substr(region)), self.evaluated, {'name': title})
+                protocol.send(webkit.Runtime.evaluate(self.view.substr(region)), self.evaluated, {'name': title})
 
     def evaluated(self, command):
         if command.data.type == 'object':
-            protocol.send(wip.Runtime.getProperties(command.data.objectId, True), console_add_properties, command.options)
+            protocol.send(webkit.Runtime.getProperties(command.data.objectId, True), console_add_properties, command.options)
         else:
             sublime.set_timeout(lambda: console_add_evaluate(command.data), 0)
 
@@ -511,7 +511,7 @@ class SwiDebugToggleBreakpointCommand(sublime_plugin.TextCommand):
         if row in breaks:
             if protocol:
                 if row in breaks:
-                    protocol.send(wip.Debugger.removeBreakpoint(breaks[row]['breakpointId']))
+                    protocol.send(webkit.Debugger.removeBreakpoint(breaks[row]['breakpointId']))
 
             del_breakpoint_by_full_path(view.file_name(), row)
         else:
@@ -519,9 +519,9 @@ class SwiDebugToggleBreakpointCommand(sublime_plugin.TextCommand):
                 scriptUrl = find_script_url(view.file_name())
                 # scriptId = find_script(view.file_name())
                 if scriptUrl:
-                    # location = wip.Debugger.Location({'lineNumber': int(row), 'scriptId': scriptId})
-                    protocol.send(wip.Debugger.setBreakpointByUrl(int(row), scriptUrl), self.breakpointsAdded, view.file_name())
-                    # protocol.send(wip.Debugger.setBreakpoint(location), self.breakpointAdded, view.file_name())
+                    # location = webkit.Debugger.Location({'lineNumber': int(row), 'scriptId': scriptId})
+                    protocol.send(webkit.Debugger.setBreakpointByUrl(int(row), scriptUrl), self.breakpointsAdded, view.file_name())
+                    # protocol.send(webkit.Debugger.setBreakpoint(location), self.breakpointAdded, view.file_name())
             else:
                 set_breakpoint_by_full_path(view.file_name(), row)
 
@@ -596,8 +596,8 @@ class SwiDebugStopCommand(sublime_plugin.TextCommand):
 class SwiDebugReloadCommand(sublime_plugin.TextCommand):
     def run(self):
         if(protocol):
-            protocol.send(wip.Network.clearBrowserCache())
-            protocol.send(wip.Page.reload(), on_reload)
+            protocol.send(webkit.Network.clearBrowserCache())
+            protocol.send(webkit.Page.reload(), on_reload)
 
 
 class SwiShowFileMapping(sublime_plugin.TextCommand):
@@ -750,7 +750,7 @@ class SwiDebugView(object):
                         else:
                             title = {'objectId': first_scope.object.objectId, 'name': "Breakpoint Local"}
 
-                        sublime.set_timeout(lambda: protocol.send(wip.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, title), 30)
+                        sublime.set_timeout(lambda: protocol.send(webkit.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, title), 30)
 
                         global current_call_frame
                         current_call_frame = callFrame.callFrameId
@@ -760,7 +760,7 @@ class SwiDebugView(object):
 
                     if click['click_type'] == 'get_params':
                         if protocol:
-                            protocol.send(wip.Runtime.getProperties(click['data']['objectId'], True), console_add_properties, click['data'])
+                            protocol.send(webkit.Runtime.getProperties(click['data']['objectId'], True), console_add_properties, click['data'])
 
                     if click['click_type'] == 'command':
                         self.remove_click(click_counter)
@@ -807,17 +807,17 @@ class EventListener(sublime_plugin.EventListener):
         lookup_view(view).on_pre_save()
 
     def reload_styles(self):
-        protocol.send(wip.Runtime.evaluate("var files = document.getElementsByTagName('link');var links = [];for (var a = 0, l = files.length; a < l; a++) {var elem = files[a];var rel = elem.rel;if (typeof rel != 'string' || rel.length === 0 || rel === 'stylesheet') {links.push({'elem': elem,'href': elem.getAttribute('href').split('?')[0],'last': false});}}for ( a = 0, l = links.length; a < l; a++) {var link = links[a];link.elem.setAttribute('href', (link.href + '?x=' + Math.random()));}"))
+        protocol.send(webkit.Runtime.evaluate("var files = document.getElementsByTagName('link');var links = [];for (var a = 0, l = files.length; a < l; a++) {var elem = files[a];var rel = elem.rel;if (typeof rel != 'string' || rel.length === 0 || rel === 'stylesheet') {links.push({'elem': elem,'href': elem.getAttribute('href').split('?')[0],'last': false});}}for ( a = 0, l = links.length; a < l; a++) {var link = links[a];link.elem.setAttribute('href', (link.href + '?x=' + Math.random()));}"))
 
     def reload_set_script_source(self, scriptId, scriptSource):
-        protocol.send(wip.Debugger.setScriptSource(scriptId, scriptSource), self.update_stack)
+        protocol.send(webkit.Debugger.setScriptSource(scriptId, scriptSource), self.update_stack)
 
     def reload_page(self):
-        protocol.send(wip.Page.reload(), on_reload)
+        protocol.send(webkit.Page.reload(), on_reload)
 
     def on_post_save(self, view):
         if protocol and get_setting('reload_on_save'):
-            protocol.send(wip.Network.clearBrowserCache())
+            protocol.send(webkit.Network.clearBrowserCache())
             if view.file_name().endswith('.css') or view.file_name().endswith('.less') or view.file_name().endswith('.sass') or view.file_name().endswith('.scss'):
                 sublime.set_timeout(lambda: self.reload_styles(), get_setting('reload_timeout'))
             elif view.file_name().endswith('.js'):
@@ -877,7 +877,7 @@ class EventListener(sublime_plugin.EventListener):
         else:
             title = {'objectId': first_scope.object.objectId, 'name': "Breakpoint Local"}
 
-        sublime.set_timeout(lambda: protocol.send(wip.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, title), 30)
+        sublime.set_timeout(lambda: protocol.send(webkit.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, title), 30)
         sublime.set_timeout(lambda: open_script_and_focus_line(scriptId, line_number), 100)
 
 
