@@ -972,6 +972,9 @@ def find_view(console_type, title=''):
 
 
 def clear_view(view):
+    if not window:
+        return
+
     v = find_view(view)
 
     v.run_command('swi_clear_view')
