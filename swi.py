@@ -741,7 +741,7 @@ class SwiDebugView(object):
             self.view.add_regions('swi_breakpoint_current', self.lines([current_line]), get_setting('current_line_scope'), current_icon, flags=sublime.DRAW_EMPTY)
 
     def check_click(self):
-        if not self.name().startswith('SWI'):
+        if not isinstance(self, SwiDebugView):
             return
 
         cursor = self.sel()[0].a
@@ -864,7 +864,6 @@ class EventListener(sublime_plugin.EventListener):
         lookup_view(view).view_breakpoints()
 
     def on_selection_modified(self, view):
-        #lookup_view(view).on_selection_modified()
         global timing
         now = time.time()
         if now - timing > 0.08:
