@@ -238,7 +238,6 @@ class CallFrame(WIPObject):
         if 'scopeChain' in value:
             for scope in value['scopeChain']:
                 self.scopeChain.append(Scope(scope))
-        # self.set_class(value, 'this', RemoteObject)
 
     def __str__(self):
         return "%s:%d %s" % (self.location.scriptId, self.location.lineNumber, self.functionName)
