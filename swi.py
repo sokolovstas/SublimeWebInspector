@@ -1,4 +1,4 @@
-import hashlib
+﻿import hashlib
 import functools
 import glob
 import sublime
@@ -179,7 +179,7 @@ class SwiDebugCommand(sublime_plugin.TextCommand):
                 mapping['swi_debug_step_over'] = 'Step over'
 
             #mapping['swi_debug_clear_all_breakpoint'] = 'Clear all Breakpoints'
-            mapping['swi_debug_breakpoint'] = 'Add/Remove Breakpoint'
+            mapping['swi_debug_toggle_breakpoint'] = 'Toggle Breakpoint'
 
             if protocol:
                 mapping['swi_debug_evaluate'] = 'Evaluate selection'
@@ -499,7 +499,7 @@ class SwiDebugEvaluateCommand(sublime_plugin.TextCommand):
             sublime.set_timeout(lambda: console_add_evaluate(command.data), 0)
 
 
-class SwiDebugBreakpointCommand(sublime_plugin.TextCommand):
+class SwiDebugToggleBreakpointCommand(sublime_plugin.TextCommand):
     '''
     Toggle a breakpoint
     '''
