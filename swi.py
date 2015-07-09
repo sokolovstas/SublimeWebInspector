@@ -395,6 +395,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
 
     def resumed(self, data, notification):
         sublime.set_timeout(lambda: clear_view('stack'), 0)
+        sublime.set_timeout(lambda: clear_view('scope'), 0)
 
         protocol.send(webkit.Debugger.setOverlayMessage())
 
