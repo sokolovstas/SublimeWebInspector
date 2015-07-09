@@ -44,16 +44,12 @@ debug_view = None
 debug_url = None
 file_to_scriptId = []
 project_folders = []
-last_clicked = None
 paused = False
 current_line = None
 set_script_source = False
 current_call_frame = None
 current_call_frame_position = None
 timing = time.time()
-
-
-# scriptId_fileName = {}
 
 breakpoint_active_icon = 'Packages/Web Inspector/icons/breakpoint_active.png'
 breakpoint_inactive_icon = 'Packages/Web Inspector/icons/breakpoint_inactive.png'
@@ -127,8 +123,6 @@ class Protocol(object):
                 else:
                     data = None
                 notification.callback(data, notification)
-            # else:
-                # print ('SWI: New unsubscrib notification --- ' + parsed['method'])
         else:
             if parsed['id'] in self.commands:
 
@@ -1259,42 +1253,17 @@ def get_project():
 
 
 def load_breaks():
-    # if not get_project():
-    #     sublime.error_message('Can\' load breaks')
-    #     brk_object = {}
-    #     return
-    # breaks_file = os.path.splitext(get_project())[0] + '-breaks.json'
-    # global brk_object
-    # if not os.path.exists(breaks_file):
-    #     with open(breaks_file, 'w') as f:
-    #         f.write('{}')
-
-    # try:
-    #     with open(breaks_file, 'r') as f:
-    #         brk_object = json.loads(f.read())
-    # except:
-    #     brk_object = {}
     global brk_object
     brk_object = get_setting('breaks')
 
 
 def save_breaks():
-    # try:
-    #     breaks_file = os.path.splitext(get_project())[0] + '-breaks.json'
-    #     with open(breaks_file, 'w') as f:
-    #         f.write(json.dumps(brk_object, sort_keys=True, indent=4, separators=(',', ': ')))
-    # except:
-    #     pass
     s = sublime.load_settings("swi.sublime-settings")
     s.set('breaks', brk_object)
     sublime.save_settings("swi.sublime-settings")
 
-    #print(breaks)
-
-
 def full_path_to_file_name(path):
     return os.path.basename(os.path.realpath(path))
-
 
 def set_breakpoint_by_full_path(file_name, line, status='disabled', breakpointId=None):
     breaks = get_breakpoints_by_full_path(file_name)
