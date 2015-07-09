@@ -1,3 +1,0 @@
-Moved to packages.json
-Fixes some bugs
-Fix fall out on resume
