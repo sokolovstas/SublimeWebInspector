@@ -1,3 +1,36 @@
 [
-	{"keys": ["super+shift+r"], "command": "swi_debug" }
+  {
+    "keys": [ "ctrl+shift+r" ],
+    "command": "swi_debug"
+  },
+  {
+    "keys": [ "f10" ],
+    "command": "swi_debug_step_over"
+  },
+  {
+    "keys": [ "f11" ],
+    "command": "swi_debug_step_into"
+  },
+  {
+    "keys": [ "shift+f11" ],
+    "command": "swi_debug_step_out"
+  },
+  {
+    "keys": [ "ctrl+shift+;" ],
+    "command": "swi_debug_step_out"
+  },
+  {
+    "keys": [ "f5" ],
+    "command": "swi_debug_resume"
+  },
+  {
+    "keys": [ "f8" ],
+    "command": "swi_debug_pause_resume"
+  },
+  {
+    "keys": [ "ctrl+\\" ],
+    "command": "swi_debug_pause_resume"
+  }
 ]
+
+
