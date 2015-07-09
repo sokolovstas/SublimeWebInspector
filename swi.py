@@ -746,10 +746,6 @@ class SwiDebugView(object):
 
         cursor = self.sel()[0].a
 
-        if cursor == self.prev_click_position:
-            return
-
-        self.prev_click_position = cursor
         click_counter = 0
         click_regions = self.get_regions('swi_log_clicks')
         for click in click_regions:
@@ -866,7 +862,7 @@ class EventListener(sublime_plugin.EventListener):
     def on_selection_modified(self, view):
         global timing
         now = time.time()
-        if now - timing > 0.08:
+        if now - timing > 0.1:
             timing = now
             sublime.set_timeout(lambda: lookup_view(view).check_click(), 0)
         else:
