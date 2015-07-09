@@ -131,7 +131,7 @@ class Protocol(object):
                 command = self.commands[parsed['id']]
 
                 if 'error' in parsed:
-                    sublime.set_timeout(lambda: sublime.error_message(parsed['error']['message']), 0)
+                    sublime.set_timeout(lambda: sublime.error_message("Error from debuggee:\n" + parsed['error']['message']), 0)
                 else:
                     if 'result' in parsed:
                         command.data = command.parser(parsed['result'])
@@ -162,6 +162,7 @@ class SwiDebugCommand(sublime_plugin.TextCommand):
     The SWIdebug main quick panel menu
     '''
     def run(self, editswi):
+
         mapping = {}
         try:
             if not paused and not protocol:
@@ -177,6 +178,8 @@ class SwiDebugCommand(sublime_plugin.TextCommand):
                 mapping['swi_debug_step_into'] = 'Step into'
                 mapping['swi_debug_step_out'] = 'Step out'
                 mapping['swi_debug_step_over'] = 'Step over'
+            elif protocol:
+                mapping['swi_debug_pause'] = 'Pause execution'
 
             #mapping['swi_debug_clear_all_breakpoint'] = 'Clear all Breakpoints'
             mapping['swi_debug_toggle_breakpoint'] = 'Toggle Breakpoint'
@@ -449,29 +452,48 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         if set_script_source:
             set_script_source = command.data['result']
 
+class SwiDebugPauseResumeCommand(sublime_plugin.TextCommand):
+
+    def run(self, edit):
+        if paused:
+            protocol.send(webkit.Debugger.resume())
+        else:
+            protocol.send(webkit.Debugger.pause())
+
+
+class SwiDebugPauseCommand(sublime_plugin.TextCommand):
+
+    def run(self, edit):
+        if not paused:
+            protocol.send(webkit.Debugger.pause())
+
 
 class SwiDebugResumeCommand(sublime_plugin.TextCommand):
 
     def run(self, edit):
-        protocol.send(webkit.Debugger.resume())
+        if paused:
+            protocol.send(webkit.Debugger.resume())
 
 
 class SwiDebugStepIntoCommand(sublime_plugin.TextCommand):
 
     def run(self, edit):
-        protocol.send(webkit.Debugger.stepInto())
+        if paused:
+            protocol.send(webkit.Debugger.stepInto())
 
 
 class SwiDebugStepOutCommand(sublime_plugin.TextCommand):
 
     def run(self, edit):
-        protocol.send(webkit.Debugger.stepOut())
+        if paused:
+            protocol.send(webkit.Debugger.stepOut())
 
 
 class SwiDebugStepOverCommand(sublime_plugin.TextCommand):
 
     def run(self, edit):
-        protocol.send(webkit.Debugger.stepOver())
+        if paused:
+            protocol.send(webkit.Debugger.stepOver())
 
 
 class SwiDebugClearConsoleCommand(sublime_plugin.TextCommand):

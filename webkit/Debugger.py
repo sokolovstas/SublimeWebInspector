@@ -1,4 +1,4 @@
-from .utils import Command, Notification, WIPObject
+﻿from .utils import Command, Notification, WIPObject
 from .Runtime import RemoteObject
 import json
 
@@ -40,6 +40,11 @@ def evaluateOnCallFrame_parser(result):
 
 def disable():
     command = Command('Debugger.disable', {})
+    return command
+
+
+def pause():
+    command = Command('Debugger.pause', {})
     return command
 
 
