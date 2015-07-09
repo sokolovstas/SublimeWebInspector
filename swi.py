@@ -59,7 +59,11 @@ breakpoint_active_icon = 'Packages/Web Inspector/icons/breakpoint_active.png'
 breakpoint_inactive_icon = 'Packages/Web Inspector/icons/breakpoint_inactive.png'
 breakpoint_current_icon = 'Packages/Web Inspector/icons/breakpoint_current.png'
 
-
+def plugin_loaded():
+    sublime.set_timeout(lambda: clear_view('console'), 0)
+    sublime.set_timeout(lambda: clear_view('stack'), 0)
+    sublime.set_timeout(lambda: clear_view('scope'), 0)
+    
 ####################################################################################
 #   PROTOCOL
 ####################################################################################
@@ -923,15 +927,15 @@ def find_view(console_type, title=''):
 
     if console_type.startswith('console'):
         group = 1
-        fullName = "SWI Console"
+        fullName = "Javascript Console"
 
     if console_type == 'stack':
         group = 2
-        fullName = "SWI Breakpoint stack"
+        fullName = "Javascript Callstack"
 
-    if console_type.startswith('eval'):
+    if console_type.startswith('scope'):
         group = 1
-        fullName = "SWI Object evaluate"
+        fullName = "Javascript Scope"
 
     if console_type.startswith('mapping'):
         group = 0
@@ -961,7 +965,7 @@ def find_view(console_type, title=''):
     if console_type == 'stack':
         v.set_syntax_file('Packages/Web Inspector/swi_stack.tmLanguage')
 
-    if console_type.startswith('eval'):
+    if console_type.startswith('scope'):
         v.set_syntax_file('Packages/Web Inspector/swi_log.tmLanguage')
 
     window.focus_view(v)
@@ -1046,15 +1050,13 @@ class SwiConsoleAddMessageCommand(sublime_plugin.TextCommand):
         message = message_queue.pop(0)
 
         if message.level == 'debug':
-            level = "D"
+            level = "DBG"
         if message.level == 'error':
-            level = "E"
+            level = "ERR"
         if message.level == 'log':
-            level = "L"
-        if message.level == 'tip':
-            level = "T"
+            level = "LOG"
         if message.level == 'warning':
-            level = "W"
+            level = "WRN"
 
         v.insert(edit, v.size(), "[%s] " % (level))
         # Add file and line
@@ -1125,7 +1127,7 @@ def console_print_properties(command):
     else:
         name = str(command.options['objectId'])
 
-    v = find_view('eval', name)
+    v = find_view('scope', name)
 
     properties_queue.append(command)
     v.run_command('swi_console_print_properties')
