@@ -56,9 +56,7 @@ breakpoint_inactive_icon = 'Packages/Web Inspector/icons/breakpoint_inactive.png
 breakpoint_current_icon = 'Packages/Web Inspector/icons/breakpoint_current.png'
 
 def plugin_loaded():
-    sublime.set_timeout(lambda: clear_view('console'), 0)
-    sublime.set_timeout(lambda: clear_view('stack'), 0)
-    sublime.set_timeout(lambda: clear_view('scope'), 0)
+    clear_all_views()
     
 ####################################################################################
 #   PROTOCOL
@@ -609,7 +607,7 @@ class SwiDebugStopCommand(sublime_plugin.TextCommand):
             try:
                 protocol.socket.close()
             except:
-                print ('SWI: Can\'t close soket')
+                print ('SWI: Can\'t close socket')
             finally:
                 protocol = None
 
@@ -624,6 +622,7 @@ class SwiDebugReloadCommand(sublime_plugin.TextCommand):
 class SwiShowFileMapping(sublime_plugin.TextCommand):
     def run(self, edit):
         v = find_view('mapping')
+        clear_view('mapping')
         v.insert(edit, 0, json.dumps(file_to_scriptId, sort_keys=True, indent=4, separators=(',', ': ')))
 
 
@@ -964,19 +963,26 @@ def find_view(console_type, title=''):
 
     return lookup_view(v)
 
-
 def clear_view(view):
+    v = find_view(view)
+
+    if not view:
+        return
+
+    v.run_command('swi_clear_view')
+    v.show(v.size())
+
     if not window:
         return
 
-    v = find_view(view)
-
-    v.run_command('swi_clear_view')
-
-    v.show(v.size())
     window.focus_group(0)
     lookup_view(v).clear_clicks()
 
+def clear_all_views():
+    clear_view('console')
+    clear_view('stack')
+    clear_view('scope')
+    clear_view('mapping')
 
 class SwiClearViewCommand(sublime_plugin.TextCommand):
     def run(self, edit, user_input=None):
