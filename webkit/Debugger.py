@@ -141,9 +141,9 @@ def setBreakpointByUrl_parser(result):
     data['breakpointId'] = BreakpointId(result['breakpointId'])
     data['locations'] = []
     for location in result['locations']:
-        finded_location = Location(location)
-        finded_location.lineNumber = finded_location.lineNumber+1
-        data['locations'].append(finded_location)
+        location_found = Location(location)
+        location_found.lineNumber = location_found.lineNumber + 1
+        data['locations'].append(location_found)
     return data
 
 
