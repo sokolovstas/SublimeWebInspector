@@ -1,6 +1,7 @@
 ﻿from .utils import Command, Notification, WIPObject
 from .Runtime import RemoteObject
 import json
+import re
 
 
 ### Console.clearMessages
@@ -116,7 +117,7 @@ def setScriptSource_parser(result):
 def setBreakpointByUrl(lineNumber, url, urlRegex=None, columnNumber=None, condition=None):
     params = {}
     params['lineNumber'] = lineNumber-1
-    params['url'] = url
+    params['url'] = restoreQueryString(url)
 
     if urlRegex:
         params['urlRegex'] = urlRegex
@@ -152,7 +153,8 @@ def scriptParsed():
 
 
 def scriptParsed_parser(params):
-    return {'scriptId': ScriptId(params['scriptId']), 'url': params['url']}
+    url = stripQueryString(params['url'])
+    return {'scriptId': ScriptId(params['scriptId']), 'url': url}
 
 
 def paused():
@@ -168,6 +170,23 @@ def paused_parser(params):
     data['reason'] = params['reason']
     return data
 
+url_to_originalUrl = {}
+
+def stripQueryString(url):
+    # Some users use query strings as cache breakers
+    # We don't want these in our mapping process or window titles
+    # Strip on url from debuggee, restore on url to debuggee
+    url_parts = url.split("/")
+    url_parts[-1] = re.sub(r"\?.*$", "", url_parts[-1])
+    cleanUrl = "/".join(url_parts)
+    if url != cleanUrl:
+        url_to_originalUrl[cleanUrl] = url
+    return cleanUrl
+
+def restoreQueryString(url):
+    if url in url_to_originalUrl:
+        url = url_to_originalUrl[url]
+    return url
 
 def resumed():
     notification = Notification('Debugger.resumed')
