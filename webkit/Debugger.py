@@ -1,4 +1,4 @@
-﻿from .utils import Command, Notification, WIPObject
+from .utils import Command, Notification, WIPObject
 from .Runtime import RemoteObject
 import json
 import re

@@ -1,4 +1,4 @@
-﻿import hashlib
+import hashlib
 import functools
 import glob
 import sublime
