@@ -1,4 +1,4 @@
-﻿class WIPObject(object):
+class WIPObject(object):
     def set(self, obj, name, default=None):
         setattr(self, name, obj.get(name, default))
 
