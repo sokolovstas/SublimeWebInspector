@@ -17,7 +17,6 @@ swi_folder = os.path.dirname(os.path.realpath(__file__))
 if not swi_folder in sys.path:
     sys.path.append(swi_folder)
 
-
 import webkit
 import websocket
 
@@ -62,8 +61,9 @@ def plugin_loaded():
 #   PROTOCOL
 ####################################################################################
 
-# Define protocol to communicate with remote debugger by web sockets
 class Protocol(object):
+    """ Encapsulate websocket connection """
+
     def __init__(self):
         self.next_id = 0
         self.commands = {}
@@ -71,6 +71,7 @@ class Protocol(object):
         self.last_log_object = None
 
     def connect(self, url, on_open=None, on_close=None):
+        """ Attempt to connect to the web socket """
         print (('SWI: Connecting to ' + url))
         websocket.enableTrace(False)
         self.last_break = None
@@ -81,15 +82,17 @@ class Protocol(object):
         thread = threading.Thread(target=self.thread_callback)
         thread.start()
 
-    # start connect with new thread
     def thread_callback(self):
+        """ Threadproc owning the socket.
+            Sets up the callbacks for open, close, and message.
+        """
         print ('SWI: Thread started')
         self.socket = websocket.WebSocketApp(self.url, on_message=self.message_callback, on_open=self.open_callback, on_close=self.close_callback)
         self.socket.run_forever()
-        print ('SWI: Thread stoped')
+        print ('SWI: Thread stopped')
 
-    # send command and increment command counter
     def send(self, command, callback=None, options=None):
+        """ Send to web socket, with optional callback and options """
         command.id = self.next_id
         command.callback = callback
         command.options = options
@@ -99,17 +102,19 @@ class Protocol(object):
             print ('SWI: ->> ' + json.dumps(command.request, sort_keys=True, indent=4, separators=(',', ': ')))
         self.socket.send(json.dumps(command.request))
 
-    # subscribe to notification with callback
     def subscribe(self, notification, callback):
+        """ Subscribe to notification with callback """
         notification.callback = callback
         self.notifications[notification.name] = notification
 
-    # unsubscribe
     def unsubscribe(self, notification):
+        """ Unsubscribe to notification """
         del self.notifications[notification.name]
 
-    # unsubscribe
     def message_callback(self, ws, message):
+        """ Callback on any incoming packet.
+            Parse it and call matching callback.
+        """
         parsed = json.loads(message)
         if get_setting('debug_mode'):
             print ('SWI: <<- ' + json.dumps(parsed, sort_keys=True, indent=4, separators=(',', ': ')))
@@ -154,11 +159,10 @@ class Protocol(object):
 ####################################################################################
 
 class SwiDebugCommand(sublime_plugin.TextCommand):
-    '''
-    The SWIdebug main quick panel menu
-    '''
+    """ The SWIdebug main quick panel menu """
+    
     def run(self, editswi):
-
+        """ Called by Sublime to display the quick panel entries """
         mapping = {}
         try:
             if not paused and not protocol:
@@ -170,12 +174,12 @@ class SwiDebugCommand(sublime_plugin.TextCommand):
             mapping = {}
 
             if paused:
-                mapping['swi_debug_resume'] = 'Resume execution'
+                mapping['swi_debug_pause_resume'] = 'Resume execution'
                 mapping['swi_debug_step_into'] = 'Step into'
                 mapping['swi_debug_step_out'] = 'Step out'
                 mapping['swi_debug_step_over'] = 'Step over'
             elif protocol:
-                mapping['swi_debug_pause'] = 'Pause execution'
+                mapping['swi_debug_pause_resume'] = 'Pause execution'
 
             #mapping['swi_debug_clear_all_breakpoint'] = 'Clear all Breakpoints'
             mapping['swi_debug_toggle_breakpoint'] = 'Toggle Breakpoint'
@@ -196,6 +200,7 @@ class SwiDebugCommand(sublime_plugin.TextCommand):
         self.view.window().show_quick_panel(self.items, self.command_selected)
 
     def command_selected(self, index):
+        """ Called by Sublime when a quick panel entry is selected """
         if index == -1:
             return
 
@@ -242,6 +247,8 @@ class SwiDebugCommand(sublime_plugin.TextCommand):
 
 
 class SwiDebugStartChromeCommand(sublime_plugin.TextCommand):
+    """ Represents the start chrome command """
+
     def run(self, edit):
         window = sublime.active_window()
         key = sublime.platform()
@@ -260,7 +267,6 @@ class SwiDebugStartChromeCommand(sublime_plugin.TextCommand):
 
 
 class SwiDebugStartCommand(sublime_plugin.TextCommand):
-
     def run(self, edit, url):
         global debugger_enabled
         debugger_enabled = False
@@ -284,6 +290,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         set_script_source = get_setting('set_script_source')
 
     def connected(self):
+        """ Callback when socket connects """ 
         protocol.subscribe(webkit.Console.messageAdded(), self.messageAdded)
         protocol.subscribe(webkit.Console.messageRepeatCountUpdated(), self.messageRepeatCountUpdated)
         protocol.subscribe(webkit.Console.messagesCleared(), self.messagesCleared)
@@ -305,19 +312,26 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
             protocol.send(webkit.Page.reload(), on_reload)
 
     def disconnected(self):
+        """ Notification when socket disconnects """
         sublime.set_timeout(lambda: debug_view.run_command('swi_debug_stop'), 0)
 
     def messageAdded(self, data, notification):
+        """ Notification when console message """
         sublime.set_timeout(lambda: console_add_message(data), 0)
 
     def messageRepeatCountUpdated(self, data, notification):
+        """  Notification when repeated messages """
         sublime.set_timeout(lambda: console_repeat_message(data['count']), 0)
 
     def messagesCleared(self, data, notification):
+        """ Notification when console cleared (by navigate or on request) """
         sublime.set_timeout(lambda: clear_view('console'), 0)
 
     # build table of mappings from local to server
     def scriptParsed(self, data, notification):
+        """ Notification when a script is parsed (loaded).
+            Attempts to map it to a local file.
+        """
         url = data['url']
         if url != '':
             url_parts = url.split("/")
@@ -352,6 +366,10 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
                 self.add_breakpoints_to_file(file_name)
 
     def paused(self, data, notification):
+        """ Notification that a break was hit.
+            Draw an overlay, display the callstack
+            and locals, and navigate to the break.
+        """
 
         protocol.send(webkit.Debugger.setOverlayMessage('Paused in Sublime Web Inspector'))
 
@@ -386,6 +404,10 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         paused = True
 
     def resumed(self, data, notification):
+        """ Notification that execution resumed.
+            Clear the overlay, callstack, and locals,
+            and remove the highlight.
+        """
         sublime.set_timeout(lambda: clear_view('stack'), 0)
         sublime.set_timeout(lambda: clear_view('scope'), 0)
 
@@ -406,12 +428,17 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         paused = False
 
     def enabled(self, command):
+        """ Notification that debugging was enabled """
         global debugger_enabled
         debugger_enabled = True
         for file_to_script_object in file_to_scriptId:
             self.add_breakpoints_to_file(file_to_script_object['file'])
 
     def add_breakpoints_to_file(self, file):
+        """ Apply any existing breakpoints.
+            Called when debugging starts, and when a new script
+            is loaded.
+        """
         breakpoints = get_breakpoints_by_full_path(file)
         scriptId = find_script(file)
         if breakpoints:
@@ -420,6 +447,9 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
                 protocol.send(webkit.Debugger.setBreakpoint(location), self.breakpointAdded)
 
     def breakpointAdded(self, command):
+        """ Notification that a breakpoint was set.
+            Gives us the ID and specific location.
+        """
         breakpointId = command.data['breakpointId']
         scriptId = command.data['actualLocation'].scriptId
         lineNumber = command.data['actualLocation'].lineNumber
@@ -445,62 +475,44 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         sublime.set_timeout(lambda: lookup_view(self.view).view_breakpoints(), 0)
 
     def canSetScriptSource(self, command):
+        """ Notification that script can be edited
+            during debugging
+        """
         global set_script_source
         if set_script_source:
             set_script_source = command.data['result']
 
 class SwiDebugPauseResumeCommand(sublime_plugin.TextCommand):
-
     def run(self, edit):
         if paused:
             protocol.send(webkit.Debugger.resume())
         else:
             protocol.send(webkit.Debugger.pause())
 
-
-class SwiDebugPauseCommand(sublime_plugin.TextCommand):
-
-    def run(self, edit):
-        if not paused:
-            protocol.send(webkit.Debugger.pause())
-
-
-class SwiDebugResumeCommand(sublime_plugin.TextCommand):
-
-    def run(self, edit):
-        if paused:
-            protocol.send(webkit.Debugger.resume())
-
-
 class SwiDebugStepIntoCommand(sublime_plugin.TextCommand):
-
     def run(self, edit):
         if paused:
             protocol.send(webkit.Debugger.stepInto())
 
 
 class SwiDebugStepOutCommand(sublime_plugin.TextCommand):
-
     def run(self, edit):
         if paused:
             protocol.send(webkit.Debugger.stepOut())
 
 
 class SwiDebugStepOverCommand(sublime_plugin.TextCommand):
-
     def run(self, edit):
         if paused:
             protocol.send(webkit.Debugger.stepOver())
 
 
 class SwiDebugClearConsoleCommand(sublime_plugin.TextCommand):
-
     def run(self, edit):
         sublime.set_timeout(lambda: clear_view('console'), 0)
 
 
 class SwiDebugEvaluateCommand(sublime_plugin.TextCommand):
-
     def run(self, edit):
         for region in self.view.sel():
             title = self.view.substr(region)
@@ -519,9 +531,6 @@ class SwiDebugEvaluateCommand(sublime_plugin.TextCommand):
 
 
 class SwiDebugToggleBreakpointCommand(sublime_plugin.TextCommand):
-    '''
-    Toggle a breakpoint
-    '''
     def run(self, edit):
         view = lookup_view(self.view)
         row = str(view.rows(view.lines())[0])
@@ -536,17 +545,15 @@ class SwiDebugToggleBreakpointCommand(sublime_plugin.TextCommand):
         else:
             if protocol:
                 scriptUrl = find_script_url(view.file_name())
-                # scriptId = find_script(view.file_name())
                 if scriptUrl:
-                    # location = webkit.Debugger.Location({'lineNumber': int(row), 'scriptId': scriptId})
-                    protocol.send(webkit.Debugger.setBreakpointByUrl(int(row), scriptUrl), self.breakpointsAdded, view.file_name())
-                    # protocol.send(webkit.Debugger.setBreakpoint(location), self.breakpointAdded, view.file_name())
+                    protocol.send(webkit.Debugger.setBreakpointByUrl(int(row), scriptUrl), self.breakpointAdded, view.file_name())
             else:
                 set_breakpoint_by_full_path(view.file_name(), row)
 
         view.view_breakpoints()
 
-    def breakpointsAdded(self, command):
+    def breakpointAdded(self, command):
+        """ Notification that a breakpoint was added successfully """
         breakpointId = command.data['breakpointId']
         init_breakpoint_for_file(command.options)
         locations = command.data['locations']
@@ -560,18 +567,6 @@ class SwiDebugToggleBreakpointCommand(sublime_plugin.TextCommand):
 
         # Scroll to position where breakpoints have resolved
         sublime.set_timeout(lambda: lookup_view(self.view).view_breakpoints(), 0)
-
-    def breakpointAdded(self, command):
-        breakpointId = command.data['breakpointId']
-        scriptId = command.data['actualLocation'].scriptId
-        lineNumber = command.data['actualLocation'].lineNumber
-
-        init_breakpoint_for_file(command.options)
-
-        sublime.set_timeout(lambda: set_breakpoint_by_scriptId(str(scriptId), str(lineNumber), 'enabled', breakpointId), 0)
-        # Scroll to position where breakpoints have resolved
-        sublime.set_timeout(lambda: lookup_view(self.view).view_breakpoints(), 0)
-
 
 class SwiDebugStopCommand(sublime_plugin.TextCommand):
 
@@ -631,11 +626,9 @@ class SwiShowFileMapping(sublime_plugin.TextCommand):
 ####################################################################################
 
 class SwiDebugView(object):
-    '''
-    The SWIDebugView is sort of a normal view with some convenience methods.
-
-    See lookup_view.
-    '''
+    """ The SWIDebugView is sort of a normal view with some convenience methods.
+        See lookup_view.
+    """
     def __init__(self, view):
         self.view = view
         self.context_data = {}
@@ -656,6 +649,10 @@ class SwiDebugView(object):
         return 'file://' + os.path.realpath(self.view.file_name())
 
     def lines(self, data=None):
+        """ Takes a list of line numbers, regions, or else uses the selection.
+            Returns regions, each covering one complete line, 
+            representing the lines included in the supplied input.
+        """ 
         lines = []
         if data is None:
             regions = self.view.sel()
@@ -673,11 +670,18 @@ class SwiDebugView(object):
         return [self.view.line(line) for line in lines]
 
     def rows(self, lines):
+        """ Takes one or more lines and returns the 1-based (?)
+            line and column of the first character in the line.
+        """
         if not type(lines) == list:
             lines = [lines]
         return [self.view.rowcol(line.begin())[0] + 1 for line in lines]
 
     def insert_click(self, a, b, click_type, data):
+        """ Creates a clickable "button" at the specified line and column.
+            Records the action to be taken on click, and any parameter
+            such as the object to get members from.
+        """
         insert_before = 0
         new_region = sublime.Region(a, b)
         regions = self.view.get_regions('swi_log_clicks')
@@ -692,18 +696,24 @@ class SwiDebugView(object):
         self.view.add_regions('swi_log_clicks', regions, scope=get_setting('interactive_scope'), flags=sublime.DRAW_NO_FILL)
 
     def print_click(self, edit, position, text, click_type, data):
+        """ Inserts the specified text and creates a clickable "button"
+            around it.
+        """
         insert_length = self.insert(edit, position, text)
         self.insert_click(position, position + insert_length, click_type, data)
 
     def remove_click(self, index):
+        """ Removes a clickable "button" with the specified index."""
         regions = self.view.get_regions('swi_log_clicks')
         del regions[index]
         self.view.add_regions('swi_log_clicks', regions, scope=get_setting('interactive_scope'), flags=sublime.DRAW_NO_FILL)
 
     def clear_clicks(self):
+        """ Removes all clickable regions """
         self.clicks = []
 
     def view_breakpoints(self):
+        # TODo rename as it updates the IP
         self.view.erase_regions('swi_breakpoint_inactive')
         self.view.erase_regions('swi_breakpoint_active')
         self.view.erase_regions('swi_breakpoint_current')
@@ -853,6 +863,7 @@ class EventListener(sublime_plugin.EventListener):
         lookup_view(view).view_breakpoints()
 
     def on_selection_modified(self, view):
+        """ We use this to discover a "button" has been clicked."""
         global timing
         now = time.time()
         if now - timing > 0.1:
@@ -872,6 +883,7 @@ class EventListener(sublime_plugin.EventListener):
         lookup_view(view).on_query_context(key, operator, operand, match_all)
 
     def update_stack(self, command):
+        """ Called on setScriptSource """
         global paused
 
         if not paused:
@@ -938,7 +950,6 @@ def find_view(console_type, title=''):
             found = True
             break
 
-
     if not found:
         v = window.new_file()
         v.set_scratch(True)
@@ -988,7 +999,6 @@ class SwiClearViewCommand(sublime_plugin.TextCommand):
     def run(self, edit, user_input=None):
         self.view.erase(edit, sublime.Region(0, self.view.size()))
 
-
 def console_repeat_message(count):
     v = find_view('console')
 
@@ -997,7 +1007,6 @@ def console_repeat_message(count):
     v.show(v.size())
     window.focus_group(0)
 
-
 class SwiConsoleRepeatMessageCommand(sublime_plugin.TextCommand):
     def run(self, edit, count):
         if count > 2:
@@ -1005,9 +1014,7 @@ class SwiConsoleRepeatMessageCommand(sublime_plugin.TextCommand):
             self.view.erase(edit, sublime.Region(erase_to, self.view.size()))
         self.view.insert(edit, self.view.size(), ' \u21AA Repeat:' + str(count) + '\n')
 
-
 eval_object_queue = []
-
 
 def console_add_evaluate(eval_object):
     v = find_view('console')
@@ -1017,7 +1024,6 @@ def console_add_evaluate(eval_object):
 
     v.show(v.size())
     window.focus_group(0)
-
 
 class SwiConsoleAddEvaluate(sublime_plugin.TextCommand):
     def run(self, edit):
@@ -1029,9 +1035,7 @@ class SwiConsoleAddEvaluate(sublime_plugin.TextCommand):
 
         v.insert(edit, v.size(), "\n")
 
-
 message_queue = []
-
 
 def console_add_message(message):
     v = find_view('console')
