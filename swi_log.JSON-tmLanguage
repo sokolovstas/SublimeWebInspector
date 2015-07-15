@@ -7,7 +7,7 @@
       "name": "jsd.log.debug",
       "captures": {
         "1": {
-          "name": "mcol_339900FF.settings"
+          "name": "settings.foreground"
         },
         "2": {
           "name": "support.type.settings"
@@ -18,31 +18,37 @@
       }
     },
     {
-      "match": "^(\\[ERR\\])\\s(.*?):(\\d+)\\s",
+      "match": "^(\\[ERR\\])\\s(.*?):(\\d+)\\s+(.*)",
       "name": "jsd.log.error",
       "captures": {
         "1": {
-          "name": "mcol_CC0000FF.settings"
+          "name": "entity.name.tag"
         },
         "2": {
           "name": "support.type.settings"
         },
         "3": {
           "name": "variable.parameter.settings"
+        },
+        "4": {
+          "name": "entity.name.tag"
         }
       }
     },
     {
-      "match": "^(\\[WRN\\])\\s(.*?):(\\d+)\\s",
+      "match": "^(\\[WRN\\])\\s(.*?):(\\d+)\\s+(.*)",
       "name": "jsd.log.warn",
       "captures": {
         "1": {
-          "name": "mcol_F93F07FF.settings"
+          "name": "variable.parameter.settings"
         },
         "2": {
           "name": "support.type.settings"
         },
         "3": {
+          "name": "variable.parameter.settings"
+        },
+        "4": {
           "name": "variable.parameter.settings"
         }
       }
@@ -52,7 +58,7 @@
       "name": "jsd.log.log",
       "captures": {
         "1": {
-          "name": "mcol_0088CCFF.settings"
+          "name": "settings.foreground"
         },
         "2": {
           "name": "support.type.settings"
@@ -67,7 +73,7 @@
       "name": "jsd.log.tip",
       "captures": {
         "1": {
-          "name": "mcol_800080FF.settings"
+          "name": "settings.foreground"
         },
         "2": {
           "name": "support.type.settings"
@@ -78,11 +84,26 @@
       }
     },
     {
+        "match": "^(.*?):(\\d+)(.*?)$",
+        "name": "jsd.log.location",
+        "captures": {
+          "1": { 
+            "name": "support.type.settings" 
+          },
+          "2": { 
+            "name": "variable.parameter.settings" 
+          },
+          "3": {
+            "name": "entity.name.function" 
+        }
+      }
+    },
+    {
       "match": "^\\t(.+)\\s(.*?):(\\d+)",
       "name": "jsd.log.object",
       "captures": {
         "1": {
-          "name": "mcol_CC0000FF.settings"
+          "name": "settings.foreground"
         },
         "2": {
           "name": "support.type.settings"
