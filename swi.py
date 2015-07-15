@@ -55,8 +55,9 @@ breakpoint_inactive_icon = 'Packages/Web Inspector/icons/breakpoint_inactive.png
 breakpoint_current_icon = 'Packages/Web Inspector/icons/breakpoint_current.png'
 
 def plugin_loaded():
+    close_all_our_windows()
     clear_all_views()
-    
+        
 ####################################################################################
 #   COMMANDS
 ####################################################################################
@@ -153,6 +154,8 @@ class SwiDebugStartChromeCommand(sublime_plugin.TextCommand):
     """ Represents the start chrome command """
 
     def run(self, edit):
+        close_all_our_windows()
+
         window = sublime.active_window()
         key = sublime.platform()
 
@@ -171,6 +174,8 @@ class SwiDebugStartChromeCommand(sublime_plugin.TextCommand):
 
 class SwiDebugStartCommand(sublime_plugin.TextCommand):
     def run(self, edit, url):
+        close_all_our_windows()
+
         global debugger_enabled
         debugger_enabled = False
         global file_to_scriptId
@@ -474,17 +479,7 @@ class SwiDebugToggleBreakpointCommand(sublime_plugin.TextCommand):
 class SwiDebugStopCommand(sublime_plugin.TextCommand):
 
     def run(self, edit):
-        global window
-
-        window.focus_group(1)
-        for view in window.views_in_group(1):
-            window.run_command("close")
-
-        window.focus_group(2)
-        for view in window.views_in_group(2):
-            window.run_command("close")
-
-        window.set_layout(original_layout)
+        close_all_our_windows()
 
         disable_all_breakpoints()
 
@@ -897,6 +892,28 @@ def clear_all_views():
     clear_view('stack')
     clear_view('scope')
     clear_view('mapping')
+
+def close_all_our_windows():
+    global window
+
+    if not window:
+        window = sublime.active_window()
+
+    window.focus_group(0)
+    for view in window.views_in_group(0):
+        if view.name() == 'File mapping ':
+            window.run_command("close")
+            break
+
+    window.focus_group(1)
+    for view in window.views_in_group(1):
+        window.run_command("close")
+
+    window.focus_group(2)
+    for view in window.views_in_group(2):
+        window.run_command("close")
+
+    window.set_layout(original_layout)
 
 class SwiClearViewCommand(sublime_plugin.TextCommand):
     def run(self, edit, user_input=None):
