@@ -65,7 +65,7 @@ def plugin_loaded():
 class SwiDebugCommand(sublime_plugin.TextCommand):
     """ The SWIdebug main quick panel menu """
     
-    def run(self, editswi):
+    def run(self, edits):
         """ Called by Sublime to display the quick panel entries """
         mapping = {}
         try:
@@ -210,7 +210,6 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         channel.send(webkit.Debugger.setPauseOnExceptions(get_setting('pause_on_exceptions')))
         channel.send(webkit.Console.enable())
         channel.send(webkit.Debugger.canSetScriptSource(), self.canSetScriptSource)
-
 
         if get_setting('user_agent') is not "":
             channel.send(webkit.Network.setUserAgentOverride(get_setting('user_agent')))
