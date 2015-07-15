@@ -18,7 +18,7 @@ if not swi_folder in sys.path:
     sys.path.append(swi_folder)
 
 import webkit
-import websocket
+import protocol
 
 from webkit import utils
 from webkit import Console
@@ -36,7 +36,7 @@ imp.reload(sys.modules['webkit.Page'])
 
 brk_object = {}
 buffers = {}
-protocol = None
+channel = None
 original_layout = None
 window = None
 debug_view = None
@@ -58,103 +58,6 @@ def plugin_loaded():
     clear_all_views()
     
 ####################################################################################
-#   PROTOCOL
-####################################################################################
-
-class Protocol(object):
-    """ Encapsulate websocket connection """
-
-    def __init__(self):
-        self.next_id = 0
-        self.commands = {}
-        self.notifications = {}
-        self.last_log_object = None
-
-    def connect(self, url, on_open=None, on_close=None):
-        """ Attempt to connect to the web socket """
-        print (('SWI: Connecting to ' + url))
-        websocket.enableTrace(False)
-        self.last_break = None
-        self.last_log_object = None
-        self.url = url
-        self.on_open = on_open
-        self.on_close = on_close
-        thread = threading.Thread(target=self.thread_callback)
-        thread.start()
-
-    def thread_callback(self):
-        """ Threadproc owning the socket.
-            Sets up the callbacks for open, close, and message.
-        """
-        print ('SWI: Thread started')
-        self.socket = websocket.WebSocketApp(self.url, on_message=self.message_callback, on_open=self.open_callback, on_close=self.close_callback)
-        self.socket.run_forever()
-        print ('SWI: Thread stopped')
-
-    def send(self, command, callback=None, options=None):
-        """ Send to web socket, with optional callback and options """
-        command.id = self.next_id
-        command.callback = callback
-        command.options = options
-        self.commands[command.id] = command
-        self.next_id += 1
-        if get_setting('debug_mode'):
-            print ('SWI: ->> ' + json.dumps(command.request, sort_keys=True, indent=4, separators=(',', ': ')))
-        self.socket.send(json.dumps(command.request))
-
-    def subscribe(self, notification, callback):
-        """ Subscribe to notification with callback """
-        notification.callback = callback
-        self.notifications[notification.name] = notification
-
-    def unsubscribe(self, notification):
-        """ Unsubscribe to notification """
-        del self.notifications[notification.name]
-
-    def message_callback(self, ws, message):
-        """ Callback on any incoming packet.
-            Parse it and call matching callback.
-        """
-        parsed = json.loads(message)
-        if get_setting('debug_mode'):
-            print ('SWI: <<- ' + json.dumps(parsed, sort_keys=True, indent=4, separators=(',', ': ')))
-        if 'method' in parsed:
-            if parsed['method'] in self.notifications:
-                notification = self.notifications[parsed['method']]
-                if 'params' in parsed:
-                    data = notification.parser(parsed['params'])
-                else:
-                    data = None
-                notification.callback(data, notification)
-        else:
-            if parsed['id'] in self.commands:
-
-                command = self.commands[parsed['id']]
-
-                if 'error' in parsed:
-                    sublime.set_timeout(lambda: sublime.error_message("Error from debuggee:\n" + parsed['error']['message']), 0)
-                else:
-                    if 'result' in parsed:
-                        command.data = command.parser(parsed['result'])
-                    else:
-                        command.data = None
-
-                    if command.callback:
-                        command.callback(command)
-            # print ('SWI: Command response with ID ' + str(parsed['id']))
-
-    def open_callback(self, ws):
-        if self.on_open:
-            self.on_open()
-        print ('SWI: WebSocket opened')
-
-    def close_callback(self, ws):
-        if self.on_close:
-            self.on_close()
-        print ('SWI: WebSocket closed')
-
-
-####################################################################################
 #   COMMANDS
 ####################################################################################
 
@@ -165,7 +68,7 @@ class SwiDebugCommand(sublime_plugin.TextCommand):
         """ Called by Sublime to display the quick panel entries """
         mapping = {}
         try:
-            if not paused and not protocol:
+            if not paused and not channel:
                 proxy = urllib.request.ProxyHandler({})
                 opener = urllib.request.build_opener(proxy)
                 urllib.request.install_opener(opener)
@@ -178,13 +81,13 @@ class SwiDebugCommand(sublime_plugin.TextCommand):
                 mapping['swi_debug_step_into'] = 'Step into'
                 mapping['swi_debug_step_out'] = 'Step out'
                 mapping['swi_debug_step_over'] = 'Step over'
-            elif protocol:
+            elif channel:
                 mapping['swi_debug_pause_resume'] = 'Pause execution'
 
             #mapping['swi_debug_clear_all_breakpoint'] = 'Clear all Breakpoints'
             mapping['swi_debug_toggle_breakpoint'] = 'Toggle Breakpoint'
 
-            if protocol:
+            if channel:
                 mapping['swi_debug_evaluate'] = 'Evaluate selection'
                 mapping['swi_debug_clear_console'] = 'Clear console'
                 mapping['swi_debug_stop'] = 'Stop debugging'
@@ -277,39 +180,39 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         project_folders = window.folders()
         print ('Starting SWI')
         self.url = url
-        global protocol
-        if(protocol):
+        global channel
+        if(channel):
             print ('SWI: Socket closed')
-            protocol.socket.close()
+            channel.socket.close()
         else:
             print ('SWI: Creating protocol')
-            protocol = Protocol()
-            protocol.connect(self.url, self.connected, self.disconnected)
+            channel = protocol.Protocol()
+            channel.connect(self.url, self.connected, self.disconnected)
 
         global set_script_source
         set_script_source = get_setting('set_script_source')
 
     def connected(self):
         """ Callback when socket connects """ 
-        protocol.subscribe(webkit.Console.messageAdded(), self.messageAdded)
-        protocol.subscribe(webkit.Console.messageRepeatCountUpdated(), self.messageRepeatCountUpdated)
-        protocol.subscribe(webkit.Console.messagesCleared(), self.messagesCleared)
-        protocol.subscribe(webkit.Debugger.scriptParsed(), self.scriptParsed)
-        protocol.subscribe(webkit.Debugger.paused(), self.paused)
-        protocol.subscribe(webkit.Debugger.resumed(), self.resumed)
+        channel.subscribe(webkit.Console.messageAdded(), self.messageAdded)
+        channel.subscribe(webkit.Console.messageRepeatCountUpdated(), self.messageRepeatCountUpdated)
+        channel.subscribe(webkit.Console.messagesCleared(), self.messagesCleared)
+        channel.subscribe(webkit.Debugger.scriptParsed(), self.scriptParsed)
+        channel.subscribe(webkit.Debugger.paused(), self.paused)
+        channel.subscribe(webkit.Debugger.resumed(), self.resumed)
 
-        protocol.send(webkit.Debugger.enable(), self.enabled)
-        protocol.send(webkit.Debugger.setPauseOnExceptions(get_setting('pause_on_exceptions')))
-        protocol.send(webkit.Console.enable())
-        protocol.send(webkit.Debugger.canSetScriptSource(), self.canSetScriptSource)
+        channel.send(webkit.Debugger.enable(), self.enabled)
+        channel.send(webkit.Debugger.setPauseOnExceptions(get_setting('pause_on_exceptions')))
+        channel.send(webkit.Console.enable())
+        channel.send(webkit.Debugger.canSetScriptSource(), self.canSetScriptSource)
 
 
         if get_setting('user_agent') is not "":
-            protocol.send(webkit.Network.setUserAgentOverride(get_setting('user_agent')))
+            channel.send(webkit.Network.setUserAgentOverride(get_setting('user_agent')))
 
         if get_setting('reload_on_start'):
-            protocol.send(webkit.Network.clearBrowserCache())
-            protocol.send(webkit.Page.reload(), on_reload)
+            channel.send(webkit.Network.clearBrowserCache())
+            channel.send(webkit.Page.reload(), on_reload)
 
     def disconnected(self):
         """ Notification when socket disconnects """
@@ -371,7 +274,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
             and locals, and navigate to the break.
         """
 
-        protocol.send(webkit.Debugger.setOverlayMessage('Paused in Sublime Web Inspector'))
+        channel.send(webkit.Debugger.setOverlayMessage('Paused in Sublime Web Inspector'))
 
         sublime.set_timeout(lambda: window.set_layout(get_setting('stack_layout')), 0)
 
@@ -397,7 +300,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         global current_line
         current_line = line_number
 
-        sublime.set_timeout(lambda: protocol.send(webkit.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, title), 30)
+        sublime.set_timeout(lambda: channel.send(webkit.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, title), 30)
         sublime.set_timeout(lambda: open_script_and_focus_line(scriptId, line_number), 100)
 
         global paused
@@ -411,7 +314,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         sublime.set_timeout(lambda: clear_view('stack'), 0)
         sublime.set_timeout(lambda: clear_view('scope'), 0)
 
-        protocol.send(webkit.Debugger.setOverlayMessage())
+        channel.send(webkit.Debugger.setOverlayMessage())
 
         global current_line
         current_line = None
@@ -444,7 +347,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         if breakpoints:
             for line in list(breakpoints.keys()):
                 location = webkit.Debugger.Location({'lineNumber': int(line), 'scriptId': scriptId})
-                protocol.send(webkit.Debugger.setBreakpoint(location), self.breakpointAdded)
+                channel.send(webkit.Debugger.setBreakpoint(location), self.breakpointAdded)
 
     def breakpointAdded(self, command):
         """ Notification that a breakpoint was set.
@@ -485,26 +388,26 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
 class SwiDebugPauseResumeCommand(sublime_plugin.TextCommand):
     def run(self, edit):
         if paused:
-            protocol.send(webkit.Debugger.resume())
+            channel.send(webkit.Debugger.resume())
         else:
-            protocol.send(webkit.Debugger.pause())
+            channel.send(webkit.Debugger.pause())
 
 class SwiDebugStepIntoCommand(sublime_plugin.TextCommand):
     def run(self, edit):
         if paused:
-            protocol.send(webkit.Debugger.stepInto())
+            channel.send(webkit.Debugger.stepInto())
 
 
 class SwiDebugStepOutCommand(sublime_plugin.TextCommand):
     def run(self, edit):
         if paused:
-            protocol.send(webkit.Debugger.stepOut())
+            channel.send(webkit.Debugger.stepOut())
 
 
 class SwiDebugStepOverCommand(sublime_plugin.TextCommand):
     def run(self, edit):
         if paused:
-            protocol.send(webkit.Debugger.stepOver())
+            channel.send(webkit.Debugger.stepOver())
 
 
 class SwiDebugClearConsoleCommand(sublime_plugin.TextCommand):
@@ -519,13 +422,13 @@ class SwiDebugEvaluateCommand(sublime_plugin.TextCommand):
             if paused:
                 if current_call_frame_position:
                     title = "%s on %s" % (self.view.substr(region), current_call_frame_position)
-                protocol.send(webkit.Debugger.evaluateOnCallFrame(current_call_frame, self.view.substr(region)), self.evaluated, {'name': title})
+                channel.send(webkit.Debugger.evaluateOnCallFrame(current_call_frame, self.view.substr(region)), self.evaluated, {'name': title})
             else:
-                protocol.send(webkit.Runtime.evaluate(self.view.substr(region)), self.evaluated, {'name': title})
+                channel.send(webkit.Runtime.evaluate(self.view.substr(region)), self.evaluated, {'name': title})
 
     def evaluated(self, command):
         if command.data.type == 'object':
-            protocol.send(webkit.Runtime.getProperties(command.data.objectId, True), console_add_properties, command.options)
+            channel.send(webkit.Runtime.getProperties(command.data.objectId, True), console_add_properties, command.options)
         else:
             sublime.set_timeout(lambda: console_add_evaluate(command.data), 0)
 
@@ -537,16 +440,16 @@ class SwiDebugToggleBreakpointCommand(sublime_plugin.TextCommand):
         init_breakpoint_for_file(view.file_name())
         breaks = get_breakpoints_by_full_path(view.file_name())
         if row in breaks:
-            if protocol:
+            if channel:
                 if row in breaks:
-                    protocol.send(webkit.Debugger.removeBreakpoint(breaks[row]['breakpointId']))
+                    channel.send(webkit.Debugger.removeBreakpoint(breaks[row]['breakpointId']))
 
             del_breakpoint_by_full_path(view.file_name(), row)
         else:
-            if protocol:
+            if channel:
                 scriptUrl = find_script_url(view.file_name())
                 if scriptUrl:
-                    protocol.send(webkit.Debugger.setBreakpointByUrl(int(row), scriptUrl), self.breakpointAdded, view.file_name())
+                    channel.send(webkit.Debugger.setBreakpointByUrl(int(row), scriptUrl), self.breakpointAdded, view.file_name())
             else:
                 set_breakpoint_by_full_path(view.file_name(), row)
 
@@ -597,21 +500,21 @@ class SwiDebugStopCommand(sublime_plugin.TextCommand):
         current_line = None
         sublime.set_timeout(lambda: lookup_view(self.view).view_breakpoints(), 0)
 
-        global protocol
-        if protocol:
+        global channel
+        if channel:
             try:
-                protocol.socket.close()
+                channel.socket.close()
             except:
                 print ('SWI: Can\'t close socket')
             finally:
-                protocol = None
+                channel = None
 
 
 class SwiDebugReloadCommand(sublime_plugin.TextCommand):
     def run(self):
-        if(protocol):
-            protocol.send(webkit.Network.clearBrowserCache())
-            protocol.send(webkit.Page.reload(), on_reload)
+        if(channel):
+            channel.send(webkit.Network.clearBrowserCache())
+            channel.send(webkit.Page.reload(), on_reload)
 
 
 class SwiShowFileMapping(sublime_plugin.TextCommand):
@@ -776,7 +679,7 @@ class SwiDebugView(object):
                         else:
                             title = {'objectId': first_scope.object.objectId, 'name': "Breakpoint Local"}
 
-                        sublime.set_timeout(lambda: protocol.send(webkit.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, title), 30)
+                        sublime.set_timeout(lambda: channel.send(webkit.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, title), 30)
 
                         global current_call_frame
                         current_call_frame = callFrame.callFrameId
@@ -785,8 +688,8 @@ class SwiDebugView(object):
                         current_call_frame_position = "%s:%s" % (file_name.split('/')[-1], line_number)
 
                     if click['click_type'] == 'get_params':
-                        if protocol:
-                            protocol.send(webkit.Runtime.getProperties(click['data']['objectId'], True), console_add_properties, click['data'])
+                        if channel:
+                            channel.send(webkit.Runtime.getProperties(click['data']['objectId'], True), console_add_properties, click['data'])
 
                     if click['click_type'] == 'command':
                         self.remove_click(click_counter)
@@ -833,17 +736,17 @@ class EventListener(sublime_plugin.EventListener):
         lookup_view(view).on_pre_save()
 
     def reload_styles(self):
-        protocol.send(webkit.Runtime.evaluate("var files = document.getElementsByTagName('link');var links = [];for (var a = 0, l = files.length; a < l; a++) {var elem = files[a];var rel = elem.rel;if (typeof rel != 'string' || rel.length === 0 || rel === 'stylesheet') {links.push({'elem': elem,'href': elem.getAttribute('href').split('?')[0],'last': false});}}for ( a = 0, l = links.length; a < l; a++) {var link = links[a];link.elem.setAttribute('href', (link.href + '?x=' + Math.random()));}"))
+        channel.send(webkit.Runtime.evaluate("var files = document.getElementsByTagName('link');var links = [];for (var a = 0, l = files.length; a < l; a++) {var elem = files[a];var rel = elem.rel;if (typeof rel != 'string' || rel.length === 0 || rel === 'stylesheet') {links.push({'elem': elem,'href': elem.getAttribute('href').split('?')[0],'last': false});}}for ( a = 0, l = links.length; a < l; a++) {var link = links[a];link.elem.setAttribute('href', (link.href + '?x=' + Math.random()));}"))
 
     def reload_set_script_source(self, scriptId, scriptSource):
-        protocol.send(webkit.Debugger.setScriptSource(scriptId, scriptSource), self.update_stack)
+        channel.send(webkit.Debugger.setScriptSource(scriptId, scriptSource), self.update_stack)
 
     def reload_page(self):
-        protocol.send(webkit.Page.reload(), on_reload)
+        channel.send(webkit.Page.reload(), on_reload)
 
     def on_post_save(self, view):
-        if protocol and get_setting('reload_on_save'):
-            protocol.send(webkit.Network.clearBrowserCache())
+        if channel and get_setting('reload_on_save'):
+            channel.send(webkit.Network.clearBrowserCache())
             if view.file_name().endswith('.css') or view.file_name().endswith('.less') or view.file_name().endswith('.sass') or view.file_name().endswith('.scss'):
                 sublime.set_timeout(lambda: self.reload_styles(), get_setting('reload_timeout'))
             elif view.file_name().endswith('.js'):
@@ -904,7 +807,7 @@ class EventListener(sublime_plugin.EventListener):
         else:
             title = {'objectId': first_scope.object.objectId, 'name': "Breakpoint Local"}
 
-        sublime.set_timeout(lambda: protocol.send(webkit.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, title), 30)
+        sublime.set_timeout(lambda: channel.send(webkit.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, title), 30)
         sublime.set_timeout(lambda: open_script_and_focus_line(scriptId, line_number), 100)
 
 
