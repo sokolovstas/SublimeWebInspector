@@ -1,4 +1,4 @@
-import hashlib
+﻿import hashlib
 import functools
 import glob
 import sublime
@@ -1191,10 +1191,13 @@ class SwiConsoleShowStackCommand(sublime_plugin.TextCommand):
         v.erase(edit, sublime.Region(0, v.size()))
 
         v.insert(edit, v.size(), "\n")
-        v.print_click(edit, v.size(), "\tResume\t", 'command', 'swi_debug_resume')
-        v.print_click(edit, v.size(), "\tStep Over\t", 'command', 'swi_debug_step_over')
-        v.print_click(edit, v.size(), "\tStep Into\t", 'command', 'swi_debug_step_into')
-        v.print_click(edit, v.size(), "\tStep Out\t", 'command', 'swi_debug_step_out')
+        v.print_click(edit, v.size(), "  Resume  ", 'command', 'swi_debug_resume')
+        v.insert(edit, v.size(), "  ")
+        v.print_click(edit, v.size(), "  Step Over  ", 'command', 'swi_debug_step_over')
+        v.insert(edit, v.size(), "  ")
+        v.print_click(edit, v.size(), "  Step Into  ", 'command', 'swi_debug_step_into')
+        v.insert(edit, v.size(), "  ")
+        v.print_click(edit, v.size(), "  Step Out  ", 'command', 'swi_debug_step_out')
         v.insert(edit, v.size(), "\n\n")
 
         for callFrame in callFrames:
