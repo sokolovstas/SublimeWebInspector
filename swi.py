@@ -392,7 +392,9 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
 
 class SwiDebugPauseResumeCommand(sublime_plugin.TextCommand):
     def run(self, edit):
-        if paused:
+        if not channel:
+            SwiDebugStartChromeCommand.run(self, edit)
+        elif paused:
             channel.send(webkit.Debugger.resume())
         else:
             channel.send(webkit.Debugger.pause())
