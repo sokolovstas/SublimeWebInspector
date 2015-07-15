@@ -10,9 +10,6 @@ import threading
 import websocket
 import swi
 
-def foobar():
-    return
-
 class Protocol(object):
     """ Encapsulate websocket connection """
 
