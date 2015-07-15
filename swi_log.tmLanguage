@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
 	<key>name</key>
@@ -26,7 +26,7 @@
 				</dict>
 			</dict>
 			<key>match</key>
-			<string>^(\[D\])\s(.*?):(\d+)\s</string>
+			<string>^(\[DBG\])\s(.*?):(\d+)\s</string>
 			<key>name</key>
 			<string>jsd.log.debug</string>
 		</dict>
@@ -50,7 +50,7 @@
 				</dict>
 			</dict>
 			<key>match</key>
-			<string>^(\[E\])\s(.*?):(\d+)\s</string>
+			<string>^(\[ERR\])\s(.*?):(\d+)\s</string>
 			<key>name</key>
 			<string>jsd.log.error</string>
 		</dict>
@@ -74,7 +74,7 @@
 				</dict>
 			</dict>
 			<key>match</key>
-			<string>^(\[W\])\s(.*?):(\d+)\s</string>
+			<string>^(\[WRN\])\s(.*?):(\d+)\s</string>
 			<key>name</key>
 			<string>jsd.log.warn</string>
 		</dict>
@@ -98,7 +98,7 @@
 				</dict>
 			</dict>
 			<key>match</key>
-			<string>^(\[L\])\s(.*?):(\d+)\s</string>
+			<string>^(\[LOG\])\s(.*?):(\d+)\s</string>
 			<key>name</key>
 			<string>jsd.log.log</string>
 		</dict>
