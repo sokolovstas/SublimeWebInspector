@@ -568,8 +568,9 @@ class SwiDebugView(object):
                     regions.append(self.view.line(self.view.text_point(int(item) - 1, 0)))
                 else:
                     regions.append(item)
-        for region in regions:
-            lines.extend(self.view.split_by_newlines(region))
+
+        for i in range(len(regions)):
+            lines.extend(self.view.split_by_newlines(regions[i]))
         return [self.view.line(line) for line in lines]
 
     def rows(self, lines):
@@ -1197,7 +1198,12 @@ def load_breaks():
 
 def save_breaks():
     s = sublime.load_settings("swi.sublime-settings")
-    s.set('breaks', brk_object)
+
+    if len(brk_object) == 0:
+        s.erase('breaks')
+    else:
+        s.set('breaks', brk_object)
+
     sublime.save_settings("swi.sublime-settings")
 
 def full_path_to_file_name(path):
@@ -1221,6 +1227,10 @@ def del_breakpoint_by_full_path(file_name, line):
 
     if line in breaks:
         del breaks[line]
+
+    if len(breaks) == 0:
+        del brk_object[file_name]
+
     save_breaks()
 
 
