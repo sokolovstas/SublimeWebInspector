@@ -1361,7 +1361,6 @@ def focus_line_and_highlight(view, line_number):
 
 def assert_main_thread():
     global main_thread
-    if not threading.current_thread().ident == main_thread.ident:
-        raise AssertionError("not on main thread")
+    assert threading.current_thread().ident == main_thread.ident, "not on main thread"
 
 sublime.set_timeout(lambda: load_breaks(), 1000)
