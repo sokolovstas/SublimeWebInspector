@@ -104,4 +104,7 @@ class Protocol(object):
         print ('SWI: WebSocket closed')
 
     def to_main_thread(self, f, args):
+        """ Call back on the main thread
+            to simplify the called code
+        """
         sublime.set_timeout(lambda: f(*args))
