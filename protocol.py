@@ -1,6 +1,7 @@
-import os
+﻿import os
 import sys
 import json
+import sublime
 
 swi_folder = os.path.dirname(os.path.realpath(__file__))
 if not swi_folder in sys.path:
@@ -74,7 +75,8 @@ class Protocol(object):
                     data = notification.parser(parsed['params'])
                 else:
                     data = None
-                notification.callback(data, notification)
+
+                self.to_main_thread(notification.callback, (data, notification))
         else:
             if parsed['id'] in self.commands:
 
@@ -89,8 +91,7 @@ class Protocol(object):
                         command.data = None
 
                     if command.callback:
-                        command.callback(command)
-            # print ('SWI: Command response with ID ' + str(parsed['id']))
+                        self.to_main_thread(command.callback, (command, )) # comma makes it a tuple
 
     def open_callback(self, ws):
         if self.on_open:
@@ -101,3 +102,6 @@ class Protocol(object):
         if self.on_close:
             self.on_close()
         print ('SWI: WebSocket closed')
+
+    def to_main_thread(self, f, args):
+        sublime.set_timeout(lambda: f(*args))
