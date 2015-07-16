@@ -1,4 +1,4 @@
-﻿import os
+import os
 import sys
 import json
 import sublime
@@ -95,12 +95,12 @@ class Protocol(object):
 
     def open_callback(self, ws):
         if self.on_open:
-            self.on_open()
+            self.to_main_thread(self.on_open, ())
         print ('SWI: WebSocket opened')
 
     def close_callback(self, ws):
         if self.on_close:
-            self.on_close()
+            self.to_main_thread(self.on_close, ())
         print ('SWI: WebSocket closed')
 
     def to_main_thread(self, f, args):
