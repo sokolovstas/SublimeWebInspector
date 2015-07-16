@@ -442,22 +442,26 @@ class SwiDebugEvaluateCommand(sublime_plugin.TextCommand):
 class SwiDebugToggleBreakpointCommand(sublime_plugin.TextCommand):
     def run(self, edit):
         view = lookup_view(self.view)
+        view_name = view.file_name();
+        if not view_name: # eg file mapping pane
+            return
+
         row = str(view.rows(view.lines())[0])
-        init_breakpoint_for_file(view.file_name())
-        breaks = get_breakpoints_by_full_path(view.file_name())
+        init_breakpoint_for_file(view_name)
+        breaks = get_breakpoints_by_full_path(view_name)
         if row in breaks:
             if channel:
                 if row in breaks:
                     channel.send(webkit.Debugger.removeBreakpoint(breaks[row]['breakpointId']))
 
-            del_breakpoint_by_full_path(view.file_name(), row)
+            del_breakpoint_by_full_path(view_name, row)
         else:
             if channel:
-                scriptUrl = find_script_url(view.file_name())
+                scriptUrl = find_script_url(view_name)
                 if scriptUrl:
-                    channel.send(webkit.Debugger.setBreakpointByUrl(int(row), scriptUrl), self.breakpointAdded, view.file_name())
+                    channel.send(webkit.Debugger.setBreakpointByUrl(int(row), scriptUrl), self.breakpointAdded, view_name)
             else:
-                set_breakpoint_by_full_path(view.file_name(), row)
+                set_breakpoint_by_full_path(view_name, row)
 
         view.view_breakpoints()
 
@@ -1245,6 +1249,8 @@ def get_breakpoints_by_scriptId(scriptId):
 
 
 def init_breakpoint_for_file(file_path):
+    if not file_path:   # eg., mapping view
+        return
     if not file_path in brk_object:
         brk_object[file_path] = {}
 
