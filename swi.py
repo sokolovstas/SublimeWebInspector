@@ -29,7 +29,7 @@ from webkit import Debugger
 from webkit import Network
 from webkit import Page
 
-from projectsystem import Sourcemaps
+from projectsystem import DocumentMapping
 
 imp.reload(sys.modules['webkit.utils'])
 imp.reload(sys.modules['webkit.Console'])
@@ -343,6 +343,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
 
                         if len(files) > 0 and files[0] != '':
                             file_name = files[0]
+                            mapping = projectsystem.DocumentMapping.MappingInfo(file_name)
                             file_to_scriptId.append({'file': file_name, 'scriptId': str(scriptId), 'url': data['url']})
                             # don't try to match shorter fragments, we already found a match
                             url_parts = []
