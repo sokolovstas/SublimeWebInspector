@@ -41,6 +41,37 @@ class LineMapping:
             self.source_column = 0
             self.file_num = 0
 
+        @staticmethod
+        def compare_generated_mappings(mapping, line, column):
+            return (column - mapping.generated_column) if (mapping.generated_line == line) else line - mapping.generated_line
+
+        @staticmethod
+        def compare_source_mappings(mapping, line, column):
+            return (column - mapping.source_column) if (mapping.source_line == line) else line - mapping.source_line 
+
+        @staticmethod
+        def binary_search(line_mappings, line, column, comparator):
+            max_index = len(line_mappings) - 1
+            min_index = 0
+
+            while (min_index < max_index):
+                mid = (max_index + min_index) >> 1
+
+                comparison = comparator(line_mappings[mid], line, column)
+                if (comparison > 0):
+                    min_index = mid + 1
+                elif (comparison < 0):
+                    max_index = mid - 1
+                else:
+                    max_index = mid
+                    break
+
+            result = max(min(len(line_mappings) - 1, max_index), 0)
+            while (result + 1 < len(line_mappings) and comparator(line_mappings[result + 1], line, column) == 0):
+                result += 1
+
+            return result
+
 
 class SourceMapParser:
     StartScopeSegmentDelimiter = '>'
