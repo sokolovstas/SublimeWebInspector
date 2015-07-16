@@ -19,6 +19,7 @@ if not swi_folder in sys.path:
 
 
 import webkit
+import projectsystem
 import websocket
 
 from webkit import utils
@@ -28,9 +29,10 @@ from webkit import Debugger
 from webkit import Network
 from webkit import Page
 
+from projectsystem import Sourcemaps
+
 imp.reload(sys.modules['webkit.utils'])
 imp.reload(sys.modules['webkit.Console'])
-imp.reload(sys.modules['webkit.Runtime'])
 imp.reload(sys.modules['webkit.Debugger'])
 imp.reload(sys.modules['webkit.Network'])
 imp.reload(sys.modules['webkit.Page'])
@@ -103,7 +105,6 @@ class Protocol(object):
     def subscribe(self, notification, callback):
         notification.callback = callback
         self.notifications[notification.name] = notification
-
     # unsubscribe
     def unsubscribe(self, notification):
         del self.notifications[notification.name]
