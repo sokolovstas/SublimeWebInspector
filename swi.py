@@ -569,8 +569,8 @@ class SwiDebugView(object):
                 else:
                     regions.append(item)
 
-        for region in regions:
-            lines.extend(self.view.split_by_newlines(region))
+        for i in range(len(regions)):
+            lines.extend(self.view.split_by_newlines(regions[i]))
         return [self.view.line(line) for line in lines]
 
     def rows(self, lines):
