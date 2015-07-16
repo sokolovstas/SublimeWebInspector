@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
 	<key>name</key>
@@ -12,7 +12,7 @@
 				<key>1</key>
 				<dict>
 					<key>name</key>
-					<string>mcol_339900FF.settings</string>
+					<string>settings.foreground</string>
 				</dict>
 				<key>2</key>
 				<dict>
@@ -26,7 +26,7 @@
 				</dict>
 			</dict>
 			<key>match</key>
-			<string>^(\[D\])\s(.*?):(\d+)\s</string>
+			<string>^(\[DBG\])\s(.*?):(\d+)\s</string>
 			<key>name</key>
 			<string>jsd.log.debug</string>
 		</dict>
@@ -36,7 +36,7 @@
 				<key>1</key>
 				<dict>
 					<key>name</key>
-					<string>mcol_CC0000FF.settings</string>
+					<string>entity.name.tag</string>
 				</dict>
 				<key>2</key>
 				<dict>
@@ -48,9 +48,14 @@
 					<key>name</key>
 					<string>variable.parameter.settings</string>
 				</dict>
+				<key>4</key>
+				<dict>
+					<key>name</key>
+					<string>entity.name.tag</string>
+				</dict>
 			</dict>
 			<key>match</key>
-			<string>^(\[E\])\s(.*?):(\d+)\s</string>
+			<string>^(\[ERR\])\s(.*?):(\d+)\s+(.*)</string>
 			<key>name</key>
 			<string>jsd.log.error</string>
 		</dict>
@@ -60,7 +65,7 @@
 				<key>1</key>
 				<dict>
 					<key>name</key>
-					<string>mcol_F93F07FF.settings</string>
+					<string>variable.parameter.settings</string>
 				</dict>
 				<key>2</key>
 				<dict>
@@ -72,9 +77,14 @@
 					<key>name</key>
 					<string>variable.parameter.settings</string>
 				</dict>
+				<key>4</key>
+				<dict>
+					<key>name</key>
+					<string>variable.parameter.settings</string>
+				</dict>
 			</dict>
 			<key>match</key>
-			<string>^(\[W\])\s(.*?):(\d+)\s</string>
+			<string>^(\[WRN\])\s(.*?):(\d+)\s+(.*)</string>
 			<key>name</key>
 			<string>jsd.log.warn</string>
 		</dict>
@@ -84,7 +94,7 @@
 				<key>1</key>
 				<dict>
 					<key>name</key>
-					<string>mcol_0088CCFF.settings</string>
+					<string>settings.foreground</string>
 				</dict>
 				<key>2</key>
 				<dict>
@@ -98,7 +108,7 @@
 				</dict>
 			</dict>
 			<key>match</key>
-			<string>^(\[L\])\s(.*?):(\d+)\s</string>
+			<string>^(\[LOG\])\s(.*?):(\d+)\s</string>
 			<key>name</key>
 			<string>jsd.log.log</string>
 		</dict>
@@ -108,7 +118,7 @@
 				<key>1</key>
 				<dict>
 					<key>name</key>
-					<string>mcol_800080FF.settings</string>
+					<string>settings.foreground</string>
 				</dict>
 				<key>2</key>
 				<dict>
@@ -132,7 +142,31 @@
 				<key>1</key>
 				<dict>
 					<key>name</key>
-					<string>mcol_CC0000FF.settings</string>
+					<string>support.type.settings</string>
+				</dict>
+				<key>2</key>
+				<dict>
+					<key>name</key>
+					<string>variable.parameter.settings</string>
+				</dict>
+				<key>3</key>
+				<dict>
+					<key>name</key>
+					<string>entity.name.function</string>
+				</dict>
+			</dict>
+			<key>match</key>
+			<string>^(.*?):(\d+)(.*?)$</string>
+			<key>name</key>
+			<string>jsd.log.location</string>
+		</dict>
+		<dict>
+			<key>captures</key>
+			<dict>
+				<key>1</key>
+				<dict>
+					<key>name</key>
+					<string>settings.foreground</string>
 				</dict>
 				<key>2</key>
 				<dict>
