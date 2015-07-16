@@ -88,7 +88,6 @@ class SwiDebugCommand(sublime_plugin.TextCommand):
             elif channel:
                 mapping['swi_debug_pause_resume'] = 'Pause execution'
 
-            #mapping['swi_debug_clear_all_breakpoint'] = 'Clear all Breakpoints'
             mapping['swi_debug_toggle_breakpoint'] = 'Toggle Breakpoint'
 
             if channel:
@@ -97,6 +96,7 @@ class SwiDebugCommand(sublime_plugin.TextCommand):
                 mapping['swi_debug_stop'] = 'Stop debugging'
                 mapping['swi_debug_reload'] = 'Reload page'
                 mapping['swi_show_file_mapping'] = 'Show file mapping'
+                mapping['swi_debug_clear_breakpoints'] = 'Clear all Breakpoints'
             else:
                 mapping['swi_debug_start'] = 'Start debugging'
         except:
@@ -457,6 +457,22 @@ class SwiDebugEvaluateCommand(sublime_plugin.TextCommand):
         else:
             console_add_evaluate(command.data)
 
+class SwiDebugClearBreakpointsCommand(sublime_plugin.TextCommand):
+    def run(self, edit):
+        # we choose to remove breakpoints only for active files, so not for unrelated sites
+        # so we need to be debugging a site
+        for file_to_script_object in file_to_scriptId:
+            file_name = file_to_script_object['file']
+            breaks = get_breakpoints_by_full_path(file_name)
+
+            if breaks:
+                for row in breaks:
+                    channel.send(webkit.Debugger.removeBreakpoint(breaks[row]['breakpointId']))
+
+                del brk_object[file_name];
+
+        save_breaks()
+        lookup_view(self.view).view_breakpoints()
 
 class SwiDebugToggleBreakpointCommand(sublime_plugin.TextCommand):
     def run(self, edit):
