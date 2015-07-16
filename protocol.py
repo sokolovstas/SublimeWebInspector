@@ -83,7 +83,7 @@ class Protocol(object):
                 command = self.commands[parsed['id']]
 
                 if 'error' in parsed:
-                    sublime.set_timeout(lambda: sublime.error_message("Error from debuggee:\n" + parsed['error']['message']), 0)
+                    self.to_main_thread(sublime.error_message("Error from debuggee:\n" + parsed['error']['message']), ())
                 else:
                     if 'result' in parsed:
                         command.data = command.parser(parsed['result'])
