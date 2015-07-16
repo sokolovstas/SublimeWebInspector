@@ -49,12 +49,15 @@ set_script_source = False
 current_call_frame = None
 current_call_frame_position = None
 timing = time.time()
+main_thread = None
 
 breakpoint_active_icon = 'Packages/Web Inspector/icons/breakpoint_active.png'
 breakpoint_inactive_icon = 'Packages/Web Inspector/icons/breakpoint_inactive.png'
 breakpoint_current_icon = 'Packages/Web Inspector/icons/breakpoint_current.png'
 
 def plugin_loaded():
+    global main_thread
+    main_thread = threading.current_thread()
     close_all_our_windows()
     clear_all_views()
         
@@ -105,6 +108,7 @@ class SwiDebugCommand(sublime_plugin.TextCommand):
 
     def command_selected(self, index):
         """ Called by Sublime when a quick panel entry is selected """
+        assert_main_thread()
         if index == -1:
             return
 
@@ -130,6 +134,7 @@ class SwiDebugCommand(sublime_plugin.TextCommand):
         self.view.run_command(command)
 
     def remote_debug_url_selected(self, index):
+        assert_main_thread()
         if index == -1:
             return
 
@@ -154,6 +159,7 @@ class SwiDebugStartChromeCommand(sublime_plugin.TextCommand):
     """ Represents the start chrome command """
 
     def run(self, edit):
+        assert_main_thread()
         close_all_our_windows()
 
         window = sublime.active_window()
@@ -174,6 +180,7 @@ class SwiDebugStartChromeCommand(sublime_plugin.TextCommand):
 
 class SwiDebugStartCommand(sublime_plugin.TextCommand):
     def run(self, edit, url):
+        assert_main_thread()
         close_all_our_windows()
 
         global debugger_enabled
@@ -199,6 +206,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
 
     def connected(self):
         """ Callback when socket connects """ 
+        assert_main_thread()
         channel.subscribe(webkit.Console.messageAdded(), self.messageAdded)
         channel.subscribe(webkit.Console.messageRepeatCountUpdated(), self.messageRepeatCountUpdated)
         channel.subscribe(webkit.Console.messagesCleared(), self.messagesCleared)
@@ -220,18 +228,22 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
 
     def disconnected(self):
         """ Notification when socket disconnects """
+        assert_main_thread()
         debug_view.run_command('swi_debug_stop')
 
     def messageAdded(self, data, notification):
         """ Notification when console message """
+        assert_main_thread()
         console_add_message(data)
 
     def messageRepeatCountUpdated(self, data, notification):
         """  Notification when repeated messages """
+        assert_main_thread()
         console_repeat_message(data['count'])
 
     def messagesCleared(self, data, notification):
         """ Notification when console cleared (by navigate or on request) """
+        assert_main_thread()
         clear_view('console')
 
     # build table of mappings from local to server
@@ -239,6 +251,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         """ Notification when a script is parsed (loaded).
             Attempts to map it to a local file.
         """
+        assert_main_thread()
         url = data['url']
         if url != '':
             url_parts = url.split("/")
@@ -277,12 +290,12 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
             Draw an overlay, display the callstack
             and locals, and navigate to the break.
         """
-
+        assert_main_thread()
         channel.send(webkit.Debugger.setOverlayMessage('Paused in Sublime Web Inspector'))
 
-        sublime.set_timeout(lambda: window.set_layout(get_setting('stack_layout')), 0)
+        window.set_layout(get_setting('stack_layout'))
 
-        sublime.set_timeout(lambda: console_show_stack(data['callFrames']), 0)
+        console_show_stack(data['callFrames'])
 
         scriptId = data['callFrames'][0].location.scriptId
         line_number = data['callFrames'][0].location.lineNumber
@@ -304,8 +317,8 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         global current_line
         current_line = line_number
 
-        sublime.set_timeout(lambda: channel.send(webkit.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, title), 30)
-        sublime.set_timeout(lambda: open_script_and_focus_line(scriptId, line_number), 100)
+        channel.send(webkit.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, title)
+        open_script_and_focus_line(scriptId, line_number)
 
         global paused
         paused = True
@@ -315,8 +328,9 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
             Clear the overlay, callstack, and locals,
             and remove the highlight.
         """
-        sublime.set_timeout(lambda: clear_view('stack'), 0)
-        sublime.set_timeout(lambda: clear_view('scope'), 0)
+        assert_main_thread()
+        clear_view('stack')
+        clear_view('scope')
 
         channel.send(webkit.Debugger.setOverlayMessage())
 
@@ -329,13 +343,14 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         global current_call_frame_position
         current_call_frame_position = None
 
-        sublime.set_timeout(lambda: lookup_view(self.view).view_breakpoints(), 50)
+        lookup_view(self.view).view_breakpoints()
 
         global paused
         paused = False
 
     def enabled(self, command):
         """ Notification that debugging was enabled """
+        assert_main_thread()
         global debugger_enabled
         debugger_enabled = True
         for file_to_script_object in file_to_scriptId:
@@ -357,6 +372,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         """ Notification that a breakpoint was set.
             Gives us the ID and specific location.
         """
+        assert_main_thread()
         breakpointId = command.data['breakpointId']
         scriptId = command.data['actualLocation'].scriptId
         lineNumber = command.data['actualLocation'].lineNumber
@@ -378,19 +394,21 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
             breaks[lineNumber]['breakpointId'] = str(breakpointId)
         except:
             pass
-        sublime.set_timeout(lambda: save_breaks(), 0)
-        sublime.set_timeout(lambda: lookup_view(self.view).view_breakpoints(), 0)
+        save_breaks()
+        lookup_view(self.view).view_breakpoints()
 
     def canSetScriptSource(self, command):
         """ Notification that script can be edited
             during debugging
         """
+        assert_main_thread()
         global set_script_source
         if set_script_source:
             set_script_source = command.data['result']
 
 class SwiDebugPauseResumeCommand(sublime_plugin.TextCommand):
     def run(self, edit):
+        assert_main_thread()
         if not channel:
             SwiDebugStartChromeCommand.run(self, edit)
         elif paused:
@@ -418,11 +436,12 @@ class SwiDebugStepOverCommand(sublime_plugin.TextCommand):
 
 class SwiDebugClearConsoleCommand(sublime_plugin.TextCommand):
     def run(self, edit):
-        sublime.set_timeout(lambda: clear_view('console'), 0)
+        clear_view('console')
 
 
 class SwiDebugEvaluateCommand(sublime_plugin.TextCommand):
     def run(self, edit):
+        assert_main_thread()
         for region in self.view.sel():
             title = self.view.substr(region)
             if paused:
@@ -436,11 +455,12 @@ class SwiDebugEvaluateCommand(sublime_plugin.TextCommand):
         if command.data.type == 'object':
             channel.send(webkit.Runtime.getProperties(command.data.objectId, True), console_add_properties, command.options)
         else:
-            sublime.set_timeout(lambda: console_add_evaluate(command.data), 0)
+            console_add_evaluate(command.data)
 
 
 class SwiDebugToggleBreakpointCommand(sublime_plugin.TextCommand):
     def run(self, edit):
+        assert_main_thread()
         view = lookup_view(self.view)
         view_name = view.file_name();
         if not view_name: # eg file mapping pane
@@ -467,6 +487,7 @@ class SwiDebugToggleBreakpointCommand(sublime_plugin.TextCommand):
 
     def breakpointAdded(self, command):
         """ Notification that a breakpoint was added successfully """
+        assert_main_thread()
         breakpointId = command.data['breakpointId']
         init_breakpoint_for_file(command.options)
         locations = command.data['locations']
@@ -476,10 +497,10 @@ class SwiDebugToggleBreakpointCommand(sublime_plugin.TextCommand):
             lineNumber = location.lineNumber
             columnNumber = location.columnNumber
 
-            sublime.set_timeout(lambda: set_breakpoint_by_scriptId(str(scriptId), str(lineNumber), 'enabled', breakpointId), 0)
+            set_breakpoint_by_scriptId(str(scriptId), str(lineNumber), 'enabled', breakpointId)
 
         # Scroll to position where breakpoints have resolved
-        sublime.set_timeout(lambda: lookup_view(self.view).view_breakpoints(), 0)
+        lookup_view(self.view).view_breakpoints()
 
 class SwiDebugStopCommand(sublime_plugin.TextCommand):
 
@@ -498,7 +519,7 @@ class SwiDebugStopCommand(sublime_plugin.TextCommand):
 
         global current_line
         current_line = None
-        sublime.set_timeout(lambda: lookup_view(self.view).view_breakpoints(), 0)
+        lookup_view(self.view).view_breakpoints()
 
         global channel
         if channel:
@@ -680,7 +701,7 @@ class SwiDebugView(object):
                         else:
                             title = {'objectId': first_scope.object.objectId, 'name': "Breakpoint Local"}
 
-                        sublime.set_timeout(lambda: channel.send(webkit.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, title), 30)
+                        channel.send(webkit.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, title)
 
                         global current_call_frame
                         current_call_frame = callFrame.callFrameId
@@ -768,11 +789,12 @@ class EventListener(sublime_plugin.EventListener):
 
     def on_selection_modified(self, view):
         """ We use this to discover a "button" has been clicked."""
+        assert_main_thread()
         global timing
         now = time.time()
         if now - timing > 0.1:
             timing = now
-            sublime.set_timeout(lambda: lookup_view(view).check_click(), 0)
+            lookup_view(view).check_click()
         else:
             timing = now
 
@@ -794,9 +816,9 @@ class EventListener(sublime_plugin.EventListener):
             return
 
         data = command.data
-        sublime.set_timeout(lambda: window.set_layout(get_setting('stack_layout')), 0)
+        window.set_layout(get_setting('stack_layout'))
 
-        sublime.set_timeout(lambda: console_show_stack(data['callFrames']), 0)
+        console_show_stack(data['callFrames'])
 
         scriptId = data['callFrames'][0].location.scriptId
         line_number = data['callFrames'][0].location.lineNumber
@@ -808,8 +830,8 @@ class EventListener(sublime_plugin.EventListener):
         else:
             title = {'objectId': first_scope.object.objectId, 'name': "Breakpoint Local"}
 
-        sublime.set_timeout(lambda: channel.send(webkit.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, title), 30)
-        sublime.set_timeout(lambda: open_script_and_focus_line(scriptId, line_number), 100)
+        channel.send(webkit.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, title)
+        open_script_and_focus_line(scriptId, line_number)
 
 
 ####################################################################################
@@ -1047,7 +1069,8 @@ class SwiConsoleAddMessageCommand(sublime_plugin.TextCommand):
 
 
 def console_add_properties(command):
-    sublime.set_timeout(lambda: console_print_properties(command), 0)
+    assert_main_thread()
+    console_print_properties(command)
 
 properties_queue = []
 def console_print_properties(command):
@@ -1322,7 +1345,7 @@ def get_script(scriptId_or_file_or_url):
 def do_when(conditional, callback, *args, **kwargs):
     if conditional():
         return callback(*args, **kwargs)
-    sublime.set_timeout(functools.partial(do_when, conditional, callback, *args, **kwargs), 50)
+    sublime.set_timeout(functools.partial(do_when, conditional, callback, *args, **kwargs), 50) 
 
 
 def open_script_and_focus_line(scriptId, line_number):
@@ -1335,5 +1358,10 @@ def open_script_and_focus_line(scriptId, line_number):
 def focus_line_and_highlight(view, line_number):
     view.run_command("goto_line", {"line": line_number})
     lookup_view(view).view_breakpoints()
+
+def assert_main_thread():
+    global main_thread
+    if not threading.current_thread().ident == main_thread.ident:
+        raise AssertionError("not on main thread")
 
 sublime.set_timeout(lambda: load_breaks(), 1000)
