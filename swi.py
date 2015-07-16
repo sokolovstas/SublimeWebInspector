@@ -124,7 +124,7 @@ class SwiDebugCommand(sublime_plugin.TextCommand):
 
             self.urls = list(mapping.keys())
             items = list(mapping.values())
-            sublime.set_timeout(lambda: self.view.window().show_quick_panel(items, self.remote_debug_url_selected), 0)
+            self.view.window().show_quick_panel(items, self.remote_debug_url_selected)
             return
 
         self.view.run_command(command)
@@ -220,19 +220,19 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
 
     def disconnected(self):
         """ Notification when socket disconnects """
-        sublime.set_timeout(lambda: debug_view.run_command('swi_debug_stop'), 0)
+        debug_view.run_command('swi_debug_stop')
 
     def messageAdded(self, data, notification):
         """ Notification when console message """
-        sublime.set_timeout(lambda: console_add_message(data), 0)
+        console_add_message(data)
 
     def messageRepeatCountUpdated(self, data, notification):
         """  Notification when repeated messages """
-        sublime.set_timeout(lambda: console_repeat_message(data['count']), 0)
+        console_repeat_message(data['count'])
 
     def messagesCleared(self, data, notification):
         """ Notification when console cleared (by navigate or on request) """
-        sublime.set_timeout(lambda: clear_view('console'), 0)
+        clear_view('console')
 
     # build table of mappings from local to server
     def scriptParsed(self, data, notification):
