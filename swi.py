@@ -507,7 +507,7 @@ class SwiDebugStopCommand(sublime_plugin.TextCommand):
 
 
 class SwiDebugReloadCommand(sublime_plugin.TextCommand):
-    def run(self):
+    def run(self, edit):
         if(channel):
             channel.send(webkit.Network.clearBrowserCache())
             channel.send(webkit.Page.reload(), on_reload)
