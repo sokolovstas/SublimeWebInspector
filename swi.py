@@ -229,7 +229,8 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
     def disconnected(self):
         """ Notification when socket disconnects """
         assert_main_thread()
-        debug_view.run_command('swi_debug_stop')
+        if debug_view:
+            debug_view.run_command('swi_debug_stop')
 
     def messageAdded(self, data, notification):
         """ Notification when console message """
