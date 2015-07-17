@@ -589,6 +589,18 @@ class SwiShowAuthoredCodeCommand(sublime_plugin.TextCommand):
             if (start != end):
                 mapped_end = file_mapping.get_mapped_location(end[0], end[1])
                 print(mapped_end.file_name(), mapped_end.zero_based_line(), mapped_end.zero_based_column())
+            else:
+                mapped_end = mapped_start
+
+            window = sublime.active_window()
+            window.focus_group(0)
+            view = window.open_file(mapped_start.file_name())
+            
+            do_when(lambda: not view.is_loading(), lambda: set_selection(view,
+                                                                         mapped_start.zero_based_line(),
+                                                                         mapped_start.zero_based_column(),
+                                                                         mapped_end.zero_based_line(),
+                                                                         mapped_end.zero_based_column()))
 
 
 ####################################################################################
@@ -1410,3 +1422,15 @@ def assert_main_thread():
     assert threading.current_thread().ident == main_thread.ident, "not on main thread"
 
 sublime.set_timeout(lambda: load_breaks(), 1000)
+
+
+def set_selection(view, start_line, start_column, end_line, end_column):
+    if not view or start_line < 0 or start_column < 0 or end_line < 0 or end_column < 0:
+        return
+
+    start_point = view.text_point(start_line, start_column)
+    end_point = view.text_point(end_line, end_column)
+
+    selection = view.sel()
+    selection.clear()
+    selection.add(sublime.Region(start_point, end_point))
