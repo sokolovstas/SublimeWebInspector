@@ -1367,10 +1367,11 @@ def do_when(conditional, callback, *args, **kwargs):
 
 def open_script_and_focus_line(scriptId, line_number):
     file_name = find_script(str(scriptId))
-    window = sublime.active_window()
-    window.focus_group(0)
-    view = window.open_file(file_name, sublime.TRANSIENT)
-    do_when(lambda: not view.is_loading(), lambda: focus_line_and_highlight(view, line_number))
+    if file_name:   # race with browser
+        window = sublime.active_window()
+        window.focus_group(0)
+        view = window.open_file(file_name, sublime.TRANSIENT)
+        do_when(lambda: not view.is_loading(), lambda: focus_line_and_highlight(view, line_number))
 
 def focus_line_and_highlight(view, line_number):
     view.run_command("goto_line", {"line": line_number})
