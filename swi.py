@@ -40,15 +40,12 @@ channel = None
 original_layout = None
 window = None
 debug_view = None
-debug_url = None
 file_to_scriptId = []
-project_folders = []
 paused = False
 current_line = None
 set_script_source = False
 current_call_frame = None
 current_call_frame_position = None
-timing = time.time()
 main_thread = None
 
 breakpoint_active_icon = 'Packages/Web Inspector/icons/breakpoint_active.png'
@@ -188,8 +185,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         global file_to_scriptId
         file_to_scriptId = []
         window = sublime.active_window()
-        global project_folders
-        project_folders = window.folders()
+        self.project_folders = window.folders()
         print ('Starting SWI')
         self.url = url
         global channel
@@ -267,7 +263,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
             else:
                 del url_parts[0:3]
                 while len(url_parts) > 0:
-                    for folder in project_folders:
+                    for folder in self.project_folders:
                         if sublime.platform() == "windows":
                             # eg., folder is c:\site and url is http://localhost/app.js
                             # glob for c:\site\app.js (primary) and c:\site\*\app.js (fallback only - there may be a c:\site\foo\app.js)
@@ -758,6 +754,10 @@ def lookup_view(v):
 ####################################################################################
 
 class EventListener(sublime_plugin.EventListener):
+
+    def __init__(self):
+        self.timing = time.time()
+
     def on_new(self, view):
         lookup_view(view).on_new()
 
@@ -807,13 +807,10 @@ class EventListener(sublime_plugin.EventListener):
     def on_selection_modified(self, view):
         """ We use this to discover a "button" has been clicked."""
         assert_main_thread()
-        global timing
         now = time.time()
-        if now - timing > 0.1:
-            timing = now
+        if now - self.timing > 0.1:
             lookup_view(view).check_click()
-        else:
-            timing = now
+        self.timing = now
 
     def on_activated(self, view):
         lookup_view(view).on_activated()
@@ -1367,10 +1364,11 @@ def do_when(conditional, callback, *args, **kwargs):
 
 def open_script_and_focus_line(scriptId, line_number):
     file_name = find_script(str(scriptId))
-    window = sublime.active_window()
-    window.focus_group(0)
-    view = window.open_file(file_name, sublime.TRANSIENT)
-    do_when(lambda: not view.is_loading(), lambda: focus_line_and_highlight(view, line_number))
+    if file_name:   # race with browser
+        window = sublime.active_window()
+        window.focus_group(0)
+        view = window.open_file(file_name, sublime.TRANSIENT)
+        do_when(lambda: not view.is_loading(), lambda: focus_line_and_highlight(view, line_number))
 
 def focus_line_and_highlight(view, line_number):
     view.run_command("goto_line", {"line": line_number})
