@@ -70,6 +70,7 @@ class SwiDebugCommand(sublime_plugin.TextCommand):
     
     def run(self, edits):
         """ Called by Sublime to display the quick panel entries """
+        log('main panel', self.view)
         mapping = {}
         try:
             if not paused and not channel:
@@ -160,6 +161,7 @@ class SwiDebugStartChromeCommand(sublime_plugin.TextCommand):
 
     def run(self, edit):
         assert_main_thread()
+        log('start chrome', self.view)
         close_all_our_windows()
 
         window = sublime.active_window()
@@ -181,6 +183,8 @@ class SwiDebugStartChromeCommand(sublime_plugin.TextCommand):
 class SwiDebugStartCommand(sublime_plugin.TextCommand):
     def run(self, edit, url):
         assert_main_thread()
+        log('start debug', self.view)
+
         close_all_our_windows()
 
         global debugger_enabled
@@ -245,6 +249,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
     def messagesCleared(self, data, notification):
         """ Notification when console cleared (by navigate or on request) """
         assert_main_thread()
+        log('messages cleared', self.view)
         clear_view('console')
 
     # build table of mappings from local to server
@@ -292,6 +297,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
             and locals, and navigate to the break.
         """
         assert_main_thread()
+
         channel.send(webkit.Debugger.setOverlayMessage('Paused in Sublime Web Inspector'))
 
         window.set_layout(get_setting('stack_layout'))
@@ -319,6 +325,8 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         current_line = line_number
 
         channel.send(webkit.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, title)
+
+        log('PAUSED line ' + str(current_line), self.view)
         open_script_and_focus_line(scriptId, line_number)
 
         global paused
@@ -330,6 +338,8 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
             and remove the highlight.
         """
         assert_main_thread()
+        log('RESUMED', self.view)
+
         clear_view('stack')
         clear_view('scope')
 
@@ -374,6 +384,8 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
             Gives us the ID and specific location.
         """
         assert_main_thread()
+        log('breakpoint added', self.view)
+
         breakpointId = command.data['breakpointId']
         scriptId = command.data['actualLocation'].scriptId
         lineNumber = command.data['actualLocation'].lineNumber
@@ -460,6 +472,7 @@ class SwiDebugEvaluateCommand(sublime_plugin.TextCommand):
 
 class SwiDebugClearBreakpointsCommand(sublime_plugin.TextCommand):
     def run(self, edit):
+        log('clear breakpoints', self.view)
         # we choose to remove breakpoints only for active files, so not for unrelated sites
         # so we need to be debugging a site
         for file_to_script_object in file_to_scriptId:
@@ -478,6 +491,8 @@ class SwiDebugClearBreakpointsCommand(sublime_plugin.TextCommand):
 class SwiDebugToggleBreakpointCommand(sublime_plugin.TextCommand):
     def run(self, edit):
         assert_main_thread()
+        log('toggle breakpoint', self.view)
+
         view = lookup_view(self.view)
         view_name = view.file_name();
         if not view_name: # eg file mapping pane
@@ -505,6 +520,8 @@ class SwiDebugToggleBreakpointCommand(sublime_plugin.TextCommand):
     def breakpointAdded(self, command):
         """ Notification that a breakpoint was added successfully """
         assert_main_thread()
+        log('breakpoint added', self.view)
+
         breakpointId = command.data['breakpointId']
         init_breakpoint_for_file(command.options)
         locations = command.data['locations']
@@ -522,6 +539,8 @@ class SwiDebugToggleBreakpointCommand(sublime_plugin.TextCommand):
 class SwiDebugStopCommand(sublime_plugin.TextCommand):
 
     def run(self, edit):
+        log('debug stop', self.view)
+
         close_all_our_windows()
 
         disable_all_breakpoints()
@@ -765,6 +784,7 @@ class EventListener(sublime_plugin.EventListener):
         lookup_view(view).on_clone()
 
     def on_load(self, view):
+        log('on_load', view)
         lookup_view(view).view_breakpoints()
         lookup_view(view).on_load()
 
@@ -801,8 +821,9 @@ class EventListener(sublime_plugin.EventListener):
         lookup_view(view).on_post_save()
 
     def on_modified(self, view):
+        #log('on_modified', view)
         lookup_view(view).on_modified()
-        lookup_view(view).view_breakpoints()
+        #lookup_view(view).view_breakpoints()
 
     def on_selection_modified(self, view):
         """ We use this to discover a "button" has been clicked."""
@@ -816,8 +837,9 @@ class EventListener(sublime_plugin.EventListener):
             timing = now
 
     def on_activated(self, view):
+        #log('on_activated', view)
         lookup_view(view).on_activated()
-        lookup_view(view).view_breakpoints()
+        #lookup_view(view).view_breakpoints()
 
     def on_deactivated(self, view):
         lookup_view(view).on_deactivated()
@@ -1374,11 +1396,24 @@ def open_script_and_focus_line(scriptId, line_number):
         do_when(lambda: not view.is_loading(), lambda: focus_line_and_highlight(view, line_number))
 
 def focus_line_and_highlight(view, line_number):
+    log('focus line', view)
     view.run_command("goto_line", {"line": line_number})
     lookup_view(view).view_breakpoints()
 
 def assert_main_thread():
     global main_thread
     assert threading.current_thread().ident == main_thread.ident, "not on main thread"
+
+def log(title, view):
+    file_name = view.file_name()
+    if not file_name:
+        file_name = ""
+
+    if view.window():
+        wid = str(view.window().id())
+    else:
+        wid = "X"
+
+    print("W " + wid + " " + title + " --- " + "  V " + str(view.id()) + " " + view.name() + " " + file_name + " B " + str(view.buffer_id()))
 
 sublime.set_timeout(lambda: load_breaks(), 1000)
