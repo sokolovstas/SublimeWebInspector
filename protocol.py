@@ -107,4 +107,6 @@ class Protocol(object):
         """ Call back on the main thread
             to simplify the called code
         """
-        sublime.set_timeout(lambda: f(*args))
+        assert(f)
+        if f:   # shutdown timing races
+            sublime.set_timeout(lambda: f(*args))
