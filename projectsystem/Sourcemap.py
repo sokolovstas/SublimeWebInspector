@@ -66,6 +66,7 @@ class LineMapping:
                     max_index = mid
                     break
 
+            # Find the closest match
             result = max(min(len(line_mappings) - 1, max_index), 0)
             while (result + 1 < len(line_mappings) and comparator(line_mappings[result + 1], line, column) == 0):
                 result += 1
