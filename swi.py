@@ -99,6 +99,7 @@ class SwiDebugCommand(sublime_plugin.TextCommand):
                 mapping['swi_debug_reload'] = 'Reload page'
                 mapping['swi_show_file_mapping'] = 'Show file mapping'
                 mapping['swi_debug_clear_breakpoints'] = 'Clear all Breakpoints'
+                mapping['swi_show_authored_code'] = 'Show authored code'
             else:
                 mapping['swi_debug_start'] = 'Start debugging'
         except:
@@ -278,7 +279,10 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
 
                         if len(files) > 0 and files[0] != '':
                             file_name = files[0]
-                            mapping = projectsystem.DocumentMapping.MappingInfo(file_name)
+
+                            # Create a file mapping to look for mapped source code 
+                            projectsystem.DocumentMapping.mappings_manager.create_mapping(file_name)
+
                             file_to_scriptId.append({'file': file_name, 'scriptId': str(scriptId), 'url': data['url']})
                             # don't try to match shorter fragments, we already found a match
                             url_parts = []
@@ -557,11 +561,34 @@ class SwiDebugReloadCommand(sublime_plugin.TextCommand):
             channel.send(webkit.Page.reload(), on_reload)
 
 
-class SwiShowFileMapping(sublime_plugin.TextCommand):
+class SwiShowFileMapping (sublime_plugin.TextCommand):
     def run(self, edit):
         v = find_view('mapping')
         clear_view('mapping')
         v.insert(edit, 0, json.dumps(file_to_scriptId, sort_keys=True, indent=4, separators=(',', ': ')))
+
+
+class SwiShowAuthoredCodeCommand(sublime_plugin.TextCommand):
+    def run(self, edit):
+        assert_main_thread()
+        view = lookup_view(self.view)
+        view_name = view.file_name();
+        if not view_name: # eg file mapping pane
+            return
+
+        file_mapping = projectsystem.DocumentMapping.mappings_manager.get_mapping(view_name)
+        if file_mapping:
+            sel = view.sel()[0]
+            start = view.rowcol(sel.begin())
+            end = view.rowcol(sel.end())
+            print("Getting authored code info for:", view_name, start, end)
+
+            mapped_start = file_mapping.get_mapped_location(start[0], start[1])
+            print(mapped_start.file_name(), mapped_start.zero_based_line(), mapped_start.zero_based_column())
+
+            if (start != end):
+                mapped_end = file_mapping.get_mapped_location(end[0], end[1])
+                print(mapped_end.file_name(), mapped_end.zero_based_line(), mapped_end.zero_based_column())
 
 
 ####################################################################################
