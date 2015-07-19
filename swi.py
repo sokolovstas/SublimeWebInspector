@@ -39,7 +39,6 @@ buffers = {}
 channel = None
 original_layout = None
 window = None
-debug_view = None
 file_to_scriptId = []
 paused = False
 current_line = None
@@ -143,9 +142,6 @@ class SwiDebugCommand(sublime_plugin.TextCommand):
         global original_layout
         original_layout = window.get_layout()
 
-        global debug_view
-        debug_view = window.active_view()
-
         window.set_layout(get_setting('console_layout'))
 
         load_breaks()
@@ -225,8 +221,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
     def disconnected(self):
         """ Notification when socket disconnects """
         assert_main_thread()
-        if debug_view:
-            debug_view.run_command('swi_debug_stop')
+        window.run_command('swi_debug_stop')
 
     def messageAdded(self, data, notification):
         """ Notification when console message """
