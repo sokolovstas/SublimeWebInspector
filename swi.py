@@ -39,16 +39,12 @@ buffers = {}
 channel = None
 original_layout = None
 window = None
-debug_view = None
-debug_url = None
 file_to_scriptId = []
-project_folders = []
 paused = False
 current_line = None
 set_script_source = False
 current_call_frame = None
 current_call_frame_position = None
-timing = time.time()
 main_thread = None
 
 breakpoint_active_icon = 'Packages/Web Inspector/icons/breakpoint_active.png'
@@ -147,9 +143,6 @@ class SwiDebugCommand(sublime_plugin.TextCommand):
         global original_layout
         original_layout = window.get_layout()
 
-        global debug_view
-        debug_view = window.active_view()
-
         window.set_layout(get_setting('console_layout'))
 
         load_breaks()
@@ -192,8 +185,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         global file_to_scriptId
         file_to_scriptId = []
         window = sublime.active_window()
-        global project_folders
-        project_folders = window.folders()
+        self.project_folders = window.folders()
         print ('Starting SWI')
         self.url = url
         global channel
@@ -233,8 +225,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
     def disconnected(self):
         """ Notification when socket disconnects """
         assert_main_thread()
-        if debug_view:
-            debug_view.run_command('swi_debug_stop')
+        window.run_command('swi_debug_stop')
 
     def messageAdded(self, data, notification):
         """ Notification when console message """
@@ -272,7 +263,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
             else:
                 del url_parts[0:3]
                 while len(url_parts) > 0:
-                    for folder in project_folders:
+                    for folder in self.project_folders:
                         if sublime.platform() == "windows":
                             # eg., folder is c:\site and url is http://localhost/app.js
                             # glob for c:\site\app.js (primary) and c:\site\*\app.js (fallback only - there may be a c:\site\foo\app.js)
@@ -777,6 +768,10 @@ def lookup_view(v):
 ####################################################################################
 
 class EventListener(sublime_plugin.EventListener):
+
+    def __init__(self):
+        self.timing = time.time()
+
     def on_new(self, view):
         lookup_view(view).on_new()
 
@@ -828,13 +823,10 @@ class EventListener(sublime_plugin.EventListener):
     def on_selection_modified(self, view):
         """ We use this to discover a "button" has been clicked."""
         assert_main_thread()
-        global timing
         now = time.time()
-        if now - timing > 0.1:
-            timing = now
+        if now - self.timing > 0.1:
             lookup_view(view).check_click()
-        else:
-            timing = now
+        self.timing = now
 
     def on_activated(self, view):
         #log('on_activated', view)
