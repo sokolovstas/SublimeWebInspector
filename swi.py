@@ -281,7 +281,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
                             file_name = files[0]
 
                             # Create a file mapping to look for mapped source code 
-                            projectsystem.DocumentMapping.mappings_manager.create_mapping(file_name)
+                            projectsystem.DocumentMapping.MappingsManager.create_mapping(file_name)
 
                             file_to_scriptId.append({'file': file_name, 'scriptId': str(scriptId), 'url': data['url']})
                             # don't try to match shorter fragments, we already found a match
@@ -576,7 +576,7 @@ class SwiShowAuthoredCodeCommand(sublime_plugin.TextCommand):
         if not view_name: # eg file mapping pane
             return
 
-        file_mapping = projectsystem.DocumentMapping.mappings_manager.get_mapping(view_name)
+        file_mapping = projectsystem.DocumentMapping.MappingsManager.get_mapping(view_name)
         if file_mapping:
             sel = view.sel()[0]
             start = view.rowcol(sel.begin())

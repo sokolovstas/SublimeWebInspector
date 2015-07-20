@@ -23,26 +23,47 @@ class Position:
         return self.__file_name
 
 
-class MappingsMannager:
-    def __init__(self):
-        self.file_mappings = {}
+class MappingsManager:
+    source_file_mappings = {}
+    authored_file_mappings = {}
 
-    def create_mapping(self, file_name):
+    @staticmethod
+    def create_mapping(file_name):
         mapping = MappingInfo(file_name)
-        self.file_mappings[file_name.lower()] = mapping
+        MappingsManager.source_file_mappings[file_name.lower()] = mapping
 
-    def get_mapping(self, file_name):
+        authored_files = mapping.get_authored_files()
+        for file_name in authored_files:
+            MappingsManager.authored_file_mappings[file_name.lower()] = mapping
+
+    @staticmethod
+    def is_authored_file(file_name):
+        return file_name in MappingsManager.authored_file_mappings
+
+    @staticmethod
+    def is_source_file(file_name):
+        return file_name in MappingsManager.source_file_mappings
+
+    @staticmethod
+    def get_mapping(file_name):
         file_name = file_name.lower()
-        if file_name in self.file_mappings:
-            return self.file_mappings[file_name]
+        if file_name in MappingsManager.source_file_mappings:
+            return MappingsManager.source_file_mappings[file_name]
 
-    def delete_mapping(self, file_name):
+    @staticmethod
+    def delete_mapping(file_name):
         file_name = file_name.lower()
-        if file_name in self.file_mappings:
-            self.file_mappings.pop(file_name)
+        if file_name in MappingsManager.source_file_mappings:
+            mapping = MappingsManager.source_file_mappings.pop(file_name)
 
-    def delete_all_mappings(self):
-        self.file_mappings.clear()
+            # Delete corresponding authored source mappings
+            for authored_source in mapping.get_authored_files():
+                MappingsManager.authored_file_mappings.pop(authored_source)
+
+    @staticmethod
+    def delete_all_mappings():
+        MappingsManager.source_file_mappings.clear()
+        MappingsManager.authored_file_mappings.clear()
 
 
 class MappingInfo:
@@ -56,7 +77,7 @@ class MappingInfo:
             self.authored_sources = self.parsed_source_map.get_authored_sources_path()
             self.line_mappings = self.parsed_source_map.line_mappings
 
-    def get_mapped_files(self):
+    def get_authored_files(self):
         return self.authored_sources
 
     def get_generated_file(self):
@@ -80,6 +101,3 @@ class MappingInfo:
 
     def get_generated_location(self, authored_file_name, zero_based_line, zero_based_column):
         return None
-
-# Create a mappings manager object to maintain file source mappings
-mappings_manager = MappingsMannager()
