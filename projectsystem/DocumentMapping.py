@@ -38,17 +38,22 @@ class MappingsManager:
 
     @staticmethod
     def is_authored_file(file_name):
-        return file_name in MappingsManager.authored_file_mappings
+        if file_name:
+            return file_name.lower() in MappingsManager.authored_file_mappings
 
     @staticmethod
     def is_source_file(file_name):
-        return file_name in MappingsManager.source_file_mappings
+        if file_name:
+            return file_name.lower() in MappingsManager.source_file_mappings
 
     @staticmethod
     def get_mapping(file_name):
         file_name = file_name.lower()
         if file_name in MappingsManager.source_file_mappings:
             return MappingsManager.source_file_mappings[file_name]
+
+        if file_name in MappingsManager.authored_file_mappings:
+            return MappingsManager.authored_file_mappings[file_name]
 
     @staticmethod
     def delete_mapping(file_name):
@@ -83,7 +88,7 @@ class MappingInfo:
     def get_generated_file(self):
         return self.generated_file
 
-    def get_mapped_location(self, zero_based_line, zero_based_column):
+    def get_authored_location(self, zero_based_line, zero_based_column):
         # Invalid line and column values or line mappings do not exist
         if (zero_based_line < 0 or zero_based_column < 0 or len(self.line_mappings) <= 0):
             return None
@@ -100,4 +105,24 @@ class MappingInfo:
         return Position(self.authored_sources[file_number], line_number, column_number)
 
     def get_generated_location(self, authored_file_name, zero_based_line, zero_based_column):
-        return None
+        if not authored_file_name in self.authored_sources or zero_based_line < 0 or zero_based_column < 0:
+            return None
+
+        # Get all the line mappings corresponding to this file
+        authored_file_index = self.authored_sources.index(authored_file_name)
+        line_mappings = [x for x in self.line_mappings if x.file_num == authored_file_index]
+
+        if len(line_mappings) == 0:
+            return None
+
+        mapping_index = Sourcemap.LineMapping.binary_search(line_mappings,
+                                                            zero_based_line,
+                                                            zero_based_column,
+                                                            lambda line_mapping, line, column: Sourcemap.LineMapping.compare_source_mappings(line_mapping, line, column))
+
+        line_number = max(line_mappings[mapping_index].generated_line, 0)
+        column_number = max(line_mappings[mapping_index].generated_column, 0)
+        file_number = max(line_mappings[mapping_index].file_num, 0)
+
+        return Position(self.generated_file, line_number, column_number)
+

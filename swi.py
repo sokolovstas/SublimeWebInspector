@@ -99,7 +99,7 @@ class SwiDebugCommand(sublime_plugin.TextCommand):
                 mapping['swi_debug_reload'] = 'Reload page'
                 mapping['swi_show_file_mapping'] = 'Show file mapping'
                 mapping['swi_debug_clear_breakpoints'] = 'Clear all Breakpoints'
-                mapping['swi_show_authored_code'] = 'Show authored code'
+                mapping['swi_toggle_authored_code'] = 'Toggle authored code'
             else:
                 mapping['swi_debug_start'] = 'Start debugging'
         except:
@@ -568,7 +568,7 @@ class SwiShowFileMapping (sublime_plugin.TextCommand):
         v.insert(edit, 0, json.dumps(file_to_scriptId, sort_keys=True, indent=4, separators=(',', ': ')))
 
 
-class SwiShowAuthoredCodeCommand(sublime_plugin.TextCommand):
+class SwiToggleAuthoredCodeCommand(sublime_plugin.TextCommand):
     def run(self, edit):
         assert_main_thread()
         view = lookup_view(self.view)
@@ -578,17 +578,21 @@ class SwiShowAuthoredCodeCommand(sublime_plugin.TextCommand):
 
         file_mapping = projectsystem.DocumentMapping.MappingsManager.get_mapping(view_name)
         if file_mapping:
+            is_authored_file = projectsystem.DocumentMapping.MappingsManager.is_authored_file(view_name)
+ 
             sel = view.sel()[0]
             start = view.rowcol(sel.begin())
             end = view.rowcol(sel.end())
-            print("Getting authored code info for:", view_name, start, end)
+            print("Getting mapped code info for:", view_name, start, end)
 
-            mapped_start = file_mapping.get_mapped_location(start[0], start[1])
-            print(mapped_start.file_name(), mapped_start.zero_based_line(), mapped_start.zero_based_column())
+            mapped_start = file_mapping.get_generated_location(view_name, start[0], start[1]) \
+                                        if is_authored_file \
+                                        else file_mapping.get_authored_location(start[0], start[1])
 
             if (start != end):
-                mapped_end = file_mapping.get_mapped_location(end[0], end[1])
-                print(mapped_end.file_name(), mapped_end.zero_based_line(), mapped_end.zero_based_column())
+                mapped_end = file_mapping.get_generated_location(view_name, end[0], end[1]) \
+                                          if is_authored_file \
+                                          else file_mapping.get_authored_location(end[0], end[1])
             else:
                 mapped_end = mapped_start
 
