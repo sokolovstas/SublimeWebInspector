@@ -8,7 +8,7 @@ def get_sourcemap_file(file_name):
     with open(file_name, "r") as f:
         sourcemap_info = f.readlines()[-1]
 
-        if (len(sourcemap_info) > 0 and sourcemap_info.index(sourcemap_prefix) == 0):
+        if (len(sourcemap_info) > 0 and sourcemap_info.index(sourcemap_prefix) is 0):
             map_file = sourcemap_info[len(sourcemap_prefix):].strip()
             map_file = os.path.dirname(file_name) + os.path.sep + map_file
         f.close()
@@ -87,7 +87,7 @@ class SourceMapParser:
             not content["mappings"] or
             type(content["mappings"]) is not str or
             not content["sources"] or
-            len(content["sources"]) == 0):
+            len(content["sources"]) is 0):
             return None
 
         max_file_num = len(content["sources"])
