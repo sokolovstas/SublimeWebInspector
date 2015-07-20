@@ -88,7 +88,7 @@ class MappingInfo:
     def get_generated_file(self):
         return self.generated_file
 
-    def get_authored_location(self, zero_based_line, zero_based_column):
+    def get_authored_position(self, zero_based_line, zero_based_column):
         # Invalid line and column values or line mappings do not exist
         if (zero_based_line < 0 or zero_based_column < 0 or len(self.line_mappings) <= 0):
             return None
@@ -104,7 +104,7 @@ class MappingInfo:
 
         return Position(self.authored_sources[file_number], line_number, column_number)
 
-    def get_generated_location(self, authored_file_name, zero_based_line, zero_based_column):
+    def get_generated_position(self, authored_file_name, zero_based_line, zero_based_column):
         if not authored_file_name in self.authored_sources or zero_based_line < 0 or zero_based_column < 0:
             return None
 

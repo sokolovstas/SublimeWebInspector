@@ -585,14 +585,14 @@ class SwiToggleAuthoredCodeCommand(sublime_plugin.TextCommand):
             end = view.rowcol(sel.end())
             print("Getting mapped code info for:", view_name, start, end)
 
-            mapped_start = file_mapping.get_generated_location(view_name, start[0], start[1]) \
+            mapped_start = file_mapping.get_generated_position(view_name, start[0], start[1]) \
                                         if is_authored_file \
-                                        else file_mapping.get_authored_location(start[0], start[1])
+                                        else file_mapping.get_authored_position(start[0], start[1])
 
             if (start != end):
-                mapped_end = file_mapping.get_generated_location(view_name, end[0], end[1]) \
+                mapped_end = file_mapping.get_generated_position(view_name, end[0], end[1]) \
                                           if is_authored_file \
-                                          else file_mapping.get_authored_location(end[0], end[1])
+                                          else file_mapping.get_authored_position(end[0], end[1])
             else:
                 mapped_end = mapped_start
 
