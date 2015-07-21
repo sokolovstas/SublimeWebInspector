@@ -111,6 +111,10 @@ class SwiDebugCommand(sublime_plugin.WindowCommand):
 
         command = self.cmds[index]
 
+        if command == 'swi_show_file_mapping':
+            # we wrap this command so we can use the correct view
+            show_file_mapping()
+
         if command == 'swi_debug_start':
             proxy = urllib.request.ProxyHandler({})
             opener = urllib.request.build_opener(proxy)
@@ -565,12 +569,16 @@ class SwiDebugReloadCommand(sublime_plugin.WindowCommand):
             channel.send(webkit.Network.clearBrowserCache())
             channel.send(webkit.Page.reload(), on_reload)
 
+def show_file_mapping():
+    v = find_view('mapping')
+    v.run_command('show_file_mapping_internal')
 
-class SwiShowFileMapping(sublime_plugin.WindowCommand):
-    def run(self):
-        v = find_view('mapping')
+class SwiShowFileMappingInternalCommand(sublime_plugin.TextCommand):
+    """ Called internally on the file mapping view """
+    def run(self, edit):
+        
         clear_view('mapping')
-        v.insert(edit, 0, json.dumps(file_to_scriptId, sort_keys=True, indent=4, separators=(',', ': ')))
+        self.view.insert(edit, 0, json.dumps(file_to_scriptId, sort_keys=True, indent=4, separators=(',', ': ')))
 
 
 ####################################################################################
