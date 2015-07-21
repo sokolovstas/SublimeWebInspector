@@ -35,6 +35,8 @@
 	"user_agent": "",
 	// Set script source in live mode
 	"set_script_source": false,
+    // Enable source maps
+    "enable_source_maps": true,
 	// Open stack on click in new tab
 	"open_stack_current_in_new_tab": false,
 	// Pause on exception ("all", "none", "uncaught")
