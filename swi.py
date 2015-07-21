@@ -469,7 +469,8 @@ class SwiDebugClearBreakpointsCommand(sublime_plugin.WindowCommand):
 
             if breaks:
                 for row in breaks:
-                    channel.send(webkit.Debugger.removeBreakpoint(breaks[row]['breakpointId']))
+                    if 'breakpointId' in breaks[row]:
+                        channel.send(webkit.Debugger.removeBreakpoint(breaks[row]['breakpointId']))
 
                 del brk_object[file_name];
 
