@@ -99,7 +99,9 @@ class SwiDebugCommand(sublime_plugin.TextCommand):
                 mapping['swi_debug_reload'] = 'Reload page'
                 mapping['swi_show_file_mapping'] = 'Show file mapping'
                 mapping['swi_debug_clear_breakpoints'] = 'Clear all Breakpoints'
-                mapping['swi_toggle_authored_code'] = 'Toggle authored code'
+
+                if is_source_map_enabled():
+                    mapping['swi_toggle_authored_code'] = 'Toggle authored code'
             else:
                 mapping['swi_debug_start'] = 'Start debugging'
         except:
@@ -329,6 +331,10 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
 
         global paused
         paused = True
+
+        mapping = projectsystem.DocumentMapping.MappingsManager.get_mapping(file_name)
+        position = mapping.get_authored_position(line_number, 0)
+        print(position.file_name(), position.zero_based_line(), position.zero_based_column())
 
     def resumed(self, data, notification):
         """ Notification that execution resumed.
@@ -1438,3 +1444,6 @@ def set_selection(view, start_line, start_column, end_line, end_column):
     selection = view.sel()
     selection.clear()
     selection.add(sublime.Region(start_point, end_point))
+
+def is_source_map_enabled():
+    return get_setting("enable_source_maps")
