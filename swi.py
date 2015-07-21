@@ -598,6 +598,9 @@ class SwiDebugView(object):
     def __call__(self, *args, **kwargs):
         pass
 
+    def window(self):
+        return self.view.window()
+
     def uri(self):
         return 'file://' + os.path.realpath(self.view.file_name())
 
@@ -1158,17 +1161,18 @@ def console_show_stack(callFrames):
 
     call_frames_queue.append(callFrames)
 
-    v.run_command('swi_console_show_stack')
+    v.run_command('swi_console_show_stack_internal')
 
     v.show(0)
     window.focus_group(0)
 
 
-class SwiConsoleShowStackCommand(sublime_plugin.TextCommand):
-    def run(self, edit):
+class SwiConsoleShowStackInternalCommand(sublime_plugin.TextCommand):
 
+    def run(self, edit):
         v = lookup_view(self.view)
-        callFrames = call_frames_queue.pop(0)
+
+        callFrames = call_frames_queue.pop(0) 
 
         v.erase(edit, sublime.Region(0, v.size()))
 
