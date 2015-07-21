@@ -54,7 +54,7 @@ class LineMapping:
             max_index = len(line_mappings) - 1
             min_index = 0
 
-            while (min_index < max_index):
+            while (min_index <= max_index):
                 mid = (max_index + min_index) >> 1
 
                 comparison = comparator(line_mappings[mid], line, column)

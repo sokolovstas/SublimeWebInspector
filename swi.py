@@ -1232,6 +1232,13 @@ class SwiConsoleShowStackCommand(sublime_plugin.TextCommand):
             file_name = find_script(str(callFrame.location.scriptId))
 
             if file_name:
+                if is_source_map_enabled():
+                    mapping = projectsystem.DocumentMapping.MappingsManager.get_mapping(file_name)
+                    position = mapping.get_authored_position(callFrame.location.lineNumber, callFrame.location.columnNumber)
+                    if position:
+                        file_name = position.file_name()
+                        line = position.zero_based_line() 
+
                 file_name = file_name.split('/')[-1]
             else:
                 file_name = '-'
