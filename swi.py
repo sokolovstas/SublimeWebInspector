@@ -291,38 +291,8 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
         """
         assert_main_thread()
 
-        channel.send(webkit.Debugger.setOverlayMessage('Paused in Sublime Web Inspector'))
+        update_stack(data)
 
-        self.window.set_layout(get_setting('stack_layout'))
-
-        console_show_stack(data['callFrames'])
-
-        scriptId = data['callFrames'][0].location.scriptId
-        line_number = data['callFrames'][0].location.lineNumber
-        file_name = find_script(str(scriptId))
-
-        first_scope = data['callFrames'][0].scopeChain[0]
-
-        if get_setting('open_stack_current_in_new_tab'):
-            title = {'objectId': first_scope.object.objectId, 'name': "%s:%s (%s)" % (file_name, line_number, first_scope.type)}
-        else:
-            title = {'objectId': first_scope.object.objectId, 'name': "Breakpoint Local"}
-
-        global current_call_frame
-        current_call_frame = data['callFrames'][0].callFrameId
-
-        global current_call_frame_position
-        current_call_frame_position = "%s:%s" % (file_name, line_number)
-
-        global current_line
-        current_line = line_number
-
-        channel.send(webkit.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, title)
-
-        open_script_and_focus_line(scriptId, line_number)
-
-        global paused
-        paused = True
 
     def resumed(self, data, notification):
         """ Notification that execution resumed.
@@ -406,8 +376,7 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
         """
         assert_main_thread()
         global set_script_source
-        if set_script_source:
-            set_script_source = command.data['result']
+        set_script_source = command.data['result']
 
 class SwiDebugPauseResumeCommand(sublime_plugin.WindowCommand):
     def run(self):
@@ -805,6 +774,9 @@ class EventListener(sublime_plugin.EventListener):
         channel.send(webkit.Runtime.evaluate("var files = document.getElementsByTagName('link');var links = [];for (var a = 0, l = files.length; a < l; a++) {var elem = files[a];var rel = elem.rel;if (typeof rel != 'string' || rel.length === 0 || rel === 'stylesheet') {links.push({'elem': elem,'href': elem.getAttribute('href').split('?')[0],'last': false});}}for ( a = 0, l = links.length; a < l; a++) {var link = links[a];link.elem.setAttribute('href', (link.href + '?x=' + Math.random()));}"))
 
     def reload_set_script_source(self, scriptId, scriptSource):
+        """ Calls update_stack because script can be edited when debugger is paused, and
+            by this means potentially update the callstack.
+        """
         channel.send(webkit.Debugger.setScriptSource(scriptId, scriptSource), self.update_stack)
 
     def reload_page(self):
@@ -858,23 +830,7 @@ class EventListener(sublime_plugin.EventListener):
         if not paused:
             return
 
-        data = command.data
-        window.set_layout(get_setting('stack_layout'))
-
-        console_show_stack(data['callFrames'])
-
-        scriptId = data['callFrames'][0].location.scriptId
-        line_number = data['callFrames'][0].location.lineNumber
-        file_name = find_script(str(scriptId))
-        first_scope = data['callFrames'][0].scopeChain[0]
-
-        if get_setting('open_stack_current_in_new_tab'):
-            title = {'objectId': first_scope.object.objectId, 'name': "%s:%s (%s)" % (file_name, line_number, first_scope.type)}
-        else:
-            title = {'objectId': first_scope.object.objectId, 'name': "Breakpoint Local"}
-
-        channel.send(webkit.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, title)
-        open_script_and_focus_line(scriptId, line_number)
+        update_stack(command.data)
 
 
 ####################################################################################
@@ -985,6 +941,42 @@ def close_all_our_windows():
         window.run_command("close")
 
     window.set_layout(original_layout)
+
+def update_stack(data):
+
+        if (not 'callFrames' in data):
+            return;
+    
+        channel.send(webkit.Debugger.setOverlayMessage('Paused in Sublime Web Inspector'))
+
+        window.set_layout(get_setting('stack_layout'))
+
+        console_show_stack(data['callFrames'])
+
+        scriptId = data['callFrames'][0].location.scriptId
+        line_number = data['callFrames'][0].location.lineNumber
+        file_name = find_script(str(scriptId))
+        first_scope = data['callFrames'][0].scopeChain[0]
+
+        if get_setting('open_stack_current_in_new_tab'):
+            title = {'objectId': first_scope.object.objectId, 'name': "%s:%s (%s)" % (file_name, line_number, first_scope.type)}
+        else:
+            title = {'objectId': first_scope.object.objectId, 'name': "Breakpoint Local"}
+
+        channel.send(webkit.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, title)
+        open_script_and_focus_line(scriptId, line_number)
+
+        global current_call_frame
+        current_call_frame = data['callFrames'][0].callFrameId
+
+        global current_call_frame_position
+        current_call_frame_position = "%s:%s" % (file_name, line_number)
+
+        global current_line
+        current_line = line_number
+
+        global paused
+        paused = True
 
 class SwiClearViewInternalCommand(sublime_plugin.TextCommand): 
     """ Called internally on the console view """
