@@ -332,8 +332,8 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
             mapping = projectsystem.DocumentMapping.MappingsManager.get_mapping(file_name)
             position = mapping.get_authored_position(line_number, location.columnNumber)
             if position:
-                print(position.file_name(), position.zero_based_line(), position.zero_based_column())
-                line_number = position.zero_based_line()
+                print(position.file_name(), position.one_based_line(), position.one_based_line())
+                line_number = position.one_based_line()
                 file_name = position.file_name()
 
         global current_line
@@ -1266,7 +1266,7 @@ class SwiConsoleShowStackInternalCommand(sublime_plugin.TextCommand):
                     position = mapping.get_authored_position(callFrame.location.lineNumber, callFrame.location.columnNumber)
                     if position:
                         file_name = position.file_name()
-                        line = position.zero_based_line() 
+                        line = position.one_based_line() 
 
                 file_name = file_name.split('/')[-1]
             else:
