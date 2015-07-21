@@ -61,12 +61,12 @@ def plugin_loaded():
 #   COMMANDS
 ####################################################################################
 
-class SwiDebugCommand(sublime_plugin.TextCommand):
-    """ The SWIdebug main quick panel menu """
+class SwiDebugCommand(sublime_plugin.WindowCommand):
+    """ The SWIdebug main quick panel menu 
+    """
     
-    def run(self, edits):
+    def run(self):
         """ Called by Sublime to display the quick panel entries """
-        log('main panel', self.view)
         mapping = {}
         try:
             if not paused and not channel:
@@ -101,7 +101,7 @@ class SwiDebugCommand(sublime_plugin.TextCommand):
 
         self.cmds = list(mapping.keys())
         self.items = list(mapping.values())
-        self.view.window().show_quick_panel(self.items, self.command_selected)
+        self.window.show_quick_panel(self.items, self.command_selected)
 
     def command_selected(self, index):
         """ Called by Sublime when a quick panel entry is selected """
@@ -125,10 +125,10 @@ class SwiDebugCommand(sublime_plugin.TextCommand):
 
             self.urls = list(mapping.keys())
             items = list(mapping.values())
-            self.view.window().show_quick_panel(items, self.remote_debug_url_selected)
+            self.window.show_quick_panel(items, self.remote_debug_url_selected)
             return
 
-        self.view.run_command(command)
+        self.window.run_command(command)
 
     def remote_debug_url_selected(self, index):
         assert_main_thread()
@@ -146,15 +146,14 @@ class SwiDebugCommand(sublime_plugin.TextCommand):
         window.set_layout(get_setting('console_layout'))
 
         load_breaks()
-        self.view.run_command('swi_debug_start', {'url': url})
+        self.window.run_command('swi_debug_start', {'url': url})
 
 
-class SwiDebugStartChromeCommand(sublime_plugin.TextCommand):
+class SwiDebugStartChromeCommand(sublime_plugin.WindowCommand):
     """ Represents the start chrome command """
 
-    def run(self, edit):
+    def run(self):
         assert_main_thread()
-        log('start chrome', self.view)
         close_all_our_windows()
 
         window = sublime.active_window()
@@ -173,10 +172,11 @@ class SwiDebugStartChromeCommand(sublime_plugin.TextCommand):
         })
 
 
-class SwiDebugStartCommand(sublime_plugin.TextCommand):
-    def run(self, edit, url):
+class SwiDebugStartCommand(sublime_plugin.WindowCommand):
+    """ Connect to the socket. """
+
+    def run(self, url):
         assert_main_thread()
-        log('start debug', self.view)
 
         close_all_our_windows()
 
@@ -184,8 +184,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         debugger_enabled = False
         global file_to_scriptId
         file_to_scriptId = []
-        window = sublime.active_window()
-        self.project_folders = window.folders()
+        self.project_folders = self.window.folders()
         print ('Starting SWI')
         self.url = url
         global channel
@@ -225,7 +224,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
     def disconnected(self):
         """ Notification when socket disconnects """
         assert_main_thread()
-        window.run_command('swi_debug_stop')
+        self.window.run_command('swi_debug_stop')
 
     def messageAdded(self, data, notification):
         """ Notification when console message """
@@ -291,7 +290,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
 
         channel.send(webkit.Debugger.setOverlayMessage('Paused in Sublime Web Inspector'))
 
-        window.set_layout(get_setting('stack_layout'))
+        self.window.set_layout(get_setting('stack_layout'))
 
         console_show_stack(data['callFrames'])
 
@@ -317,7 +316,6 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
 
         channel.send(webkit.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, title)
 
-        log('PAUSED line ' + str(current_line), self.view)
         open_script_and_focus_line(scriptId, line_number)
 
         global paused
@@ -329,7 +327,6 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
             and remove the highlight.
         """
         assert_main_thread()
-        log('RESUMED', self.view)
 
         clear_view('stack')
         clear_view('scope')
@@ -345,7 +342,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         global current_call_frame_position
         current_call_frame_position = None
 
-        lookup_view(self.view).view_breakpoints()
+        lookup_view(self.window.active_view()).view_breakpoints() #todo fix view
 
         global paused
         paused = False
@@ -375,7 +372,6 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
             Gives us the ID and specific location.
         """
         assert_main_thread()
-        log('breakpoint added', self.view)
 
         breakpointId = command.data['breakpointId']
         scriptId = command.data['actualLocation'].scriptId
@@ -399,7 +395,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         except:
             pass
         save_breaks()
-        lookup_view(self.view).view_breakpoints()
+        lookup_view(self.window.active_view()).view_breakpoints() #todo fix view
 
     def canSetScriptSource(self, command):
         """ Notification that script can be edited
