@@ -4,7 +4,6 @@ import json
 import re
 
 
-### Console.clearMessages
 def canSetScriptSource():
     command = Command('Debugger.canSetScriptSource', {})
     return command
