@@ -306,8 +306,9 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
 
         console_show_stack(data['callFrames'])
 
-        scriptId = data['callFrames'][0].location.scriptId
-        line_number = data['callFrames'][0].location.lineNumber
+        location = data['callFrames'][0].location
+        scriptId = location.scriptId
+        line_number = location.lineNumber
         file_name = find_script(str(scriptId))
 
         first_scope = data['callFrames'][0].scopeChain[0]
@@ -323,18 +324,25 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         global current_call_frame_position
         current_call_frame_position = "%s:%s" % (file_name, line_number)
 
+        # Callstack line number is one-based. Need to fix it
+        line_number = line_number - 1
+
+        if is_source_map_enabled():
+            mapping = projectsystem.DocumentMapping.MappingsManager.get_mapping(file_name)
+            position = mapping.get_authored_position(line_number, location.columnNumber)
+            if position:
+                print(position.file_name(), position.zero_based_line(), position.zero_based_column())
+                line_number = position.zero_based_line()
+                file_name = position.file_name()
+
         global current_line
         current_line = line_number
 
         channel.send(webkit.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, title)
-        open_script_and_focus_line(scriptId, line_number)
+        open_file_and_focus_line(file_name, line_number)
 
         global paused
         paused = True
-
-        mapping = projectsystem.DocumentMapping.MappingsManager.get_mapping(file_name)
-        position = mapping.get_authored_position(line_number, 0)
-        print(position.file_name(), position.zero_based_line(), position.zero_based_column())
 
     def resumed(self, data, notification):
         """ Notification that execution resumed.
@@ -751,7 +759,7 @@ class SwiDebugView(object):
                     click = self.clicks[click_counter]
 
                     if click['click_type'] == 'goto_file_line':
-                        open_script_and_focus_line(click['data']['scriptId'], click['data']['line'])
+                        open_script_by_id_and_focus_line(click['data']['scriptId'], click['data']['line'])
 
                     if click['click_type'] == 'goto_call_frame':
                         callFrame = click['data']['callFrame']
@@ -760,7 +768,7 @@ class SwiDebugView(object):
                         line_number = callFrame.location.lineNumber
                         file_name = find_script(str(scriptId))
 
-                        open_script_and_focus_line(scriptId, line_number)
+                        open_file_and_focus_line(file_name, line_number)
 
                         first_scope = callFrame.scopeChain[0]
 
@@ -899,7 +907,7 @@ class EventListener(sublime_plugin.EventListener):
             title = {'objectId': first_scope.object.objectId, 'name': "Breakpoint Local"}
 
         channel.send(webkit.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, title)
-        open_script_and_focus_line(scriptId, line_number)
+        open_file_and_focus_line(file_name, line_number)
 
 
 ####################################################################################
@@ -1416,8 +1424,11 @@ def do_when(conditional, callback, *args, **kwargs):
     sublime.set_timeout(functools.partial(do_when, conditional, callback, *args, **kwargs), 50) 
 
 
-def open_script_and_focus_line(scriptId, line_number):
+def open_script_by_id_and_focus_line(scriptId, line_number):
     file_name = find_script(str(scriptId))
+    open_file_and_focus_line(file_name, line_number)
+
+def open_file_and_focus_line(file_name, line_number):
     window = sublime.active_window()
     window.focus_group(0)
     view = window.open_file(file_name, sublime.TRANSIENT)
