@@ -942,7 +942,7 @@ def clear_view(view):
     if not view:
         return
 
-    v.run_command('swi_clear_view')
+    v.run_command('swi_clear_view_internal')
     v.show(v.size())
 
     if not window:
@@ -979,19 +979,21 @@ def close_all_our_windows():
 
     window.set_layout(original_layout)
 
-class SwiClearViewCommand(sublime_plugin.TextCommand):
+class SwiClearViewInternalCommand(sublime_plugin.TextCommand): 
+    """ Called internally on the console view """
     def run(self, edit, user_input=None):
         self.view.erase(edit, sublime.Region(0, self.view.size()))
 
 def console_repeat_message(count):
     v = find_view('console')
 
-    v.run_command('swi_console_repeat_message', {"count":count})
+    v.run_command('swi_console_repeat_message_internal', {"count":count})
 
     v.show(v.size())
     window.focus_group(0)
 
-class SwiConsoleRepeatMessageCommand(sublime_plugin.TextCommand):
+class SwiConsoleRepeatMessageInternalCommand(sublime_plugin.TextCommand): 
+    """ Called internally on the console view """
     def run(self, edit, count):
         if count > 2:
             erase_to = self.view.size() - len(' \u21AA Repeat:' + str(count - 1) + '\n')
@@ -1004,12 +1006,13 @@ def console_add_evaluate(eval_object):
     v = find_view('console')
 
     eval_object_queue.append(eval_object)
-    v.run_command('swi_console_add_evaluate')
+    v.run_command('swi_console_add_evaluate_internal')
 
     v.show(v.size())
     window.focus_group(0)
 
-class SwiConsoleAddEvaluate(sublime_plugin.TextCommand):
+class SwiConsoleAddEvaluateInternalCommand(sublime_plugin.TextCommand):
+    """ Called internally on the console view """
     def run(self, edit):
         v = lookup_view(self.view)
         eval_object = eval_object_queue.pop(0)
@@ -1025,13 +1028,14 @@ def console_add_message(message):
     v = find_view('console')
 
     message_queue.append(message)
-    v.run_command('swi_console_add_message')
+    v.run_command('swi_console_add_message_internal')
 
     v.show(v.size())
     window.focus_group(0)
 
 
-class SwiConsoleAddMessageCommand(sublime_plugin.TextCommand):
+class SwiConsoleAddMessageInternalCommand(sublime_plugin.TextCommand):
+    """ Called internally on the console view """
     def run(self, edit):
         v = lookup_view(self.view)
         message = message_queue.pop(0)
@@ -1103,13 +1107,10 @@ class SwiConsoleAddMessageCommand(sublime_plugin.TextCommand):
         if message.repeatCount and message.repeatCount > 1:
             self.view.insert(edit, self.view.size(), ' \u21AA Repeat:' + str(message.repeatCount) + '\n')
 
-
+properties_queue = []
 def console_add_properties(command):
     assert_main_thread()
-    console_print_properties(command)
 
-properties_queue = []
-def console_print_properties(command):
     if 'name' in command.options:
         name = command.options['name']
     else:
@@ -1118,13 +1119,14 @@ def console_print_properties(command):
     v = find_view('scope', name)
 
     properties_queue.append(command)
-    v.run_command('swi_console_print_properties')
+    v.run_command('swi_console_print_properties_internal')
 
     v.show(0)
     window.focus_group(0)
 
 
-class SwiConsolePrintPropertiesCommand(sublime_plugin.TextCommand):
+class SwiConsolePrintPropertiesInternalCommand(sublime_plugin.TextCommand):
+    """ Called internally on the console view """
     def run(self, edit):
 
         v = lookup_view(self.view)
@@ -1166,9 +1168,8 @@ def console_show_stack(callFrames):
     v.show(0)
     window.focus_group(0)
 
-
 class SwiConsoleShowStackInternalCommand(sublime_plugin.TextCommand):
-
+    """ Called internally on the stack view """
     def run(self, edit):
         v = lookup_view(self.view)
 
