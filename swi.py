@@ -309,12 +309,16 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         location = data['callFrames'][0].location
         scriptId = location.scriptId
         line_number = location.lineNumber
+
+        # Add one to display line number as it should be one based
+        display_line_number = line_number + 1
+
         file_name = find_script(str(scriptId))
 
         first_scope = data['callFrames'][0].scopeChain[0]
 
         if get_setting('open_stack_current_in_new_tab'):
-            title = {'objectId': first_scope.object.objectId, 'name': "%s:%s (%s)" % (file_name, line_number, first_scope.type)}
+            title = {'objectId': first_scope.object.objectId, 'name': "%s:%s (%s)" % (file_name, display_line_number, first_scope.type)}
         else:
             title = {'objectId': first_scope.object.objectId, 'name': "Breakpoint Local"}
 
@@ -322,10 +326,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         current_call_frame = data['callFrames'][0].callFrameId
 
         global current_call_frame_position
-        current_call_frame_position = "%s:%s" % (file_name, line_number)
-
-        # Callstack line number is one-based. Need to fix it
-        line_number = line_number - 1
+        current_call_frame_position = "%s:%s" % (file_name, display_line_number)
 
         if is_source_map_enabled():
             mapping = projectsystem.DocumentMapping.MappingsManager.get_mapping(file_name)
@@ -1226,7 +1227,8 @@ class SwiConsoleShowStackCommand(sublime_plugin.TextCommand):
         v.insert(edit, v.size(), "\n\n")
 
         for callFrame in callFrames:
-            line = str(callFrame.location.lineNumber)
+            # Location indexes are zero-based, so add one to them
+            line = str(callFrame.location.lineNumber + 1)
             file_name = find_script(str(callFrame.location.scriptId))
 
             if file_name:
