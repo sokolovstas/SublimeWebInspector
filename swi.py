@@ -328,13 +328,11 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
         global current_call_frame_position
         current_call_frame_position = "%s:%s" % (file_name, display_line_number)
 
-        if is_source_map_enabled():
-            mapping = projectsystem.DocumentMapping.MappingsManager.get_mapping(file_name)
-            position = mapping.get_authored_position(line_number, location.columnNumber)
-            if position:
-                print(position.file_name(), position.one_based_line(), position.one_based_line())
-                line_number = position.one_based_line()
-                file_name = position.file_name()
+        position = get_authored_position_if_necessary(file_name, location.lineNumber, location.columnNumber)
+        if position:
+            print(position.file_name(), position.one_based_line(), position.one_based_line())
+            line_number = position.one_based_line()
+            file_name = position.file_name()
 
         global current_line
         current_line = line_number
@@ -791,6 +789,11 @@ class SwiDebugView(object):
                         scriptId = callFrame.location.scriptId
                         line_number = callFrame.location.lineNumber
                         file_name = find_script(str(scriptId))
+
+                        position = get_authored_position_if_necessary(file_name, callFrame.location.lineNumber, callFrame.location.columnNumber)
+                        if position:
+                            file_name = position.file_name()
+                            line_number = position.one_based_line()
 
                         open_file_and_focus_line(file_name, line_number)
 
@@ -1261,12 +1264,10 @@ class SwiConsoleShowStackInternalCommand(sublime_plugin.TextCommand):
             file_name = find_script(str(callFrame.location.scriptId))
 
             if file_name:
-                if is_source_map_enabled():
-                    mapping = projectsystem.DocumentMapping.MappingsManager.get_mapping(file_name)
-                    position = mapping.get_authored_position(callFrame.location.lineNumber, callFrame.location.columnNumber)
-                    if position:
-                        file_name = position.file_name()
-                        line = position.one_based_line() 
+                position = get_authored_position_if_necessary(file_name, callFrame.location.lineNumber, callFrame.location.columnNumber)
+                if position:
+                    file_name = position.file_name()
+                    line = position.one_based_line() 
 
                 file_name = file_name.split('/')[-1]
             else:
@@ -1510,3 +1511,8 @@ def set_selection(view, start_line, start_column, end_line, end_column):
 
 def is_source_map_enabled():
     return get_setting("enable_source_maps")
+
+def get_authored_position_if_necessary(file_name, line_number, column_number):
+    if is_source_map_enabled():
+        mapping = projectsystem.DocumentMapping.MappingsManager.get_mapping(file_name)
+        return mapping.get_authored_position(line_number, line_number)
