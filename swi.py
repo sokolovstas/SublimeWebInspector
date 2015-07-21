@@ -61,10 +61,11 @@ def plugin_loaded():
 #   COMMANDS
 ####################################################################################
 
-class SwiDebugCommand(sublime_plugin.TextCommand):
-    """ The SWIdebug main quick panel menu """
+class SwiDebugCommand(sublime_plugin.WindowCommand):
+    """ The SWIdebug main quick panel menu 
+    """
     
-    def run(self, edits):
+    def run(self):
         """ Called by Sublime to display the quick panel entries """
         mapping = {}
         try:
@@ -100,7 +101,7 @@ class SwiDebugCommand(sublime_plugin.TextCommand):
 
         self.cmds = list(mapping.keys())
         self.items = list(mapping.values())
-        self.view.window().show_quick_panel(self.items, self.command_selected)
+        self.window.show_quick_panel(self.items, self.command_selected)
 
     def command_selected(self, index):
         """ Called by Sublime when a quick panel entry is selected """
@@ -124,10 +125,10 @@ class SwiDebugCommand(sublime_plugin.TextCommand):
 
             self.urls = list(mapping.keys())
             items = list(mapping.values())
-            self.view.window().show_quick_panel(items, self.remote_debug_url_selected)
+            self.window.show_quick_panel(items, self.remote_debug_url_selected)
             return
 
-        self.view.run_command(command)
+        self.window.run_command(command)
 
     def remote_debug_url_selected(self, index):
         assert_main_thread()
@@ -145,13 +146,13 @@ class SwiDebugCommand(sublime_plugin.TextCommand):
         window.set_layout(get_setting('console_layout'))
 
         load_breaks()
-        self.view.run_command('swi_debug_start', {'url': url})
+        self.window.run_command('swi_debug_start', {'url': url})
 
 
-class SwiDebugStartChromeCommand(sublime_plugin.TextCommand):
+class SwiDebugStartChromeCommand(sublime_plugin.WindowCommand):
     """ Represents the start chrome command """
 
-    def run(self, edit):
+    def run(self):
         assert_main_thread()
         close_all_our_windows()
 
@@ -171,17 +172,19 @@ class SwiDebugStartChromeCommand(sublime_plugin.TextCommand):
         })
 
 
-class SwiDebugStartCommand(sublime_plugin.TextCommand):
-    def run(self, edit, url):
+class SwiDebugStartCommand(sublime_plugin.WindowCommand):
+    """ Connect to the socket. """
+
+    def run(self, url):
         assert_main_thread()
+
         close_all_our_windows()
 
         global debugger_enabled
         debugger_enabled = False
         global file_to_scriptId
         file_to_scriptId = []
-        window = sublime.active_window()
-        self.project_folders = window.folders()
+        self.project_folders = self.window.folders()
         print ('Starting SWI')
         self.url = url
         global channel
@@ -221,7 +224,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
     def disconnected(self):
         """ Notification when socket disconnects """
         assert_main_thread()
-        window.run_command('swi_debug_stop')
+        self.window.run_command('swi_debug_stop')
 
     def messageAdded(self, data, notification):
         """ Notification when console message """
@@ -236,6 +239,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
     def messagesCleared(self, data, notification):
         """ Notification when console cleared (by navigate or on request) """
         assert_main_thread()
+        log('messages cleared', self.view)
         clear_view('console')
 
     # build table of mappings from local to server
@@ -283,9 +287,10 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
             and locals, and navigate to the break.
         """
         assert_main_thread()
+
         channel.send(webkit.Debugger.setOverlayMessage('Paused in Sublime Web Inspector'))
 
-        window.set_layout(get_setting('stack_layout'))
+        self.window.set_layout(get_setting('stack_layout'))
 
         console_show_stack(data['callFrames'])
 
@@ -310,6 +315,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         current_line = line_number
 
         channel.send(webkit.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, title)
+
         open_script_and_focus_line(scriptId, line_number)
 
         global paused
@@ -321,6 +327,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
             and remove the highlight.
         """
         assert_main_thread()
+
         clear_view('stack')
         clear_view('scope')
 
@@ -335,7 +342,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         global current_call_frame_position
         current_call_frame_position = None
 
-        lookup_view(self.view).view_breakpoints()
+        lookup_view(self.window.active_view()).view_breakpoints() #todo fix view
 
         global paused
         paused = False
@@ -365,6 +372,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
             Gives us the ID and specific location.
         """
         assert_main_thread()
+
         breakpointId = command.data['breakpointId']
         scriptId = command.data['actualLocation'].scriptId
         lineNumber = command.data['actualLocation'].lineNumber
@@ -387,7 +395,7 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         except:
             pass
         save_breaks()
-        lookup_view(self.view).view_breakpoints()
+        lookup_view(self.window.active_view()).view_breakpoints() #todo fix view
 
     def canSetScriptSource(self, command):
         """ Notification that script can be edited
@@ -398,50 +406,52 @@ class SwiDebugStartCommand(sublime_plugin.TextCommand):
         if set_script_source:
             set_script_source = command.data['result']
 
-class SwiDebugPauseResumeCommand(sublime_plugin.TextCommand):
-    def run(self, edit):
+class SwiDebugPauseResumeCommand(sublime_plugin.WindowCommand):
+    def run(self):
         assert_main_thread()
         if not channel:
-            SwiDebugStartChromeCommand.run(self, edit)
+            SwiDebugStartChromeCommand.run(self)
         elif paused:
             channel.send(webkit.Debugger.resume())
         else:
             channel.send(webkit.Debugger.pause())
 
-class SwiDebugStepIntoCommand(sublime_plugin.TextCommand):
-    def run(self, edit):
+class SwiDebugStepIntoCommand(sublime_plugin.WindowCommand):
+    def run(self):
         if paused:
             channel.send(webkit.Debugger.stepInto())
 
 
-class SwiDebugStepOutCommand(sublime_plugin.TextCommand):
-    def run(self, edit):
+class SwiDebugStepOutCommand(sublime_plugin.WindowCommand):
+    def run(self):
         if paused:
             channel.send(webkit.Debugger.stepOut())
 
 
-class SwiDebugStepOverCommand(sublime_plugin.TextCommand):
-    def run(self, edit):
+class SwiDebugStepOverCommand(sublime_plugin.WindowCommand):
+    def run(self):
         if paused:
             channel.send(webkit.Debugger.stepOver())
 
 
-class SwiDebugClearConsoleCommand(sublime_plugin.TextCommand):
-    def run(self, edit):
+class SwiDebugClearConsoleCommand(sublime_plugin.WindowCommand):
+    def run(self):
         clear_view('console')
 
 
-class SwiDebugEvaluateCommand(sublime_plugin.TextCommand):
-    def run(self, edit):
+class SwiDebugEvaluateCommand(sublime_plugin.WindowCommand):
+    def run(self):
         assert_main_thread()
-        for region in self.view.sel():
-            title = self.view.substr(region)
+        active_view = self.window.active_view()
+
+        for region in active_view.sel():
+            title = active_view.substr(region)
             if paused:
                 if current_call_frame_position:
-                    title = "%s on %s" % (self.view.substr(region), current_call_frame_position)
-                channel.send(webkit.Debugger.evaluateOnCallFrame(current_call_frame, self.view.substr(region)), self.evaluated, {'name': title})
+                    title = "%s on %s" % (active_view.substr(region), current_call_frame_position)
+                channel.send(webkit.Debugger.evaluateOnCallFrame(current_call_frame, active_view.substr(region)), self.evaluated, {'name': title})
             else:
-                channel.send(webkit.Runtime.evaluate(self.view.substr(region)), self.evaluated, {'name': title})
+                channel.send(webkit.Runtime.evaluate(active_view.substr(region)), self.evaluated, {'name': title})
 
     def evaluated(self, command):
         if command.data.type == 'object':
@@ -449,8 +459,8 @@ class SwiDebugEvaluateCommand(sublime_plugin.TextCommand):
         else:
             console_add_evaluate(command.data)
 
-class SwiDebugClearBreakpointsCommand(sublime_plugin.TextCommand):
-    def run(self, edit):
+class SwiDebugClearBreakpointsCommand(sublime_plugin.WindowCommand):
+    def run(self):
         # we choose to remove breakpoints only for active files, so not for unrelated sites
         # so we need to be debugging a site
         for file_to_script_object in file_to_scriptId:
@@ -465,12 +475,16 @@ class SwiDebugClearBreakpointsCommand(sublime_plugin.TextCommand):
                 del brk_object[file_name];
 
         save_breaks()
-        lookup_view(self.view).view_breakpoints()
+        lookup_view(self.window.active_view()).view_breakpoints() #todo fix view
 
-class SwiDebugToggleBreakpointCommand(sublime_plugin.TextCommand):
-    def run(self, edit):
+class SwiDebugToggleBreakpointCommand(sublime_plugin.WindowCommand):
+    def run(self):
         assert_main_thread()
-        view = lookup_view(self.view)
+        active_view = self.window.active_view()
+
+        log('toggle breakpoint', active_view)
+
+        view = lookup_view(active_view)
         view_name = view.file_name();
         if not view_name: # eg file mapping pane
             return
@@ -497,6 +511,10 @@ class SwiDebugToggleBreakpointCommand(sublime_plugin.TextCommand):
     def breakpointAdded(self, command):
         """ Notification that a breakpoint was added successfully """
         assert_main_thread()
+        active_view = self.window.active_view()
+
+        log('breakpoint added', active_view)
+
         breakpointId = command.data['breakpointId']
         init_breakpoint_for_file(command.options)
         locations = command.data['locations']
@@ -509,16 +527,18 @@ class SwiDebugToggleBreakpointCommand(sublime_plugin.TextCommand):
             set_breakpoint_by_scriptId(str(scriptId), str(lineNumber), 'enabled', breakpointId)
 
         # Scroll to position where breakpoints have resolved
-        lookup_view(self.view).view_breakpoints()
+        lookup_view(active_view).view_breakpoints() #todo fix view
 
-class SwiDebugStopCommand(sublime_plugin.TextCommand):
+class SwiDebugStopCommand(sublime_plugin.WindowCommand):
 
-    def run(self, edit):
+    def run(self):
+        active_view = self.window.active_view()
+
         close_all_our_windows()
 
         disable_all_breakpoints()
 
-        lookup_view(self.view).view_breakpoints()
+        lookup_view(active_view).view_breakpoints() #todo fix view
 
         global paused
         paused = False
@@ -528,7 +548,7 @@ class SwiDebugStopCommand(sublime_plugin.TextCommand):
 
         global current_line
         current_line = None
-        lookup_view(self.view).view_breakpoints()
+        lookup_view(active_view).view_breakpoints()
 
         global channel
         if channel:
@@ -540,15 +560,15 @@ class SwiDebugStopCommand(sublime_plugin.TextCommand):
                 channel = None
 
 
-class SwiDebugReloadCommand(sublime_plugin.TextCommand):
-    def run(self, edit):
+class SwiDebugReloadCommand(sublime_plugin.WindowCommand):
+    def run(self):
         if(channel):
             channel.send(webkit.Network.clearBrowserCache())
             channel.send(webkit.Page.reload(), on_reload)
 
 
-class SwiShowFileMapping(sublime_plugin.TextCommand):
-    def run(self, edit):
+class SwiShowFileMapping(sublime_plugin.WindowCommand):
+    def run(self):
         v = find_view('mapping')
         clear_view('mapping')
         v.insert(edit, 0, json.dumps(file_to_scriptId, sort_keys=True, indent=4, separators=(',', ': ')))
@@ -577,6 +597,9 @@ class SwiDebugView(object):
 
     def __call__(self, *args, **kwargs):
         pass
+
+    def window(self):
+        return self.view.window()
 
     def uri(self):
         return 'file://' + os.path.realpath(self.view.file_name())
@@ -761,6 +784,7 @@ class EventListener(sublime_plugin.EventListener):
         lookup_view(view).on_clone()
 
     def on_load(self, view):
+        log('on_load', view)
         lookup_view(view).view_breakpoints()
         lookup_view(view).on_load()
 
@@ -797,8 +821,9 @@ class EventListener(sublime_plugin.EventListener):
         lookup_view(view).on_post_save()
 
     def on_modified(self, view):
+        #log('on_modified', view)
         lookup_view(view).on_modified()
-        lookup_view(view).view_breakpoints()
+        #lookup_view(view).view_breakpoints()
 
     def on_selection_modified(self, view):
         """ We use this to discover a "button" has been clicked."""
@@ -809,8 +834,9 @@ class EventListener(sublime_plugin.EventListener):
         self.timing = now
 
     def on_activated(self, view):
+        #log('on_activated', view)
         lookup_view(view).on_activated()
-        lookup_view(view).view_breakpoints()
+        #lookup_view(view).view_breakpoints()
 
     def on_deactivated(self, view):
         lookup_view(view).on_deactivated()
@@ -916,7 +942,7 @@ def clear_view(view):
     if not view:
         return
 
-    v.run_command('swi_clear_view')
+    v.run_command('swi_clear_view_internal')
     v.show(v.size())
 
     if not window:
@@ -953,19 +979,21 @@ def close_all_our_windows():
 
     window.set_layout(original_layout)
 
-class SwiClearViewCommand(sublime_plugin.TextCommand):
+class SwiClearViewInternalCommand(sublime_plugin.TextCommand): 
+    """ Called internally on the console view """
     def run(self, edit, user_input=None):
         self.view.erase(edit, sublime.Region(0, self.view.size()))
 
 def console_repeat_message(count):
     v = find_view('console')
 
-    v.run_command('swi_console_repeat_message', {"count":count})
+    v.run_command('swi_console_repeat_message_internal', {"count":count})
 
     v.show(v.size())
     window.focus_group(0)
 
-class SwiConsoleRepeatMessageCommand(sublime_plugin.TextCommand):
+class SwiConsoleRepeatMessageInternalCommand(sublime_plugin.TextCommand): 
+    """ Called internally on the console view """
     def run(self, edit, count):
         if count > 2:
             erase_to = self.view.size() - len(' \u21AA Repeat:' + str(count - 1) + '\n')
@@ -978,12 +1006,13 @@ def console_add_evaluate(eval_object):
     v = find_view('console')
 
     eval_object_queue.append(eval_object)
-    v.run_command('swi_console_add_evaluate')
+    v.run_command('swi_console_add_evaluate_internal')
 
     v.show(v.size())
     window.focus_group(0)
 
-class SwiConsoleAddEvaluate(sublime_plugin.TextCommand):
+class SwiConsoleAddEvaluateInternalCommand(sublime_plugin.TextCommand):
+    """ Called internally on the console view """
     def run(self, edit):
         v = lookup_view(self.view)
         eval_object = eval_object_queue.pop(0)
@@ -999,13 +1028,14 @@ def console_add_message(message):
     v = find_view('console')
 
     message_queue.append(message)
-    v.run_command('swi_console_add_message')
+    v.run_command('swi_console_add_message_internal')
 
     v.show(v.size())
     window.focus_group(0)
 
 
-class SwiConsoleAddMessageCommand(sublime_plugin.TextCommand):
+class SwiConsoleAddMessageInternalCommand(sublime_plugin.TextCommand):
+    """ Called internally on the console view """
     def run(self, edit):
         v = lookup_view(self.view)
         message = message_queue.pop(0)
@@ -1077,13 +1107,10 @@ class SwiConsoleAddMessageCommand(sublime_plugin.TextCommand):
         if message.repeatCount and message.repeatCount > 1:
             self.view.insert(edit, self.view.size(), ' \u21AA Repeat:' + str(message.repeatCount) + '\n')
 
-
+properties_queue = []
 def console_add_properties(command):
     assert_main_thread()
-    console_print_properties(command)
 
-properties_queue = []
-def console_print_properties(command):
     if 'name' in command.options:
         name = command.options['name']
     else:
@@ -1092,13 +1119,14 @@ def console_print_properties(command):
     v = find_view('scope', name)
 
     properties_queue.append(command)
-    v.run_command('swi_console_print_properties')
+    v.run_command('swi_console_print_properties_internal')
 
     v.show(0)
     window.focus_group(0)
 
 
-class SwiConsolePrintPropertiesCommand(sublime_plugin.TextCommand):
+class SwiConsolePrintPropertiesInternalCommand(sublime_plugin.TextCommand):
+    """ Called internally on the console view """
     def run(self, edit):
 
         v = lookup_view(self.view)
@@ -1135,17 +1163,17 @@ def console_show_stack(callFrames):
 
     call_frames_queue.append(callFrames)
 
-    v.run_command('swi_console_show_stack')
+    v.run_command('swi_console_show_stack_internal')
 
     v.show(0)
     window.focus_group(0)
 
-
-class SwiConsoleShowStackCommand(sublime_plugin.TextCommand):
+class SwiConsoleShowStackInternalCommand(sublime_plugin.TextCommand):
+    """ Called internally on the stack view """
     def run(self, edit):
-
         v = lookup_view(self.view)
-        callFrames = call_frames_queue.pop(0)
+
+        callFrames = call_frames_queue.pop(0) 
 
         v.erase(edit, sublime.Region(0, v.size()))
 
@@ -1367,11 +1395,24 @@ def open_script_and_focus_line(scriptId, line_number):
         do_when(lambda: not view.is_loading(), lambda: focus_line_and_highlight(view, line_number))
 
 def focus_line_and_highlight(view, line_number):
+    log('focus line', view)
     view.run_command("goto_line", {"line": line_number})
     lookup_view(view).view_breakpoints()
 
 def assert_main_thread():
     global main_thread
     assert threading.current_thread().ident == main_thread.ident, "not on main thread"
+
+def log(title, view):
+    file_name = view.file_name()
+    if not file_name:
+        file_name = ""
+
+    if view.window():
+        wid = str(view.window().id())
+    else:
+        wid = "X"
+
+    print("W " + wid + " " + title + " --- " + "  V " + str(view.id()) + " " + view.name() + " " + file_name + " B " + str(view.buffer_id()))
 
 sublime.set_timeout(lambda: load_breaks(), 1000)
