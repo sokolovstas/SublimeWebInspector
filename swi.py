@@ -239,7 +239,6 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
     def messagesCleared(self, data, notification):
         """ Notification when console cleared (by navigate or on request) """
         assert_main_thread()
-        log('messages cleared', self.view)
         clear_view('console')
 
     # build table of mappings from local to server
@@ -1395,7 +1394,7 @@ def open_script_and_focus_line(scriptId, line_number):
         do_when(lambda: not view.is_loading(), lambda: focus_line_and_highlight(view, line_number))
 
 def focus_line_and_highlight(view, line_number):
-    log('focus line', view)
+    """ Called on the correct view, from opening the file """
     view.run_command("goto_line", {"line": line_number})
     lookup_view(view).view_breakpoints()
 
