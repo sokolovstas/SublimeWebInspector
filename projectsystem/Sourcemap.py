@@ -6,6 +6,7 @@ def get_sourcemap_file(file_name):
     sourcemap_prefix = "//# sourceMappingURL="
     map_file = ""
     with open(file_name, "r") as f:
+        # Read the last line of the file containing sourcemap information
         sourcemap_info = f.readlines()[-1]
 
         if (len(sourcemap_info) > 0 and sourcemap_info.index(sourcemap_prefix) is 0):
