@@ -485,6 +485,15 @@ class SwiDebugToggleBreakpointCommand(sublime_plugin.WindowCommand):
         else:
             if channel:
                 scriptUrl = find_script_url(view_name)
+                if not scriptUrl and projectsystem.DocumentMapping.MappingsManager.is_authored_file(view_name):
+                    mapping = projectsystem.DocumentMapping.MappingsManager.get_mapping(view_name)
+                    line = int(row) - 1
+                    text = get_line_content(view_name, line)
+                    position = mapping.get_generated_position(view_name, line, len(text) - len(text.lstrip()))
+                    scriptUrl = find_script_url(position.file_name())
+                    row = str(position.one_based_line())
+                    view_name = position.file_name()
+
                 if scriptUrl:
                     channel.send(webkit.Debugger.setBreakpointByUrl(int(row), scriptUrl), self.breakpointAdded, view_name)
             else:
@@ -1460,3 +1469,9 @@ def get_authored_position_if_necessary(file_name, line_number, column_number):
     if is_source_map_enabled():
         mapping = projectsystem.DocumentMapping.MappingsManager.get_mapping(file_name)
         return mapping.get_authored_position(line_number, line_number)
+
+def get_line_content(file_name, line):
+    view = window.open_file(file_name)
+    point = view.text_point(line, 0)
+    region = view.line(point)
+    return view.substr(region)
