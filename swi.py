@@ -78,12 +78,12 @@ class SwiDebugCommand(sublime_plugin.WindowCommand):
             mapping = {}
 
             if paused:
-                mapping['swi_debug_pause_resume'] = 'Resume execution'
-                mapping['swi_debug_step_into'] = 'Step into'
-                mapping['swi_debug_step_out'] = 'Step out'
-                mapping['swi_debug_step_over'] = 'Step over'
+                mapping['swi_debug_pause_resume'] = 'Resume (F8)'
+                mapping['swi_debug_step_into'] = 'Step in (F11)'
+                mapping['swi_debug_step_out'] = 'Step out (Shift + F11)'
+                mapping['swi_debug_step_over'] = 'Step over (F10)'
             elif channel:
-                mapping['swi_debug_pause_resume'] = 'Pause execution'
+                mapping['swi_debug_pause_resume'] = 'Pause (F8)'
 
             mapping['swi_debug_toggle_breakpoint'] = 'Toggle Breakpoint'
 
@@ -92,7 +92,7 @@ class SwiDebugCommand(sublime_plugin.WindowCommand):
                 mapping['swi_debug_clear_console'] = 'Clear console'
                 mapping['swi_debug_stop'] = 'Stop debugging'
                 mapping['swi_debug_reload'] = 'Reload page'
-                mapping['swi_show_file_mapping'] = 'Show file mapping'
+                mapping['swi_show_file_mappings'] = 'Show file mappings'
                 mapping['swi_debug_clear_breakpoints'] = 'Clear all Breakpoints'
             else:
                 mapping['swi_debug_start'] = 'Start debugging'
@@ -111,9 +111,10 @@ class SwiDebugCommand(sublime_plugin.WindowCommand):
 
         command = self.cmds[index]
 
-        if command == 'swi_show_file_mapping':
+        if command == 'swi_show_file_mappings':
             # we wrap this command so we can use the correct view
-            show_file_mapping()
+            v = find_view('mapping')
+            v.run_command('show_file_mappings_internal')
 
         if command == 'swi_debug_start':
             proxy = urllib.request.ProxyHandler({})
@@ -540,11 +541,7 @@ class SwiDebugReloadCommand(sublime_plugin.WindowCommand):
             channel.send(webkit.Network.clearBrowserCache())
             channel.send(webkit.Page.reload(), on_reload)
 
-def show_file_mapping():
-    v = find_view('mapping')
-    v.run_command('show_file_mapping_internal')
-
-class SwiShowFileMappingInternalCommand(sublime_plugin.TextCommand):
+class SwiShowFileMappingsInternalCommand(sublime_plugin.TextCommand):
     """ Called internally on the file mapping view """
     def run(self, edit):
         
