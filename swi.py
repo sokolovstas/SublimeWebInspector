@@ -114,7 +114,8 @@ class SwiDebugCommand(sublime_plugin.WindowCommand):
         if command == 'swi_show_file_mappings':
             # we wrap this command so we can use the correct view
             v = find_view('mapping')
-            v.run_command('show_file_mappings_internal')
+            v.run_command('swi_show_file_mappings_internal')
+            return
 
         if command == 'swi_debug_start':
             proxy = urllib.request.ProxyHandler({})
