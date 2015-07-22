@@ -420,15 +420,15 @@ class SwiDebugEvaluateCommand(sublime_plugin.WindowCommand):
     def run(self):
         assert_main_thread()
         active_view = self.window.active_view()
-
-        for region in active_view.sel():
-            title = active_view.substr(region)
+        regions = active_view.sel()
+        for i in range(len(regions)):
+            title = active_view.substr(regions[i])
             if paused:
                 if current_call_frame_position:
-                    title = "%s on %s" % (active_view.substr(region), current_call_frame_position)
-                channel.send(webkit.Debugger.evaluateOnCallFrame(current_call_frame, active_view.substr(region)), self.evaluated, {'name': title})
+                    title = "%s on %s" % (active_view.substr(regions[i]), current_call_frame_position)
+                channel.send(webkit.Debugger.evaluateOnCallFrame(current_call_frame, active_view.substr(regions[i])), self.evaluated, {'name': title})
             else:
-                channel.send(webkit.Runtime.evaluate(active_view.substr(region)), self.evaluated, {'name': title})
+                channel.send(webkit.Runtime.evaluate(active_view.substr(regions[i])), self.evaluated, {'name': title})
 
     def evaluated(self, command):
         if command.data.type == 'object':
