@@ -171,7 +171,7 @@ class SwiDebugStartChromeCommand(sublime_plugin.WindowCommand):
         if url == None:
             url = ''
 
-        window.run_command('exec', {
+        self.window.run_command('exec', {
             "cmd": [os.getenv('GOOGLE_CHROME_PATH', '') + get_setting('chrome_path')[key], '--remote-debugging-port=' + get_setting('chrome_remote_port'), '--profile-directory=' + get_setting('chrome_profile'), url, '']
         })
 
@@ -694,7 +694,7 @@ class SwiDebugView(object):
 
                     if click['click_type'] == 'command':
                         self.remove_click(click_counter)
-                        self.run_command(click['data'])
+                        self.window().run_command(click['data'])
 
             click_counter += 1
 
