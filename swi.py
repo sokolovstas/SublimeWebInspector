@@ -331,14 +331,14 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
         position = get_authored_position_if_necessary(file_name, location.lineNumber, location.columnNumber)
         if position:
             print(position.file_name(), position.one_based_line(), position.one_based_line())
-            line_number = position.one_based_line()
+            display_line_number = position.one_based_line()
             file_name = position.file_name()
 
         global current_line
-        current_line = line_number
+        current_line = display_line_number
 
         channel.send(webkit.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, title)
-        open_file_and_focus_line(file_name, line_number)
+        open_file_and_focus_line(file_name, display_line_number)
 
         global paused
         paused = True
