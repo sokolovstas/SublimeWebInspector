@@ -1,5 +1,5 @@
 import json
-from .utils import WIPObject, Command
+from .utils import WebkitObject, Command
 
 
 def evaluate(expression, objectGroup=None, returnByValue=None):
@@ -38,7 +38,7 @@ def getProperties_parser(result):
     return data
 
 
-class RemoteObject(WIPObject):
+class RemoteObject(WebkitObject):
     def __init__(self, value):
         self.set(value, 'className')
         self.set(value, 'description')
@@ -69,7 +69,7 @@ class RemoteObject(WIPObject):
             return self.description.split('\n')[0]
 
 
-class PropertyDescriptor(WIPObject):
+class PropertyDescriptor(WebkitObject):
     def __init__(self, _value):
         self.set(_value, 'configurable')
         self.set(_value, 'enumerable')
@@ -84,7 +84,7 @@ class PropertyDescriptor(WIPObject):
         return self.name
 
 
-class RemoteObjectId(WIPObject):
+class RemoteObjectId(WebkitObject):
     def __init__(self, value):
         self.value = value
 

@@ -1,4 +1,4 @@
-from .utils import WIPObject, Command
+from .utils import WebkitObject, Command
 
 
 def clearBrowserCache():
@@ -20,7 +20,7 @@ def setUserAgentOverride(value):
     return command
 
 
-class RequestId(WIPObject):
+class RequestId(WebkitObject):
     def __init__(self, value):
         self.value = value
 
