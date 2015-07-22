@@ -67,7 +67,7 @@ class SwiDebugCommand(sublime_plugin.WindowCommand):
     
     def run(self):
         """ Called by Sublime to display the quick panel entries """
-        mapping = {}
+        mapping = []
         try:
             if not paused and not channel:
                 proxy = urllib.request.ProxyHandler({})
@@ -75,32 +75,31 @@ class SwiDebugCommand(sublime_plugin.WindowCommand):
                 urllib.request.install_opener(opener)
                 urllib.request.urlopen('http://127.0.0.1:' + get_setting('chrome_remote_port') + '/json')
 
-            mapping = {}
-
+            spacer = " " * 7
             if paused:
-                mapping['swi_debug_pause_resume'] = 'Resume (F8)'
-                mapping['swi_debug_step_into'] = 'Step in (F11)'
-                mapping['swi_debug_step_out'] = 'Step out (Shift + F11)'
-                mapping['swi_debug_step_over'] = 'Step over (F10)'
+                mapping.append(['swi_debug_step_into', 'Step in' + spacer + '    F11'])
+                mapping.append(['swi_debug_step_out', 'Step out' + spacer + ' Shift+F11'])
+                mapping.append(['swi_debug_step_over', 'Step over' + spacer + 'F10'])
+                mapping.append(['swi_debug_pause_resume', 'Resume' + spacer + '   F8'])
             elif channel:
-                mapping['swi_debug_pause_resume'] = 'Pause (F8)'
-
-            mapping['swi_debug_toggle_breakpoint'] = 'Toggle Breakpoint'
+                mapping.append(['swi_debug_pause_resume', 'Pause' + spacer + '    F8'])
 
             if channel:
-                mapping['swi_debug_evaluate'] = 'Evaluate selection'
-                mapping['swi_debug_clear_console'] = 'Clear console'
-                mapping['swi_debug_stop'] = 'Stop debugging'
-                mapping['swi_debug_reload'] = 'Reload page'
-                mapping['swi_show_file_mappings'] = 'Show file mappings'
-                mapping['swi_debug_clear_breakpoints'] = 'Clear all Breakpoints'
+                mapping.append(['swi_debug_evaluate', 'Evaluate selection'])
+                mapping.append(['swi_debug_clear_console', 'Clear console'])
+                mapping.append(['swi_debug_stop', 'Stop debugging'])
+                mapping.append(['swi_debug_reload', 'Reload page'])
+                mapping.append(['swi_show_file_mappings', 'Show file mappings'])
+                mapping.append(['swi_debug_clear_breakpoints', 'Clear all Breakpoints'])
             else:
-                mapping['swi_debug_start'] = 'Start debugging'
+                mapping.append(['swi_debug_start', 'Start debugging'])
+            
+            mapping.append(['swi_debug_toggle_breakpoint', 'Toggle Breakpoint'])
         except:
-            mapping['swi_debug_start_chrome'] = 'Start Google Chrome with remote debug port ' + get_setting('chrome_remote_port')
+            mapping.append(['swi_debug_start_chrome', 'Start Google Chrome with remote debug port ' + get_setting('chrome_remote_port')])
 
-        self.cmds = list(mapping.keys())
-        self.items = list(mapping.values())
+        self.cmds = [entry[0] for entry in mapping]
+        self.items = [entry[1] for entry in mapping]
         self.window.show_quick_panel(self.items, self.command_selected)
 
     def command_selected(self, index):
