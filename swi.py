@@ -666,27 +666,7 @@ class SwiDebugView(object):
 
                     if click['click_type'] == 'goto_call_frame':
                         callFrame = click['data']['callFrame']
-
-                        scriptId = callFrame.location.scriptId
-                        line_number = callFrame.location.lineNumber
-                        file_name = find_script(str(scriptId))
-
-                        open_script_and_focus_line(scriptId, line_number)
-
-                        first_scope = callFrame.scopeChain[0]
-
-                        if get_setting('open_stack_current_in_new_tab'):
-                            title = {'objectId': first_scope.object.objectId, 'name': "%s:%s (%s)" % (file_name.split('/')[-1], line_number, first_scope.type)}
-                        else:
-                            title = {'objectId': first_scope.object.objectId, 'name': "Breakpoint Local"}
-
-                        channel.send(webkit.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, title)
-
-                        global current_call_frame
-                        current_call_frame = callFrame.callFrameId
-
-                        global current_call_frame_position
-                        current_call_frame_position = "%s:%s" % (file_name.split('/')[-1], line_number)
+                        change_to_call_frame(callFrame)
 
                     if click['click_type'] == 'get_params':
                         if channel:
@@ -945,40 +925,46 @@ def close_all_our_windows():
 
 def update_stack(data):
 
-        if (not 'callFrames' in data):
-            return;
+    if (not 'callFrames' in data):
+        return;
     
-        channel.send(webkit.Debugger.setOverlayMessage('Paused in Sublime Web Inspector'))
+    channel.send(webkit.Debugger.setOverlayMessage('Paused in Sublime Web Inspector'))
 
-        window.set_layout(get_setting('stack_layout'))
+    window.set_layout(get_setting('stack_layout'))
 
-        console_show_stack(data['callFrames'])
+    console_show_stack(data['callFrames'])
 
-        scriptId = data['callFrames'][0].location.scriptId
-        line_number = data['callFrames'][0].location.lineNumber
-        file_name = find_script(str(scriptId))
-        first_scope = data['callFrames'][0].scopeChain[0]
+    callFrame = data['callFrames'][0];
+    change_to_call_frame(callFrame)
 
-        if get_setting('open_stack_current_in_new_tab'):
-            title = {'objectId': first_scope.object.objectId, 'name': "%s:%s (%s)" % (file_name, line_number, first_scope.type)}
-        else:
-            title = {'objectId': first_scope.object.objectId, 'name': "Breakpoint Local"}
 
-        channel.send(webkit.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, title)
+def change_to_call_frame(callFrame):
 
-        global current_call_frame
-        current_call_frame = data['callFrames'][0].callFrameId
+    scriptId = callFrame.location.scriptId
+    line_number = callFrame.location.lineNumber
+    file_name = find_script(str(scriptId))
+    first_scope = callFrame.scopeChain[0]
 
-        global current_call_frame_position
-        current_call_frame_position = "%s:%s" % (file_name, line_number)
+    if get_setting('open_stack_current_in_new_tab'):
+        title = {'objectId': first_scope.object.objectId, 'name': "%s:%s (%s)" % (file_name, line_number, first_scope.type)}
+    else:
+        title = {'objectId': first_scope.object.objectId, 'name': "Breakpoint Local"}
 
-        global current_file
-        current_file = file_name
+    channel.send(webkit.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, title)
 
-        global current_line
-        current_line = line_number
+    global current_call_frame
+    current_call_frame = callFrame.callFrameId
 
-        open_script_and_focus_line(scriptId, line_number)
+    global current_call_frame_position
+    current_call_frame_position = "%s:%s" % (file_name, line_number)
+
+    global current_file
+    current_file = file_name
+
+    global current_line
+    current_line = line_number
+
+    open_script_and_focus_line(scriptId, line_number)
 
 class SwiClearViewInternalCommand(sublime_plugin.TextCommand): 
     """ Called internally on the console view """
