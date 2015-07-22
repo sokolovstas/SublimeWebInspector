@@ -459,12 +459,12 @@ class SwiDebugToggleBreakpointCommand(sublime_plugin.WindowCommand):
         assert_main_thread()
         active_view = self.window.active_view()
 
-        view = lookup_view(active_view)
-        view_name = view.file_name();
+        v = lookup_view(active_view)
+        view_name = v.file_name();
         if not view_name: # eg file mapping pane
             return
 
-        row = str(view.rows(view.lines())[0])
+        row = str(v.rows(v.lines())[0])
         init_breakpoint_for_file(view_name)
         breaks = get_breakpoints_by_full_path(view_name)
         if row in breaks:
@@ -560,8 +560,8 @@ class SwiDebugView(object):
     """ The SWIDebugView is sort of a normal view with some convenience methods.
         See lookup_view.
     """
-    def __init__(self, view):
-        self.view = view
+    def __init__(self, v):
+        self.view = v
         self.context_data = {}
         self.clicks = []
         self.prev_click_position = 0
@@ -698,17 +698,17 @@ def update_overlays():
 
     # loop over all views, identifying the files
     # we need to draw into
-    for view in window.views():
-        view = lookup_view(view)
+    for v in window.views():
+        v = lookup_view(v)
 
-        if not view.file_name():
+        if not v.file_name():
             continue
 
-        view.erase_regions('swi_breakpoint_inactive')
-        view.erase_regions('swi_breakpoint_active')
-        view.erase_regions('swi_breakpoint_current')
+        v.erase_regions('swi_breakpoint_inactive')
+        v.erase_regions('swi_breakpoint_active')
+        v.erase_regions('swi_breakpoint_current')
 
-        breaks = get_breakpoints_by_full_path(view.file_name()) or {}
+        breaks = get_breakpoints_by_full_path(v.file_name()) or {}
 
         enabled = []
         disabled = []
@@ -719,17 +719,17 @@ def update_overlays():
             if breaks[key]['status'] == 'disabled':
                 disabled.append(key)
 
-        view.add_regions('swi_breakpoint_active', view.lines(enabled), get_setting('breakpoint_scope'), icon=breakpoint_active_icon, flags=sublime.HIDDEN)
-        view.add_regions('swi_breakpoint_inactive', view.lines(disabled), get_setting('breakpoint_scope'), icon=breakpoint_inactive_icon, flags=sublime.HIDDEN)
+        v.add_regions('swi_breakpoint_active', v.lines(enabled), get_setting('breakpoint_scope'), icon=breakpoint_active_icon, flags=sublime.HIDDEN)
+        v.add_regions('swi_breakpoint_inactive', v.lines(disabled), get_setting('breakpoint_scope'), icon=breakpoint_inactive_icon, flags=sublime.HIDDEN)
 
         if current_line:
-            if view.file_name() == current_file:
+            if v.file_name() == current_file:
                 if (str(current_line) in breaks and breaks[str(current_line)]['status'] == 'enabled'): # always draw current line region, but selectively draw icon
                     current_icon = breakpoint_current_icon
                 else:
                     current_icon = ''
 
-                view.add_regions('swi_breakpoint_current', view.lines([current_line]), get_setting('current_line_scope'), current_icon, flags=sublime.DRAW_EMPTY)
+                v.add_regions('swi_breakpoint_current', v.lines([current_line]), get_setting('current_line_scope'), current_icon, flags=sublime.DRAW_EMPTY)
 
 
 ####################################################################################
@@ -741,21 +741,21 @@ class EventListener(sublime_plugin.EventListener):
     def __init__(self):
         self.timing = time.time()
 
-    def on_new(self, view):
-        lookup_view(view).on_new()
+    def on_new(self, v):
+        lookup_view(v).on_new()
 
-    def on_clone(self, view):
-        lookup_view(view).on_clone()
+    def on_clone(self, v):
+        lookup_view(v).on_clone()
 
-    def on_load(self, view):
+    def on_load(self, v):
         update_overlays()
-        lookup_view(view).on_load()
+        lookup_view(v).on_load()
 
-    def on_close(self, view):
-        lookup_view(view).on_close()
+    def on_close(self, v):
+        lookup_view(v).on_close()
 
-    def on_pre_save(self, view):
-        lookup_view(view).on_pre_save()
+    def on_pre_save(self, v):
+        lookup_view(v).on_pre_save()
 
     def reload_styles(self):
         channel.send(webkit.Runtime.evaluate("var files = document.getElementsByTagName('link');var links = [];for (var a = 0, l = files.length; a < l; a++) {var elem = files[a];var rel = elem.rel;if (typeof rel != 'string' || rel.length === 0 || rel === 'stylesheet') {links.push({'elem': elem,'href': elem.getAttribute('href').split('?')[0],'last': false});}}for ( a = 0, l = links.length; a < l; a++) {var link = links[a];link.elem.setAttribute('href', (link.href + '?x=' + Math.random()));}"))
@@ -769,44 +769,44 @@ class EventListener(sublime_plugin.EventListener):
     def reload_page(self):
         channel.send(webkit.Page.reload(), on_reload)
 
-    def on_post_save(self, view):
+    def on_post_save(self, v):
         if channel and get_setting('reload_on_save'):
             channel.send(webkit.Network.clearBrowserCache())
-            if view.file_name().endswith('.css') or view.file_name().endswith('.less') or view.file_name().endswith('.sass') or view.file_name().endswith('.scss'):
+            if v.file_name().endswith('.css') or v.file_name().endswith('.less') or v.file_name().endswith('.sass') or v.file_name().endswith('.scss'):
                 sublime.set_timeout(lambda: self.reload_styles(), get_setting('reload_timeout'))
-            elif view.file_name().endswith('.js'):
-                scriptId = find_script(view.file_name())
+            elif v.file_name().endswith('.js'):
+                scriptId = find_script(v.file_name())
                 if scriptId and set_script_source:
-                    scriptSource = view.substr(sublime.Region(0, view.size()))
+                    scriptSource = v.substr(sublime.Region(0, v.size()))
                     self.reload_set_script_source(scriptId, scriptSource)
                 else:
                     sublime.set_timeout(lambda: self.reload_page(), get_setting('reload_timeout'))
             else:
                 sublime.set_timeout(lambda: self.reload_page(), get_setting('reload_timeout'))
 
-        lookup_view(view).on_post_save()
+        lookup_view(v).on_post_save()
 
-    def on_modified(self, view):
-        lookup_view(view).on_modified()
+    def on_modified(self, v):
+        lookup_view(v).on_modified()
         #update_overlays()
 
-    def on_selection_modified(self, view):
+    def on_selection_modified(self, v):
         """ We use this to discover a "button" has been clicked."""
         assert_main_thread()
         now = time.time()
         if now - self.timing > 0.1:
-            lookup_view(view).check_click()
+            lookup_view(v).check_click()
         self.timing = now
 
-    def on_activated(self, view):
+    def on_activated(self, v):
         #todo can we move to on load?
-        lookup_view(view).on_activated()
+        lookup_view(v).on_activated()
 
-    def on_deactivated(self, view):
-        lookup_view(view).on_deactivated()
+    def on_deactivated(self, v):
+        lookup_view(v).on_deactivated()
 
-    def on_query_context(self, view, key, operator, operand, match_all):
-        lookup_view(view).on_query_context(key, operator, operand, match_all)
+    def on_query_context(self, v, key, operator, operand, match_all):
+        lookup_view(v).on_query_context(key, operator, operand, match_all)
 
     def update_stack(self, command):
         """ Called on setScriptSource """
@@ -880,10 +880,10 @@ def find_view(console_type, title=''):
 
     return lookup_view(v)
 
-def clear_view(view):
-    v = find_view(view)
+def clear_view(v):
+    v = find_view(v)
 
-    if not view:
+    if not v:
         return
 
     v.run_command('swi_clear_view_internal')
@@ -908,17 +908,17 @@ def close_all_our_windows():
         window = sublime.active_window()
 
     window.focus_group(0)
-    for view in window.views_in_group(0):
-        if view.name() == 'File mapping ':
+    for v in window.views_in_group(0):
+        if v.name() == 'File mapping ':
             window.run_command("close")
             break
 
     window.focus_group(1)
-    for view in window.views_in_group(1):
+    for v in window.views_in_group(1):
         window.run_command("close")
 
     window.focus_group(2)
-    for view in window.views_in_group(2):
+    for v in window.views_in_group(2):
         window.run_command("close")
 
     window.set_layout(original_layout)
@@ -1378,11 +1378,11 @@ def open_script_and_focus_line(scriptId, line_number):
     if file_name:   # race with browser
         window = sublime.active_window()
         window.focus_group(0)
-        view = window.open_file(file_name)
-        do_when(lambda: not view.is_loading(), lambda: open_script_and_focus_line_callback(view, line_number))
+        v = window.open_file(file_name)
+        do_when(lambda: not v.is_loading(), lambda: open_script_and_focus_line_callback(v, line_number))
 
-def open_script_and_focus_line_callback(view, line_number):
-    view.run_command("goto_line", {"line": line_number})
+def open_script_and_focus_line_callback(v, line_number):
+    v.run_command("goto_line", {"line": line_number})
     update_overlays()
 
 def assert_main_thread():
