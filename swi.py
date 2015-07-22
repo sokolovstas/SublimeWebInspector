@@ -290,9 +290,11 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
             and locals, and navigate to the break.
         """
         assert_main_thread()
+        
+        global paused
+        paused = True
 
         update_stack(data)
-
 
     def resumed(self, data, notification):
         """ Notification that execution resumed.
@@ -306,6 +308,9 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
 
         channel.send(webkit.Debugger.setOverlayMessage())
 
+        global current_file
+        current_file = None
+
         global current_line
         current_line = None
 
@@ -314,11 +319,11 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
 
         global current_call_frame_position
         current_call_frame_position = None
-
-        lookup_view(self.window.active_view()).view_breakpoints() #todo fix view
-
+        
         global paused
         paused = False
+
+        update_overlays()
 
     def enabled(self, command):
         """ Notification that debugging was enabled """
@@ -368,7 +373,7 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
         except:
             pass
         save_breaks()
-        lookup_view(self.window.active_view()).view_breakpoints() #todo fix view
+        update_overlays()
 
     def canSetScriptSource(self, command):
         """ Notification that script can be edited
@@ -447,14 +452,12 @@ class SwiDebugClearBreakpointsCommand(sublime_plugin.WindowCommand):
                 del brk_object[file_name];
 
         save_breaks()
-        lookup_view(self.window.active_view()).view_breakpoints() #todo fix view
+        update_overlays()
 
 class SwiDebugToggleBreakpointCommand(sublime_plugin.WindowCommand):
     def run(self):
         assert_main_thread()
         active_view = self.window.active_view()
-
-        log('toggle breakpoint', active_view)
 
         view = lookup_view(active_view)
         view_name = view.file_name();
@@ -478,14 +481,12 @@ class SwiDebugToggleBreakpointCommand(sublime_plugin.WindowCommand):
             else:
                 set_breakpoint_by_full_path(view_name, row)
 
-        view.view_breakpoints()
+        update_overlays()
 
     def breakpointAdded(self, command):
         """ Notification that a breakpoint was added successfully """
         assert_main_thread()
         active_view = self.window.active_view()
-
-        log('breakpoint added', active_view)
 
         breakpointId = command.data['breakpointId']
         init_breakpoint_for_file(command.options)
@@ -498,8 +499,7 @@ class SwiDebugToggleBreakpointCommand(sublime_plugin.WindowCommand):
 
             set_breakpoint_by_scriptId(str(scriptId), str(lineNumber), 'enabled', breakpointId)
 
-        # Scroll to position where breakpoints have resolved
-        lookup_view(active_view).view_breakpoints() #todo fix view
+        update_overlays()
 
 class SwiDebugStopCommand(sublime_plugin.WindowCommand):
 
@@ -510,17 +510,19 @@ class SwiDebugStopCommand(sublime_plugin.WindowCommand):
 
         disable_all_breakpoints()
 
-        lookup_view(active_view).view_breakpoints() #todo fix view
-
         global paused
         paused = False
 
         global debugger_enabled
         debugger_enabled = False
 
+        global current_file
+        current_file = None
+
         global current_line
         current_line = None
-        lookup_view(active_view).view_breakpoints()
+
+        update_overlays()
 
         global channel
         if channel:
@@ -645,37 +647,6 @@ class SwiDebugView(object):
         """ Removes all clickable regions """
         self.clicks = []
 
-    def view_breakpoints(self):
-        # TODo rename as it updates the IP
-        self.view.erase_regions('swi_breakpoint_inactive')
-        self.view.erase_regions('swi_breakpoint_active')
-        self.view.erase_regions('swi_breakpoint_current')
-
-        if not self.view.file_name():
-            return
-
-        breaks = get_breakpoints_by_full_path(self.view.file_name()) or {}
-
-        enabled = []
-        disabled = []
-
-        for key in list(breaks.keys()):
-            if breaks[key]['status'] == 'enabled':
-                enabled.append(key)
-            if breaks[key]['status'] == 'disabled':
-                disabled.append(key)
-
-        self.view.add_regions('swi_breakpoint_active', self.lines(enabled), get_setting('breakpoint_scope'), icon=breakpoint_active_icon, flags=sublime.HIDDEN)
-        self.view.add_regions('swi_breakpoint_inactive', self.lines(disabled), get_setting('breakpoint_scope'), icon=breakpoint_inactive_icon, flags=sublime.HIDDEN)
-
-        if current_line:
-            if (str(current_line) in breaks and breaks[str(current_line)]['status'] == 'enabled'): # always draw current line region, but selectively draw icon
-                current_icon = breakpoint_current_icon
-            else:
-                current_icon = ''
-
-            self.view.add_regions('swi_breakpoint_current', self.lines([current_line]), get_setting('current_line_scope'), current_icon, flags=sublime.DRAW_EMPTY)
-
     def check_click(self):
         if not isinstance(self, SwiDebugView):
             return
@@ -743,6 +714,43 @@ def lookup_view(v):
         return buffers[id]
     return None
 
+def update_overlays():
+
+    # loop over all views, identifying the files
+    # we need to draw into
+    for view in window.views():
+        view = lookup_view(view)
+
+        if not view.file_name():
+            continue
+
+        view.erase_regions('swi_breakpoint_inactive')
+        view.erase_regions('swi_breakpoint_active')
+        view.erase_regions('swi_breakpoint_current')
+
+        breaks = get_breakpoints_by_full_path(view.file_name()) or {}
+
+        enabled = []
+        disabled = []
+
+        for key in list(breaks.keys()):
+            if breaks[key]['status'] == 'enabled':
+                enabled.append(key)
+            if breaks[key]['status'] == 'disabled':
+                disabled.append(key)
+
+        view.add_regions('swi_breakpoint_active', view.lines(enabled), get_setting('breakpoint_scope'), icon=breakpoint_active_icon, flags=sublime.HIDDEN)
+        view.add_regions('swi_breakpoint_inactive', view.lines(disabled), get_setting('breakpoint_scope'), icon=breakpoint_inactive_icon, flags=sublime.HIDDEN)
+
+        if current_line:
+            if view.file_name() == current_file:
+                if (str(current_line) in breaks and breaks[str(current_line)]['status'] == 'enabled'): # always draw current line region, but selectively draw icon
+                    current_icon = breakpoint_current_icon
+                else:
+                    current_icon = ''
+
+                view.add_regions('swi_breakpoint_current', view.lines([current_line]), get_setting('current_line_scope'), current_icon, flags=sublime.DRAW_EMPTY)
+
 
 ####################################################################################
 #   EventListener
@@ -760,8 +768,7 @@ class EventListener(sublime_plugin.EventListener):
         lookup_view(view).on_clone()
 
     def on_load(self, view):
-        log('on_load', view)
-        lookup_view(view).view_breakpoints()
+        update_overlays()
         lookup_view(view).on_load()
 
     def on_close(self, view):
@@ -800,9 +807,8 @@ class EventListener(sublime_plugin.EventListener):
         lookup_view(view).on_post_save()
 
     def on_modified(self, view):
-        #log('on_modified', view)
         lookup_view(view).on_modified()
-        #lookup_view(view).view_breakpoints()
+        #update_overlays()
 
     def on_selection_modified(self, view):
         """ We use this to discover a "button" has been clicked."""
@@ -813,9 +819,8 @@ class EventListener(sublime_plugin.EventListener):
         self.timing = now
 
     def on_activated(self, view):
-        #log('on_activated', view)
+        #todo can we move to on load?
         lookup_view(view).on_activated()
-        #lookup_view(view).view_breakpoints()
 
     def on_deactivated(self, view):
         lookup_view(view).on_deactivated()
@@ -825,10 +830,6 @@ class EventListener(sublime_plugin.EventListener):
 
     def update_stack(self, command):
         """ Called on setScriptSource """
-        global paused
-
-        if not paused:
-            return
 
         update_stack(command.data)
 
@@ -964,7 +965,6 @@ def update_stack(data):
             title = {'objectId': first_scope.object.objectId, 'name': "Breakpoint Local"}
 
         channel.send(webkit.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, title)
-        open_script_and_focus_line(scriptId, line_number)
 
         global current_call_frame
         current_call_frame = data['callFrames'][0].callFrameId
@@ -972,11 +972,13 @@ def update_stack(data):
         global current_call_frame_position
         current_call_frame_position = "%s:%s" % (file_name, line_number)
 
+        global current_file
+        current_file = file_name
+
         global current_line
         current_line = line_number
 
-        global paused
-        paused = True
+        open_script_and_focus_line(scriptId, line_number)
 
 class SwiClearViewInternalCommand(sublime_plugin.TextCommand): 
     """ Called internally on the console view """
@@ -1390,28 +1392,15 @@ def open_script_and_focus_line(scriptId, line_number):
     if file_name:   # race with browser
         window = sublime.active_window()
         window.focus_group(0)
-        view = window.open_file(file_name, sublime.TRANSIENT)
-        do_when(lambda: not view.is_loading(), lambda: focus_line_and_highlight(view, line_number))
+        view = window.open_file(file_name)
+        do_when(lambda: not view.is_loading(), lambda: open_script_and_focus_line_callback(view, line_number))
 
-def focus_line_and_highlight(view, line_number):
-    """ Called on the correct view, from opening the file """
+def open_script_and_focus_line_callback(view, line_number):
     view.run_command("goto_line", {"line": line_number})
-    lookup_view(view).view_breakpoints()
+    update_overlays()
 
 def assert_main_thread():
     global main_thread
     assert threading.current_thread().ident == main_thread.ident, "not on main thread"
-
-def log(title, view):
-    file_name = view.file_name()
-    if not file_name:
-        file_name = ""
-
-    if view.window():
-        wid = str(view.window().id())
-    else:
-        wid = "X"
-
-    print("W " + wid + " " + title + " --- " + "  V " + str(view.id()) + " " + view.name() + " " + file_name + " B " + str(view.buffer_id()))
 
 sublime.set_timeout(lambda: load_breaks(), 1000)
