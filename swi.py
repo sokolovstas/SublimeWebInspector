@@ -943,12 +943,8 @@ def change_to_call_frame(callFrame):
     file_name = find_script(str(scriptId))
     first_scope = callFrame.scopeChain[0]
 
-    if get_setting('open_stack_current_in_new_tab'):
-        title = {'objectId': first_scope.object.objectId, 'name': "%s:%s (%s)" % (file_name, line_number, first_scope.type)}
-    else:
-        title = {'objectId': first_scope.object.objectId, 'name': "Breakpoint Local"}
-
-    channel.send(webkit.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, title)
+    params = {'objectId': first_scope.object.objectId, 'name': "%s:%s (%s)" % (file_name, line_number, first_scope.type)}
+    channel.send(webkit.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, params)
 
     global current_call_frame
     current_call_frame = callFrame.callFrameId
@@ -1093,17 +1089,12 @@ class SwiConsoleAddMessageInternalCommand(sublime_plugin.TextCommand):
             self.view.insert(edit, self.view.size(), ' \u21AA Repeat:' + str(message.repeatCount) + '\n')
 
 properties_queue = []
-def console_add_properties(command):
+def console_add_properties(params):
     assert_main_thread()
 
-    if 'name' in command.options:
-        name = command.options['name']
-    else:
-        name = str(command.options['objectId'])
+    v = find_view('scope')
 
-    v = find_view('scope', name)
-
-    properties_queue.append(command)
+    properties_queue.append(params)
     v.run_command('swi_console_print_properties_internal')
 
     v.show(0)
@@ -1120,7 +1111,7 @@ class SwiConsolePrintPropertiesInternalCommand(sublime_plugin.TextCommand):
         if 'name' in command.options:
             name = command.options['name']
         else:
-            name = str(command.options['objectId'])
+            name = ""
 
         if 'prev' in command.options:
             prev = command.options['prev'] + ' -> ' + name
