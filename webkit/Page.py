@@ -1,4 +1,4 @@
-from .utils import Command
+from .wkutils import Command
 
 
 def reload():
