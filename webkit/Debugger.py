@@ -1,4 +1,4 @@
-from .utils import Command, Notification, WIPObject
+from .utils import Command, Notification, WebkitObject
 from .Runtime import RemoteObject
 import json
 import re
@@ -115,7 +115,7 @@ def setScriptSource_parser(result):
 
 def setBreakpointByUrl(lineNumber, url, urlRegex=None, columnNumber=None, condition=None):
     params = {}
-    params['lineNumber'] = lineNumber-1
+    params['lineNumber'] = lineNumber - 1
     params['url'] = restoreQueryString(url)
 
     if urlRegex:
@@ -192,7 +192,7 @@ def resumed():
     return notification
 
 
-class BreakpointId(WIPObject):
+class BreakpointId(WebkitObject):
     def __init__(self, value):
         self.value = value
 
@@ -203,7 +203,7 @@ class BreakpointId(WIPObject):
         return self.value
 
 
-class CallFrameId(WIPObject):
+class CallFrameId(WebkitObject):
     def __init__(self, value):
         self.value = value
 
@@ -214,7 +214,7 @@ class CallFrameId(WIPObject):
         return self.value
 
 
-class ScriptId(WIPObject):
+class ScriptId(WebkitObject):
     def __init__(self, value):
         self.value = value
 
@@ -225,13 +225,13 @@ class ScriptId(WIPObject):
         return self.value
 
 
-class Scope(WIPObject):
+class Scope(WebkitObject):
     def __init__(self, value):
         self.set_class(value, 'object', RemoteObject)
         self.set(value, 'type')
 
 
-class Location(WIPObject):
+class Location(WebkitObject):
     def __init__(self, value):
         self.set(value, 'columnNumber')
         self.set(value, 'lineNumber')
@@ -246,7 +246,7 @@ class Location(WIPObject):
         return obj
 
 
-class CallFrame(WIPObject):
+class CallFrame(WebkitObject):
     def __init__(self, value):
         self.set_class(value, 'callFrameId', CallFrameId)
         self.set(value, 'functionName')

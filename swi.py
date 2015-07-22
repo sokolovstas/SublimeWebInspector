@@ -69,7 +69,7 @@ class SwiDebugCommand(sublime_plugin.WindowCommand):
     
     def run(self):
         """ Called by Sublime to display the quick panel entries """
-        mapping = {}
+        mapping = []
         try:
             if not paused and not channel:
                 proxy = urllib.request.ProxyHandler({})
@@ -77,35 +77,34 @@ class SwiDebugCommand(sublime_plugin.WindowCommand):
                 urllib.request.install_opener(opener)
                 urllib.request.urlopen('http://127.0.0.1:' + get_setting('chrome_remote_port') + '/json')
 
-            mapping = {}
-
+            spacer = " " * 7
             if paused:
-                mapping['swi_debug_pause_resume'] = 'Resume execution'
-                mapping['swi_debug_step_into'] = 'Step into'
-                mapping['swi_debug_step_out'] = 'Step out'
-                mapping['swi_debug_step_over'] = 'Step over'
+                mapping.append(['swi_debug_step_into', 'Step in' + spacer + '    F11'])
+                mapping.append(['swi_debug_step_out', 'Step out' + spacer + ' Shift+F11'])
+                mapping.append(['swi_debug_step_over', 'Step over' + spacer + 'F10'])
+                mapping.append(['swi_debug_pause_resume', 'Resume' + spacer + '   F8'])
             elif channel:
-                mapping['swi_debug_pause_resume'] = 'Pause execution'
-
-            mapping['swi_debug_toggle_breakpoint'] = 'Toggle Breakpoint'
+                mapping.append(['swi_debug_pause_resume', 'Pause' + spacer + '    F8'])
 
             if channel:
-                mapping['swi_debug_evaluate'] = 'Evaluate selection'
-                mapping['swi_debug_clear_console'] = 'Clear console'
-                mapping['swi_debug_stop'] = 'Stop debugging'
-                mapping['swi_debug_reload'] = 'Reload page'
-                mapping['swi_show_file_mapping'] = 'Show file mapping'
-                mapping['swi_debug_clear_breakpoints'] = 'Clear all Breakpoints'
+                mapping.append(['swi_debug_evaluate', 'Evaluate selection'])
+                mapping.append(['swi_debug_clear_console', 'Clear console'])
+                mapping.append(['swi_debug_stop', 'Stop debugging'])
+                mapping.append(['swi_debug_reload', 'Reload page'])
+                mapping.append(['swi_show_file_mappings', 'Show file mappings'])
+                mapping.append(['swi_debug_clear_breakpoints', 'Clear all Breakpoints'])
 
                 if is_source_map_enabled():
-                    mapping['swi_toggle_authored_code'] = 'Toggle authored code'
+                    mapping.append(['swi_toggle_authored_code', 'Toggle authored code'])
             else:
-                mapping['swi_debug_start'] = 'Start debugging'
+                mapping.append(['swi_debug_start', 'Start debugging'])
+            
+            mapping.append(['swi_debug_toggle_breakpoint', 'Toggle Breakpoint'])
         except:
-            mapping['swi_debug_start_chrome'] = 'Start Google Chrome with remote debug port ' + get_setting('chrome_remote_port')
+            mapping.append(['swi_debug_start_chrome', 'Start Google Chrome with remote debug port ' + get_setting('chrome_remote_port')])
 
-        self.cmds = list(mapping.keys())
-        self.items = list(mapping.values())
+        self.cmds = [entry[0] for entry in mapping]
+        self.items = [entry[1] for entry in mapping]
         self.window.show_quick_panel(self.items, self.command_selected)
 
     def command_selected(self, index):
@@ -116,9 +115,11 @@ class SwiDebugCommand(sublime_plugin.WindowCommand):
 
         command = self.cmds[index]
 
-        if command == 'swi_show_file_mapping':
+        if command == 'swi_show_file_mappings':
             # we wrap this command so we can use the correct view
-            show_file_mapping()
+            v = find_view('mapping')
+            v.run_command('swi_show_file_mappings_internal')
+            return
 
         if command == 'swi_debug_start':
             proxy = urllib.request.ProxyHandler({})
@@ -176,7 +177,7 @@ class SwiDebugStartChromeCommand(sublime_plugin.WindowCommand):
         if url == None:
             url = ''
 
-        window.run_command('exec', {
+        self.window.run_command('exec', {
             "cmd": [os.getenv('GOOGLE_CHROME_PATH', '') + get_setting('chrome_path')[key], '--remote-debugging-port=' + get_setting('chrome_remote_port'), '--profile-directory=' + get_setting('chrome_profile'), url, '']
         })
 
@@ -299,49 +300,10 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
             and locals, and navigate to the break.
         """
         assert_main_thread()
-
-        channel.send(webkit.Debugger.setOverlayMessage('Paused in Sublime Web Inspector'))
-
-        self.window.set_layout(get_setting('stack_layout'))
-
-        console_show_stack(data['callFrames'])
-
-        location = data['callFrames'][0].location
-        scriptId = location.scriptId
-        line_number = location.lineNumber
-
-        # Add one to display line number as it should be one based
-        display_line_number = line_number + 1
-
-        file_name = find_script(str(scriptId))
-
-        first_scope = data['callFrames'][0].scopeChain[0]
-
-        if get_setting('open_stack_current_in_new_tab'):
-            title = {'objectId': first_scope.object.objectId, 'name': "%s:%s (%s)" % (file_name, display_line_number, first_scope.type)}
-        else:
-            title = {'objectId': first_scope.object.objectId, 'name': "Breakpoint Local"}
-
-        global current_call_frame
-        current_call_frame = data['callFrames'][0].callFrameId
-
-        global current_call_frame_position
-        current_call_frame_position = "%s:%s" % (file_name, display_line_number)
-
-        position = get_authored_position_if_necessary(file_name, location.lineNumber, location.columnNumber)
-        if position:
-            print(position.file_name(), position.one_based_line(), position.one_based_line())
-            display_line_number = position.one_based_line()
-            file_name = position.file_name()
-
-        global current_line
-        current_line = display_line_number
-
-        channel.send(webkit.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, title)
-        open_file_and_focus_line(file_name, display_line_number)
-
         global paused
         paused = True
+
+        update_stack(data)
 
     def resumed(self, data, notification):
         """ Notification that execution resumed.
@@ -355,6 +317,9 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
 
         channel.send(webkit.Debugger.setOverlayMessage())
 
+        global current_file
+        current_file = None
+
         global current_line
         current_line = None
 
@@ -363,11 +328,11 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
 
         global current_call_frame_position
         current_call_frame_position = None
-
-        lookup_view(self.window.active_view()).view_breakpoints() #todo fix view
-
+        
         global paused
         paused = False
+
+        update_overlays()
 
     def enabled(self, command):
         """ Notification that debugging was enabled """
@@ -417,7 +382,7 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
         except:
             pass
         save_breaks()
-        lookup_view(self.window.active_view()).view_breakpoints() #todo fix view
+        update_overlays()
 
     def canSetScriptSource(self, command):
         """ Notification that script can be edited
@@ -425,8 +390,7 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
         """
         assert_main_thread()
         global set_script_source
-        if set_script_source:
-            set_script_source = command.data['result']
+        set_script_source = command.data['result']
 
 class SwiDebugPauseResumeCommand(sublime_plugin.WindowCommand):
     def run(self):
@@ -465,15 +429,15 @@ class SwiDebugEvaluateCommand(sublime_plugin.WindowCommand):
     def run(self):
         assert_main_thread()
         active_view = self.window.active_view()
-
-        for region in active_view.sel():
-            title = active_view.substr(region)
+        regions = active_view.sel()
+        for i in range(len(regions)):
+            title = active_view.substr(regions[i])
             if paused:
                 if current_call_frame_position:
-                    title = "%s on %s" % (active_view.substr(region), current_call_frame_position)
-                channel.send(webkit.Debugger.evaluateOnCallFrame(current_call_frame, active_view.substr(region)), self.evaluated, {'name': title})
+                    title = "%s on %s" % (active_view.substr(regions[i]), current_call_frame_position)
+                channel.send(webkit.Debugger.evaluateOnCallFrame(current_call_frame, active_view.substr(regions[i])), self.evaluated, {'name': title})
             else:
-                channel.send(webkit.Runtime.evaluate(active_view.substr(region)), self.evaluated, {'name': title})
+                channel.send(webkit.Runtime.evaluate(active_view.substr(regions[i])), self.evaluated, {'name': title})
 
     def evaluated(self, command):
         if command.data.type == 'object':
@@ -497,21 +461,19 @@ class SwiDebugClearBreakpointsCommand(sublime_plugin.WindowCommand):
                 del brk_object[file_name];
 
         save_breaks()
-        lookup_view(self.window.active_view()).view_breakpoints() #todo fix view
+        update_overlays()
 
 class SwiDebugToggleBreakpointCommand(sublime_plugin.WindowCommand):
     def run(self):
         assert_main_thread()
         active_view = self.window.active_view()
 
-        log('toggle breakpoint', active_view)
-
-        view = lookup_view(active_view)
-        view_name = view.file_name();
+        v = lookup_view(active_view)
+        view_name = v.file_name();
         if not view_name: # eg file mapping pane
             return
 
-        row = str(view.rows(view.lines())[0])
+        row = str(v.rows(v.lines())[0])
         init_breakpoint_for_file(view_name)
         breaks = get_breakpoints_by_full_path(view_name)
         if row in breaks:
@@ -528,14 +490,12 @@ class SwiDebugToggleBreakpointCommand(sublime_plugin.WindowCommand):
             else:
                 set_breakpoint_by_full_path(view_name, row)
 
-        view.view_breakpoints()
+        update_overlays()
 
     def breakpointAdded(self, command):
         """ Notification that a breakpoint was added successfully """
         assert_main_thread()
         active_view = self.window.active_view()
-
-        log('breakpoint added', active_view)
 
         breakpointId = command.data['breakpointId']
         init_breakpoint_for_file(command.options)
@@ -548,8 +508,7 @@ class SwiDebugToggleBreakpointCommand(sublime_plugin.WindowCommand):
 
             set_breakpoint_by_scriptId(str(scriptId), str(lineNumber), 'enabled', breakpointId)
 
-        # Scroll to position where breakpoints have resolved
-        lookup_view(active_view).view_breakpoints() #todo fix view
+        update_overlays()
 
 class SwiDebugStopCommand(sublime_plugin.WindowCommand):
 
@@ -560,17 +519,19 @@ class SwiDebugStopCommand(sublime_plugin.WindowCommand):
 
         disable_all_breakpoints()
 
-        lookup_view(active_view).view_breakpoints() #todo fix view
-
         global paused
         paused = False
 
         global debugger_enabled
         debugger_enabled = False
 
+        global current_file
+        current_file = None
+
         global current_line
         current_line = None
-        lookup_view(active_view).view_breakpoints()
+
+        update_overlays()
 
         global channel
         if channel:
@@ -588,12 +549,7 @@ class SwiDebugReloadCommand(sublime_plugin.WindowCommand):
             channel.send(webkit.Network.clearBrowserCache())
             channel.send(webkit.Page.reload(), on_reload)
 
-def show_file_mapping():
-    v = find_view('mapping')
-    v.run_command('show_file_mapping_internal')
-
-
-class SwiShowFileMappingInternalCommand(sublime_plugin.TextCommand):
+class SwiShowFileMappingsInternalCommand(sublime_plugin.TextCommand):
     """ Called internally on the file mapping view """
     def run(self, edit):
         
@@ -648,8 +604,8 @@ class SwiDebugView(object):
     """ The SWIDebugView is sort of a normal view with some convenience methods.
         See lookup_view.
     """
-    def __init__(self, view):
-        self.view = view
+    def __init__(self, v):
+        self.view = v
         self.context_data = {}
         self.clicks = []
         self.prev_click_position = 0
@@ -735,37 +691,6 @@ class SwiDebugView(object):
         """ Removes all clickable regions """
         self.clicks = []
 
-    def view_breakpoints(self):
-        # TODo rename as it updates the IP
-        self.view.erase_regions('swi_breakpoint_inactive')
-        self.view.erase_regions('swi_breakpoint_active')
-        self.view.erase_regions('swi_breakpoint_current')
-
-        if not self.view.file_name():
-            return
-
-        breaks = get_breakpoints_by_full_path(self.view.file_name()) or {}
-
-        enabled = []
-        disabled = []
-
-        for key in list(breaks.keys()):
-            if breaks[key]['status'] == 'enabled':
-                enabled.append(key)
-            if breaks[key]['status'] == 'disabled':
-                disabled.append(key)
-
-        self.view.add_regions('swi_breakpoint_active', self.lines(enabled), get_setting('breakpoint_scope'), icon=breakpoint_active_icon, flags=sublime.HIDDEN)
-        self.view.add_regions('swi_breakpoint_inactive', self.lines(disabled), get_setting('breakpoint_scope'), icon=breakpoint_inactive_icon, flags=sublime.HIDDEN)
-
-        if current_line:
-            if (str(current_line) in breaks and breaks[str(current_line)]['status'] == 'enabled'): # always draw current line region, but selectively draw icon
-                current_icon = breakpoint_current_icon
-            else:
-                current_icon = ''
-
-            self.view.add_regions('swi_breakpoint_current', self.lines([current_line]), get_setting('current_line_scope'), current_icon, flags=sublime.DRAW_EMPTY)
-
     def check_click(self):
         if not isinstance(self, SwiDebugView):
             return
@@ -785,32 +710,7 @@ class SwiDebugView(object):
 
                     if click['click_type'] == 'goto_call_frame':
                         callFrame = click['data']['callFrame']
-
-                        scriptId = callFrame.location.scriptId
-                        line_number = callFrame.location.lineNumber
-                        file_name = find_script(str(scriptId))
-
-                        position = get_authored_position_if_necessary(file_name, callFrame.location.lineNumber, callFrame.location.columnNumber)
-                        if position:
-                            file_name = position.file_name()
-                            line_number = position.one_based_line()
-
-                        open_file_and_focus_line(file_name, line_number)
-
-                        first_scope = callFrame.scopeChain[0]
-
-                        if get_setting('open_stack_current_in_new_tab'):
-                            title = {'objectId': first_scope.object.objectId, 'name': "%s:%s (%s)" % (file_name.split('/')[-1], line_number, first_scope.type)}
-                        else:
-                            title = {'objectId': first_scope.object.objectId, 'name': "Breakpoint Local"}
-
-                        channel.send(webkit.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, title)
-
-                        global current_call_frame
-                        current_call_frame = callFrame.callFrameId
-
-                        global current_call_frame_position
-                        current_call_frame_position = "%s:%s" % (file_name.split('/')[-1], line_number)
+                        change_to_call_frame(callFrame)
 
                     if click['click_type'] == 'get_params':
                         if channel:
@@ -818,7 +718,7 @@ class SwiDebugView(object):
 
                     if click['click_type'] == 'command':
                         self.remove_click(click_counter)
-                        self.run_command(click['data'])
+                        self.window().run_command(click['data'])
 
             click_counter += 1
 
@@ -838,6 +738,43 @@ def lookup_view(v):
         return buffers[id]
     return None
 
+def update_overlays():
+
+    # loop over all views, identifying the files
+    # we need to draw into
+    for v in window.views():
+        v = lookup_view(v)
+
+        if not v.file_name():
+            continue
+
+        v.erase_regions('swi_breakpoint_inactive')
+        v.erase_regions('swi_breakpoint_active')
+        v.erase_regions('swi_breakpoint_current')
+
+        breaks = get_breakpoints_by_full_path(v.file_name()) or {}
+
+        enabled = []
+        disabled = []
+
+        for key in list(breaks.keys()):
+            if breaks[key]['status'] == 'enabled':
+                enabled.append(key)
+            if breaks[key]['status'] == 'disabled':
+                disabled.append(key)
+
+        v.add_regions('swi_breakpoint_active', v.lines(enabled), get_setting('breakpoint_scope'), icon=breakpoint_active_icon, flags=sublime.HIDDEN)
+        v.add_regions('swi_breakpoint_inactive', v.lines(disabled), get_setting('breakpoint_scope'), icon=breakpoint_inactive_icon, flags=sublime.HIDDEN)
+
+        if current_line:
+            if v.file_name() == current_file:
+                if (str(current_line) in breaks and breaks[str(current_line)]['status'] == 'enabled'): # always draw current line region, but selectively draw icon
+                    current_icon = breakpoint_current_icon
+                else:
+                    current_icon = ''
+
+                v.add_regions('swi_breakpoint_current', v.lines([current_line]), get_setting('current_line_scope'), current_icon, flags=sublime.DRAW_EMPTY)
+
 
 ####################################################################################
 #   EventListener
@@ -848,97 +785,77 @@ class EventListener(sublime_plugin.EventListener):
     def __init__(self):
         self.timing = time.time()
 
-    def on_new(self, view):
-        lookup_view(view).on_new()
+    def on_new(self, v):
+        lookup_view(v).on_new()
 
-    def on_clone(self, view):
-        lookup_view(view).on_clone()
+    def on_clone(self, v):
+        lookup_view(v).on_clone()
 
-    def on_load(self, view):
-        log('on_load', view)
-        lookup_view(view).view_breakpoints()
-        lookup_view(view).on_load()
+    def on_load(self, v):
+        update_overlays()
+        lookup_view(v).on_load()
 
-    def on_close(self, view):
-        lookup_view(view).on_close()
+    def on_close(self, v):
+        lookup_view(v).on_close()
 
-    def on_pre_save(self, view):
-        lookup_view(view).on_pre_save()
+    def on_pre_save(self, v):
+        lookup_view(v).on_pre_save()
 
     def reload_styles(self):
         channel.send(webkit.Runtime.evaluate("var files = document.getElementsByTagName('link');var links = [];for (var a = 0, l = files.length; a < l; a++) {var elem = files[a];var rel = elem.rel;if (typeof rel != 'string' || rel.length === 0 || rel === 'stylesheet') {links.push({'elem': elem,'href': elem.getAttribute('href').split('?')[0],'last': false});}}for ( a = 0, l = links.length; a < l; a++) {var link = links[a];link.elem.setAttribute('href', (link.href + '?x=' + Math.random()));}"))
 
     def reload_set_script_source(self, scriptId, scriptSource):
+        """ Calls update_stack because script can be edited when debugger is paused, and
+            by this means potentially update the callstack.
+        """
         channel.send(webkit.Debugger.setScriptSource(scriptId, scriptSource), self.update_stack)
 
     def reload_page(self):
         channel.send(webkit.Page.reload(), on_reload)
 
-    def on_post_save(self, view):
+    def on_post_save(self, v):
         if channel and get_setting('reload_on_save'):
             channel.send(webkit.Network.clearBrowserCache())
-            if view.file_name().endswith('.css') or view.file_name().endswith('.less') or view.file_name().endswith('.sass') or view.file_name().endswith('.scss'):
+            if v.file_name().endswith('.css') or v.file_name().endswith('.less') or v.file_name().endswith('.sass') or v.file_name().endswith('.scss'):
                 sublime.set_timeout(lambda: self.reload_styles(), get_setting('reload_timeout'))
-            elif view.file_name().endswith('.js'):
-                scriptId = find_script(view.file_name())
+            elif v.file_name().endswith('.js'):
+                scriptId = find_script(v.file_name())
                 if scriptId and set_script_source:
-                    scriptSource = view.substr(sublime.Region(0, view.size()))
+                    scriptSource = v.substr(sublime.Region(0, v.size()))
                     self.reload_set_script_source(scriptId, scriptSource)
                 else:
                     sublime.set_timeout(lambda: self.reload_page(), get_setting('reload_timeout'))
             else:
                 sublime.set_timeout(lambda: self.reload_page(), get_setting('reload_timeout'))
 
-        lookup_view(view).on_post_save()
+        lookup_view(v).on_post_save()
 
-    def on_modified(self, view):
-        #log('on_modified', view)
-        lookup_view(view).on_modified()
-        #lookup_view(view).view_breakpoints()
+    def on_modified(self, v):
+        lookup_view(v).on_modified()
+        #update_overlays()
 
-    def on_selection_modified(self, view):
+    def on_selection_modified(self, v):
         """ We use this to discover a "button" has been clicked."""
         assert_main_thread()
         now = time.time()
         if now - self.timing > 0.1:
-            lookup_view(view).check_click()
+            lookup_view(v).check_click()
         self.timing = now
 
-    def on_activated(self, view):
-        #log('on_activated', view)
-        lookup_view(view).on_activated()
-        #lookup_view(view).view_breakpoints()
+    def on_activated(self, v):
+        #todo can we move to on load?
+        lookup_view(v).on_activated()
 
-    def on_deactivated(self, view):
-        lookup_view(view).on_deactivated()
+    def on_deactivated(self, v):
+        lookup_view(v).on_deactivated()
 
-    def on_query_context(self, view, key, operator, operand, match_all):
-        lookup_view(view).on_query_context(key, operator, operand, match_all)
+    def on_query_context(self, v, key, operator, operand, match_all):
+        lookup_view(v).on_query_context(key, operator, operand, match_all)
 
     def update_stack(self, command):
         """ Called on setScriptSource """
-        global paused
 
-        if not paused:
-            return
-
-        data = command.data
-        window.set_layout(get_setting('stack_layout'))
-
-        console_show_stack(data['callFrames'])
-
-        scriptId = data['callFrames'][0].location.scriptId
-        line_number = data['callFrames'][0].location.lineNumber
-        file_name = find_script(str(scriptId))
-        first_scope = data['callFrames'][0].scopeChain[0]
-
-        if get_setting('open_stack_current_in_new_tab'):
-            title = {'objectId': first_scope.object.objectId, 'name': "%s:%s (%s)" % (file_name, line_number, first_scope.type)}
-        else:
-            title = {'objectId': first_scope.object.objectId, 'name': "Breakpoint Local"}
-
-        channel.send(webkit.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, title)
-        open_file_and_focus_line(file_name, line_number)
+        update_stack(command.data)
 
 
 ####################################################################################
@@ -1007,10 +924,10 @@ def find_view(console_type, title=''):
 
     return lookup_view(v)
 
-def clear_view(view):
-    v = find_view(view)
+def clear_view(v):
+    v = find_view(v)
 
-    if not view:
+    if not v:
         return
 
     v.run_command('swi_clear_view_internal')
@@ -1035,20 +952,65 @@ def close_all_our_windows():
         window = sublime.active_window()
 
     window.focus_group(0)
-    for view in window.views_in_group(0):
-        if view.name() == 'File mapping ':
+    for v in window.views_in_group(0):
+        if v.name() == 'File mapping ':
             window.run_command("close")
             break
 
     window.focus_group(1)
-    for view in window.views_in_group(1):
+    for v in window.views_in_group(1):
         window.run_command("close")
 
     window.focus_group(2)
-    for view in window.views_in_group(2):
+    for v in window.views_in_group(2):
         window.run_command("close")
 
     window.set_layout(original_layout)
+
+def update_stack(data):
+
+    if (not 'callFrames' in data):
+        return;
+    
+    channel.send(webkit.Debugger.setOverlayMessage('Paused in Sublime Web Inspector'))
+
+    window.set_layout(get_setting('stack_layout'))
+
+    console_show_stack(data['callFrames'])
+
+    callFrame = data['callFrames'][0];
+    change_to_call_frame(callFrame)
+
+
+def change_to_call_frame(callFrame):
+
+    scriptId = callFrame.location.scriptId
+    line_number = callFrame.location.lineNumber
+    display_line_number = line_number + 1
+    file_name = find_script(str(scriptId))
+    first_scope = callFrame.scopeChain[0]
+
+    params = {'objectId': first_scope.object.objectId, 'name': "%s:%s (%s)" % (file_name, line_number, first_scope.type)}
+    channel.send(webkit.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, params)
+
+    position = get_authored_position_if_necessary(file_name, callFrame.location.lineNumber, callFrame.location.columnNumber)
+    if position:
+        file_name = position.file_name()
+        display_line_number = position.one_based_line()
+
+    global current_call_frame
+    current_call_frame = callFrame.callFrameId
+
+    global current_call_frame_position
+    current_call_frame_position = "%s:%s" % (file_name, display_line_number)
+
+    global current_file
+    current_file = file_name
+
+    global current_line
+    current_line = display_line_number
+
+    open_file_and_focus_line(file_name, display_line_number)
 
 class SwiClearViewInternalCommand(sublime_plugin.TextCommand): 
     """ Called internally on the console view """
@@ -1179,17 +1141,12 @@ class SwiConsoleAddMessageInternalCommand(sublime_plugin.TextCommand):
             self.view.insert(edit, self.view.size(), ' \u21AA Repeat:' + str(message.repeatCount) + '\n')
 
 properties_queue = []
-def console_add_properties(command):
+def console_add_properties(params):
     assert_main_thread()
 
-    if 'name' in command.options:
-        name = command.options['name']
-    else:
-        name = str(command.options['objectId'])
+    v = find_view('scope')
 
-    v = find_view('scope', name)
-
-    properties_queue.append(command)
+    properties_queue.append(params)
     v.run_command('swi_console_print_properties_internal')
 
     v.show(0)
@@ -1206,7 +1163,7 @@ class SwiConsolePrintPropertiesInternalCommand(sublime_plugin.TextCommand):
         if 'name' in command.options:
             name = command.options['name']
         else:
-            name = str(command.options['objectId'])
+            name = ""
 
         if 'prev' in command.options:
             prev = command.options['prev'] + ' -> ' + name
@@ -1471,29 +1428,16 @@ def open_file_and_focus_line(file_name, line_number):
     if file_name:   # race with browser
         window = sublime.active_window()
         window.focus_group(0)
-        view = window.open_file(file_name, sublime.TRANSIENT)
-        do_when(lambda: not view.is_loading(), lambda: focus_line_and_highlight(view, line_number))
+        v = window.open_file(file_name)
+        do_when(lambda: not v.is_loading(), lambda: open_script_and_focus_line_callback(v, line_number))
 
-def focus_line_and_highlight(view, line_number):
-    """ Called on the correct view, from opening the file """
-    view.run_command("goto_line", {"line": line_number})
-    lookup_view(view).view_breakpoints()
+def open_script_and_focus_line_callback(v, line_number):
+    v.run_command("goto_line", {"line": line_number})
+    update_overlays()
 
 def assert_main_thread():
     global main_thread
     assert threading.current_thread().ident == main_thread.ident, "not on main thread"
-
-def log(title, view):
-    file_name = view.file_name()
-    if not file_name:
-        file_name = ""
-
-    if view.window():
-        wid = str(view.window().id())
-    else:
-        wid = "X"
-
-    print("W " + wid + " " + title + " --- " + "  V " + str(view.id()) + " " + view.name() + " " + file_name + " B " + str(view.buffer_id()))
 
 sublime.set_timeout(lambda: load_breaks(), 1000)
 
