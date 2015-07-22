@@ -1,4 +1,4 @@
-from .utils import Command, Notification, WIPObject
+from .utils import Command, Notification, WebkitObject
 from .Runtime import RemoteObject
 from .Network import RequestId
 
@@ -48,7 +48,7 @@ def messagesCleared():
     return notification
 
 
-class CallFrame(WIPObject):
+class CallFrame(WebkitObject):
     def __init__(self, value):
         self.set(value, 'columnNumber')
         self.set(value, 'functionName')
@@ -56,7 +56,7 @@ class CallFrame(WIPObject):
         self.set(value, 'url')
 
 
-class ConsoleMessage(WIPObject):
+class ConsoleMessage(WebkitObject):
     def __init__(self, value):
         self.set(value, 'level')
         self.set(value, 'line')
