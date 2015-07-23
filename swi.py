@@ -480,7 +480,10 @@ class SwiDebugToggleBreakpointCommand(sublime_plugin.WindowCommand):
         if row in breaks:
             if channel:
                 if row in breaks:
-                    channel.send(webkit.Debugger.removeBreakpoint(breaks[row]['breakpointId']))
+                    try:
+                        channel.send(webkit.Debugger.removeBreakpoint(breaks[row]['breakpointId']))
+                    except KeyError:
+                        print("SWI: A key error occurred while removing the breakpoint")
 
             del_breakpoint_by_full_path(view_name, row)
         else:
