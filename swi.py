@@ -48,6 +48,7 @@ set_script_source = False
 current_call_frame = None
 current_call_frame_position = None
 main_thread = None
+source_map_state = None
 
 breakpoint_active_icon = 'Packages/Web Inspector/icons/breakpoint_active.png'
 breakpoint_inactive_icon = 'Packages/Web Inspector/icons/breakpoint_inactive.png'
@@ -94,7 +95,7 @@ class SwiDebugCommand(sublime_plugin.WindowCommand):
                 mapping.append(['swi_show_file_mappings', 'Show file mappings'])
                 mapping.append(['swi_debug_clear_breakpoints', 'Clear all Breakpoints'])
 
-                if is_source_map_enabled():
+                if is_source_map_enabled:
                     mapping.append(['swi_toggle_authored_code', 'Toggle authored code'])
             else:
                 mapping.append(['swi_debug_start', 'Start debugging'])
@@ -469,7 +470,7 @@ class SwiDebugToggleBreakpointCommand(sublime_plugin.WindowCommand):
         active_view = self.window.active_view()
 
         v = lookup_view(active_view)
-        view_name = v.file_name();
+        view_name = v.file_name()
         if not view_name: # eg file mapping pane
             return
 
@@ -484,15 +485,18 @@ class SwiDebugToggleBreakpointCommand(sublime_plugin.WindowCommand):
             del_breakpoint_by_full_path(view_name, row)
         else:
             if channel:
-                scriptUrl = find_script_url(view_name)
-                if not scriptUrl and projectsystem.DocumentMapping.MappingsManager.is_authored_file(view_name):
+                if projectsystem.DocumentMapping.MappingsManager.is_authored_file(view_name):
                     mapping = projectsystem.DocumentMapping.MappingsManager.get_mapping(view_name)
-                    line = int(row) - 1
-                    text = get_line_content(view_name, line)
-                    position = mapping.get_generated_position(view_name, line, len(text) - len(text.lstrip()))
+                    sel = active_view.sel()[0]
+                    start = active_view.rowcol(sel.begin())
+        
+                    position = mapping.get_generated_position(view_name, start[0], start[1])
                     scriptUrl = find_script_url(position.file_name())
                     row = str(position.one_based_line())
-                    view_name = position.file_name()
+                    scriptUrl = find_script_url(position.file_name())
+
+                if not scriptUrl:
+                    scriptUrl = find_script_url(view_name)
 
                 if scriptUrl:
                     channel.send(webkit.Debugger.setBreakpointByUrl(int(row), scriptUrl), self.breakpointAdded, view_name)
@@ -515,7 +519,15 @@ class SwiDebugToggleBreakpointCommand(sublime_plugin.WindowCommand):
             lineNumber = location.lineNumber
             columnNumber = location.columnNumber
 
-            set_breakpoint_by_scriptId(str(scriptId), str(lineNumber), 'enabled', breakpointId)
+            file_name = find_script(str(scriptId))
+            if projectsystem.DocumentMapping.MappingsManager.is_generated_file(file_name):
+                position = get_authored_position_if_necessary(file_name, lineNumber, columnNumber)
+                if position:
+                    lineNumber = position.one_based_line()
+                    columnNumber = position.one_based_column()
+                    file_name = position.file_name()
+
+            set_breakpoint_by_full_path(file_name, str(lineNumber), 'enabled', breakpointId)
 
         update_overlays()
 
@@ -1462,16 +1474,14 @@ def set_selection(view, start_line, start_column, end_line, end_column):
     selection.clear()
     selection.add(sublime.Region(start_point, end_point))
 
-def is_source_map_enabled():
-    return get_setting("enable_source_maps")
 
 def get_authored_position_if_necessary(file_name, line_number, column_number):
-    if is_source_map_enabled():
+    if is_source_map_enabled:
         mapping = projectsystem.DocumentMapping.MappingsManager.get_mapping(file_name)
         return mapping.get_authored_position(line_number, line_number)
 
-def get_line_content(file_name, line):
-    view = window.open_file(file_name)
-    point = view.text_point(line, 0)
-    region = view.line(point)
-    return view.substr(region)
+def is_source_map_enabled():
+    if source_map_state == None:
+        source_map_state = get_setting("enable_source_maps")
+
+    return source_map_state

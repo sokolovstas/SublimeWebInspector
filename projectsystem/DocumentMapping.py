@@ -42,7 +42,7 @@ class MappingsManager:
             return file_name.lower() in MappingsManager.authored_file_mappings
 
     @staticmethod
-    def is_source_file(file_name):
+    def is_generated_file(file_name):
         if file_name:
             return file_name.lower() in MappingsManager.source_file_mappings
 
