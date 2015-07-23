@@ -1,0 +1,9 @@
+extract swiview class
+extract eventlistener class
+remopve extra updatestack
+remove open_script_and_focus_line from update_stack
+stop opening file mapping
+pull bits of update_stack out of check_click
+can probably remove current_call_frame_position
+rename click_counter to click_index
+remove buffers array
