@@ -1,4 +1,4 @@
-from .utils import WebkitObject, Command
+from .wkutils import WebkitObject, Command
 
 
 def clearBrowserCache():
