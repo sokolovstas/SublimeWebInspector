@@ -195,6 +195,9 @@ def lookup_view(v):
         return v
     if isinstance(v, sublime.View):
         id = v.buffer_id()
+        # Take this opportunity to replace the wrapped view,
+        # if it's against the same buffer as the previously 
+        # seen view
         if id in buffers:
             buffers[id].view = v
         else:
