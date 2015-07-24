@@ -62,13 +62,14 @@ class SwiDebugView(object):
             lines = [lines]
         return [self.view.rowcol(line.begin())[0] + 1 for line in lines]
 
-    def insert_click(self, a, b, click_type, data):
-        """ Creates a clickable "button" at the specified line and column.
-            Records the action to be taken on click, and any parameter
-            such as the object to get members from.
+    def print_click(self, edit, position, text, click_type, data):
+        """ Inserts the specified text and creates a clickable "button"
+            around it.
         """
+        insert_length = self.insert(edit, position, text)
+
         insert_before = 0
-        new_region = sublime.Region(a, b)
+        new_region = sublime.Region(position, position + insert_length)
         regions = self.view.get_regions('swi_log_clicks')
         for region in regions:
             if new_region.b < region.a:
@@ -79,13 +80,6 @@ class SwiDebugView(object):
 
         regions.append(new_region)
         self.view.add_regions('swi_log_clicks', regions, scope=utils.get_setting('interactive_scope'), flags=sublime.DRAW_NO_FILL)
-
-    def print_click(self, edit, position, text, click_type, data):
-        """ Inserts the specified text and creates a clickable "button"
-            around it.
-        """
-        insert_length = self.insert(edit, position, text)
-        self.insert_click(position, position + insert_length, click_type, data)
 
     def remove_click(self, index):
         """ Removes a clickable "button" with the specified index."""
