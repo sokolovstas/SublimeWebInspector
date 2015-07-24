@@ -808,10 +808,7 @@ class SwiConsoleAddEvaluateInternalCommand(sublime_plugin.TextCommand):
         v = views.lookup_view(self.view)
         eval_object = eval_object_queue.pop(0)
 
-        insert_position = v.size()
-        v.insert(edit, insert_position, str(eval_object) + ' ')
-
-        v.insert(edit, v.size(), "\n")
+        v.insert(edit, v.size(), str(eval_object) + ' \n')
 
 message_queue = []
 
@@ -857,21 +854,20 @@ class SwiConsoleAddMessageInternalCommand(sublime_plugin.TextCommand):
         else:
             line = 0
 
-        insert_position = v.size()
-        insert_length = v.insert(edit, insert_position, "%s:%d" % (url, line))
-
         if scriptId and line > 0:
-            v.insert_click(insert_position, insert_position + insert_length, 'goto_file_line', {'scriptId': scriptId, 'line': str(line)})
+            v.print_click(edit, v.size(),  "%s:%d" % (url, line), 'goto_file_line', {'scriptId': scriptId, 'line': str(line)})
+        else:
+            v.insert(edit, v.size(), "%s:%d" % (url, line))
 
         v.insert(edit, v.size(), " ")
 
         # Add text
         if len(message.parameters) > 0:
             for param in message.parameters:
-                insert_position = v.size()
-                insert_length = v.insert(edit, insert_position, str(param) + ' ')
                 if param.type == 'object':
-                    v.insert_click(insert_position, insert_position + insert_length - 1, 'get_params', {'objectId': param.objectId})
+                    v.print_click(edit, v.size(), str(param) + ' ', 'get_params', {'objectId': param.objectId})
+                else:
+                    v.insert(edit, v.size(), str(param) + ' ')
         else:
             v.insert(edit, v.size(), message.text)
 
@@ -936,11 +932,11 @@ class SwiConsolePrintPropertiesInternalCommand(sublime_plugin.TextCommand):
 
         for prop in command.data:
             v.insert(edit, v.size(), prop.name + ': ')
-            insert_position = v.size()
             if(prop.value):
-                insert_length = v.insert(edit, insert_position, str(prop.value) + '\n')
                 if prop.value.type == 'object':
-                    v.insert_click(insert_position, insert_position + insert_length - 1, 'get_params', {'objectId': prop.value.objectId, 'name': prop.name, 'prev': prev})
+                    v.print_click(edit, v.size(), str(prop.value) + '\n', 'get_params', {'objectId': prop.value.objectId, 'name': prop.name, 'prev': prev})
+                else:
+                    v.insert(edit, v.size(), str(prop.value) + '\n')
 
 call_frames_queue = []
 def console_show_stack(callFrames):
@@ -982,20 +978,19 @@ class SwiConsoleShowStackInternalCommand(sublime_plugin.TextCommand):
             else:
                 file_name = '-'
 
-            insert_position = v.size()
-            insert_length = v.insert(edit, insert_position, "%s:%s" % (file_name, line))
-
             if file_name != '-':
-                v.insert_click(insert_position, insert_position + insert_length, 'goto_call_frame', {'callFrame': callFrame})
+                v.print_click(edit, v.size,  "%s:%s" % (file_name, line), 'goto_call_frame', {'callFrame': callFrame})
+            else:
+                v.insert(edit, insert_position, "%s:%s" % (file_name, line))
 
             v.insert(edit, v.size(), " %s\n" % (callFrame.functionName))
 
             for scope in callFrame.scopeChain:
                 v.insert(edit, v.size(), "\t")
-                insert_position = v.size()
-                insert_length = v.insert(edit, v.size(), "%s\n" % (scope.type))
                 if scope.object.type == 'object':
-                    v.insert_click(insert_position, insert_position + insert_length - 1, 'get_params', {'objectId': scope.object.objectId, 'name': "%s:%s (%s)" % (file_name, line, scope.type)})
+                    v.print_click(edit, v.size(), "%s\n" % (scope.type), 'get_params', {'objectId': scope.object.objectId, 'name': "%s:%s (%s)" % (file_name, line, scope.type)})
+                else:
+                    v.insert(edit, v.size(), "%s\n" % (scope.type))
 
 
 ####################################################################################
