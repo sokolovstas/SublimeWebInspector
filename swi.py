@@ -192,6 +192,7 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
         self.project_folders = self.window.folders()
         print ('Starting SWI')
         self.url = url
+
         global channel
         if(channel):
             print ('SWI: Socket closed')
@@ -527,7 +528,7 @@ class SwiDebugStopCommand(sublime_plugin.WindowCommand):
         current_line = None
 
         update_overlays()
-
+        
         global channel
         if channel:
             try:
@@ -855,7 +856,7 @@ class SwiConsoleAddMessageInternalCommand(sublime_plugin.TextCommand):
             line = 0
 
         if scriptId and line > 0:
-            v.print_click(edit, v.size(),  "%s:%d" % (url, line), 'goto_file_line', {'scriptId': scriptId, 'line': str(line)})
+            v.print_click(edit, v.size(),  "%s:%d" % (url, line), lambda: open_script_and_focus_line(scriptId, str(line)))
         else:
             v.insert(edit, v.size(), "%s:%d" % (url, line))
 
@@ -864,8 +865,9 @@ class SwiConsoleAddMessageInternalCommand(sublime_plugin.TextCommand):
         # Add text
         if len(message.parameters) > 0:
             for param in message.parameters:
-                if param.type == 'object':
-                    v.print_click(edit, v.size(), str(param) + ' ', 'get_params', {'objectId': param.objectId})
+                if param.type == 'object': #if channel here
+                    callback = lambda: channel.send(webkit.Runtime.getProperties(param.objectId, True), console_add_properties, {'objectId': param.objectId})
+                    v.print_click(edit, v.size(), str(param) + ' ', callback)
                 else:
                     v.insert(edit, v.size(), str(param) + ' ')
         else:
@@ -883,7 +885,8 @@ class SwiConsoleAddMessageInternalCommand(sublime_plugin.TextCommand):
                 v.insert(edit, v.size(),  '\t\u21E1 ')
 
                 if scriptId:
-                    v.print_click(edit, v.size(), "%s:%s %s" % (file_name, callFrame.lineNumber, callFrame.functionName), 'goto_file_line', {'scriptId': scriptId, 'line': str(callFrame.lineNumber)})
+                    callback = lambda: open_script_and_focus_line(scriptId, str(callFrame.lineNumber))
+                    v.print_click(edit, v.size(), "%s:%s %s" % (file_name, callFrame.lineNumber, callFrame.functionName), callback)
                 else:
                     v.insert(edit, v.size(),  "%s:%s %s" % (file_name, callFrame.lineNumber, callFrame.functionName))
 
@@ -934,7 +937,8 @@ class SwiConsolePrintPropertiesInternalCommand(sublime_plugin.TextCommand):
             v.insert(edit, v.size(), prop.name + ': ')
             if(prop.value):
                 if prop.value.type == 'object':
-                    v.print_click(edit, v.size(), str(prop.value) + '\n', 'get_params', {'objectId': prop.value.objectId, 'name': prop.name, 'prev': prev})
+                    callback = lambda: channel.send(webkit.Runtime.getProperties(prop.value.objectId, True), console_add_properties, {'objectId': prop.value.objectId, 'name': prop.name, 'prev': prev})
+                    v.print_click(edit, v.size(), str(prop.value) + '\n', callback)
                 else:
                     v.insert(edit, v.size(), str(prop.value) + '\n')
 
@@ -960,13 +964,13 @@ class SwiConsoleShowStackInternalCommand(sublime_plugin.TextCommand):
         v.erase(edit, sublime.Region(0, v.size()))
 
         v.insert(edit, v.size(), "\n")
-        v.print_click(edit, v.size(), "  Resume  ", 'command', 'swi_debug_pause_resume')
+        v.print_click(edit, v.size(), "  Resume  ", lambda: self.view.window().run_command('swi_debug_pause_resume'))
         v.insert(edit, v.size(), "  ")
-        v.print_click(edit, v.size(), "  Step Over  ", 'command', 'swi_debug_step_over')
+        v.print_click(edit, v.size(), "  Step Over  ", lambda: self.view.window().run_command('swi_debug_step_over'))
         v.insert(edit, v.size(), "  ")
-        v.print_click(edit, v.size(), "  Step Into  ", 'command', 'swi_debug_step_into')
+        v.print_click(edit, v.size(), "  Step Into  ", lambda: self.view.window().run_command('swi_debug_step_into'))
         v.insert(edit, v.size(), "  ")
-        v.print_click(edit, v.size(), "  Step Out  ", 'command', 'swi_debug_step_out')
+        v.print_click(edit, v.size(), "  Step Out  ", lambda: self.view.window().run_command('swi_debug_step_out'))
         v.insert(edit, v.size(), "\n\n")
 
         for callFrame in callFrames:
@@ -979,16 +983,17 @@ class SwiConsoleShowStackInternalCommand(sublime_plugin.TextCommand):
                 file_name = '-'
 
             if file_name != '-':
-                v.print_click(edit, v.size,  "%s:%s" % (file_name, line), 'goto_call_frame', {'callFrame': callFrame})
+                v.print_click(edit, v.size(),  "%s:%s" % (file_name, line), lambda: change_to_call_frame(callFrame))
             else:
-                v.insert(edit, insert_position, "%s:%s" % (file_name, line))
+                v.insert(edit, v.size(), "%s:%s" % (file_name, line))
 
             v.insert(edit, v.size(), " %s\n" % (callFrame.functionName))
 
             for scope in callFrame.scopeChain:
                 v.insert(edit, v.size(), "\t")
                 if scope.object.type == 'object':
-                    v.print_click(edit, v.size(), "%s\n" % (scope.type), 'get_params', {'objectId': scope.object.objectId, 'name': "%s:%s (%s)" % (file_name, line, scope.type)})
+                    callback = lambda: channel.send(webkit.Runtime.getProperties(scope.object.objectId, True), console_add_properties, {'objectId': scope.object.objectId, 'name': "%s:%s (%s)" % (file_name, line, scope.type)})
+                    v.print_click(edit, v.size(), "%s\n" % (scope.type), callback)
                 else:
                     v.insert(edit, v.size(), "%s\n" % (scope.type))
 

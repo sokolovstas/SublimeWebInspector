@@ -13,7 +13,7 @@ class SwiDebugView(object):
     def __init__(self, v):
         self.view = v
         self.context_data = {}
-        self.clicks = []
+        self.callbacks = []
         self.prev_click_position = 0
 
     def __getattr__(self, attr):
@@ -62,10 +62,11 @@ class SwiDebugView(object):
             lines = [lines]
         return [self.view.rowcol(line.begin())[0] + 1 for line in lines]
 
-    def print_click(self, edit, position, text, click_type, data):
+    def print_click(self, edit, position, text, callback):
         """ Inserts the specified text and creates a clickable "button"
             around it.
         """
+        assert(callback)
         insert_length = self.insert(edit, position, text)
 
         insert_before = 0
@@ -76,7 +77,7 @@ class SwiDebugView(object):
                 break
             insert_before += 1
 
-        self.clicks.insert(insert_before, {'click_type': click_type, 'data': data})
+        self.callbacks.insert(insert_before, callback)
 
         regions.append(new_region)
         self.view.add_regions('swi_log_clicks', regions, scope=utils.get_setting('interactive_scope'), flags=sublime.DRAW_NO_FILL)
@@ -89,7 +90,7 @@ class SwiDebugView(object):
 
     def clear_clicks(self):
         """ Removes all clickable regions """
-        self.clicks = []
+        self.callbacks = []
 
     def check_click(self):
         if not isinstance(self, SwiDebugView):
@@ -97,30 +98,16 @@ class SwiDebugView(object):
 
         cursor = self.sel()[0].a
 
-        click_counter = 0
+        index = 0
         click_regions = self.get_regions('swi_log_clicks')
-        for click in click_regions:
-            if cursor > click.a and cursor < click.b:
+        for callback in click_regions:
+            if cursor > callback.a and cursor < callback.b:
 
-                if click_counter < len(self.clicks):
-                    click = self.clicks[click_counter]
+                if index < len(self.callbacks):
+                    callback = self.callbacks[index]
+                    callback()
 
-                    if click['click_type'] == 'goto_file_line':
-                        open_script_and_focus_line(click['data']['scriptId'], click['data']['line'])
-
-                    if click['click_type'] == 'goto_call_frame':
-                        callFrame = click['data']['callFrame']
-                        change_to_call_frame(callFrame)
-
-                    if click['click_type'] == 'get_params':
-                        if channel:
-                            channel.send(webkit.Runtime.getProperties(click['data']['objectId'], True), console_add_properties, click['data'])
-
-                    if click['click_type'] == 'command':
-                        self.remove_click(click_counter)
-                        self.window().run_command(click['data'])
-
-            click_counter += 1
+            index += 1
 
 def find_view(console_type, title=''):
     found = False
