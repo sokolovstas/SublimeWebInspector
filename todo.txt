@@ -1,4 +1,3 @@
-extract swiview class
 extract eventlistener class
 remopve extra updatestack
 remove open_script_and_focus_line from update_stack
@@ -7,3 +6,13 @@ pull bits of update_stack out of check_click
 can probably remove current_call_frame_position
 rename click_counter to click_index
 make insert_click private (use print_click)
+
+move into protocol:
+    def close(self):
+        try:
+            self.socket.close()
+        except:
+            print ('SWI: Can\'t close socket')
+
+self.commands is leaking
+fix case sensitive breakpoints
