@@ -84,7 +84,7 @@ class Protocol(object):
                 command = self.commands[parsed['id']]
 
                 if 'error' in parsed:
-                    self.to_main_thread(sublime.error_message("Error from debuggee:\n" + parsed['error']['message']), ())
+                    self.to_main_thread(sublime.error_message, ("Error from debuggee:\n" + parsed['error']['message'], )) # comma makes it a tuple
                 else:
                     if 'result' in parsed:
                         command.data = command.parser(parsed['result'])
