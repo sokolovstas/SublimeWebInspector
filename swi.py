@@ -276,7 +276,10 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
                         if sublime.platform() == "windows":
                             # eg., folder is c:\site and url is http://localhost/app.js
                             # glob for c:\site\app.js (primary) and c:\site\*\app.js (fallback only - there may be a c:\site\foo\app.js)
-                            files =  glob.glob(folder + "\\" + "\\".join(url_parts)) + glob.glob(folder + "\\*\\" + "\\".join(url_parts))
+                            try:
+                                files =  glob.glob(folder + "\\" + "\\".join(url_parts)) + glob.glob(folder + "\\*\\" + "\\".join(url_parts))
+                            except:
+                                pass
                         else:
                             files = glob.glob(folder + "/" + "/".join(url_parts)) + glob.glob(folder + "/*/" + "/".join(url_parts))
 
@@ -348,12 +351,29 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
             Called when debugging starts, and when a new script
             is loaded.
         """
-        breakpoints = get_breakpoints_by_full_path(file)
         scriptId = find_script(file)
-        if breakpoints:
-            for line in list(breakpoints.keys()):
-                location = webkit.Debugger.Location({'lineNumber': int(line), 'scriptId': scriptId})
-                channel.send(webkit.Debugger.setBreakpoint(location), self.breakpointAdded)
+        if is_source_map_enabled():
+            mapping = projectsystem.DocumentMapping.MappingsManager.get_mapping(file)
+            authored_files = mapping.get_authored_files()
+            for file_name in authored_files:
+                 breakpoints = get_breakpoints_by_full_path(file_name)
+                 if breakpoints:
+                     for line in list(breakpoints.keys()):
+                         if breakpoints[line]['column'] and int(breakpoints[line]['column']) >= 0:
+                             position = mapping.get_generated_position(file_name, int(line), int(breakpoints[line]['column']))
+                             if position:
+                                location = webkit.Debugger.Location({'lineNumber': position.one_based_line(), 'scriptId': scriptId})
+                                channel.send(webkit.Debugger.setBreakpoint(location), self.updateAuthoredDocument)
+        else:
+            breakpoints = get_breakpoints_by_full_path(file)
+            if breakpoints:
+                for line in list(breakpoints.keys()):
+                    location = webkit.Debugger.Location({'lineNumber': int(line), 'scriptId': scriptId})
+                    channel.send(webkit.Debugger.setBreakpoint(location), self.breakpointAdded)
+
+    def updateAuthoredDocument(self, command):
+        save_breaks()
+        update_overlays()
 
     def breakpointAdded(self, command):
         """ Notification that a breakpoint was set.
@@ -530,7 +550,11 @@ class SwiDebugToggleBreakpointCommand(sublime_plugin.WindowCommand):
                     columnNumber = position.one_based_column()
                     file_name = position.file_name()
 
-            set_breakpoint_by_full_path(file_name, str(lineNumber), 'enabled', breakpointId)
+            # If this breakpoint is in TS file, then store the column number as well for future restoration
+            if projectsystem.DocumentMapping.MappingsManager.is_generated_file(file_name):
+                set_breakpoint_by_full_path(file_name, str(lineNumber), -1, 'enabled', breakpointId)
+            else:
+                set_breakpoint_by_full_path(file_name, str(lineNumber), columnNumber, 'enabled', breakpointId)
 
         update_overlays()
 
@@ -1309,7 +1333,6 @@ def get_project():
 
     return project
 
-
 def load_breaks():
     global brk_object
     brk_object = get_setting('breaks')
@@ -1328,16 +1351,21 @@ def save_breaks():
 def full_path_to_file_name(path):
     return os.path.basename(os.path.realpath(path))
 
-def set_breakpoint_by_full_path(file_name, line, status='disabled', breakpointId=None):
+def set_breakpoint_by_full_path(file_name, line, column=-1, status='disabled', breakpointId=None):
     breaks = get_breakpoints_by_full_path(file_name)
 
     if not line in breaks:
         breaks[line] = {}
         breaks[line]['status'] = status
         breaks[line]['breakpointId'] = str(breakpointId)
+        if column != -1:
+            breaks[line]['column'] = str(column)
     else:
         breaks[line]['status'] = status
         breaks[line]['breakpointId'] = str(breakpointId)
+        if column != -1:
+            breaks[line]['column'] = str(column)
+
     save_breaks()
 
 
@@ -1355,19 +1383,6 @@ def del_breakpoint_by_full_path(file_name, line):
 
 def get_breakpoints_by_full_path(file_name):
     return brk_object.get(file_name, None)
-
-
-def set_breakpoint_by_scriptId(scriptId, line, status='disabled', breakpointId=None):
-    file_name = find_script(str(scriptId))
-    if file_name:
-        set_breakpoint_by_full_path(file_name, line, status, breakpointId)
-
-
-def del_breakpoint_by_scriptId(scriptId, line):
-    file_name = find_script(str(scriptId))
-    if file_name:
-        del_breakpoint_by_full_path(file_name, line)
-
 
 def get_breakpoints_by_scriptId(scriptId):
     file_name = find_script(str(scriptId))
@@ -1484,6 +1499,7 @@ def get_authored_position_if_necessary(file_name, line_number, column_number):
         return mapping.get_authored_position(line_number, line_number)
 
 def is_source_map_enabled():
+    global source_map_state
     if source_map_state == None:
         source_map_state = get_setting("enable_source_maps")
 
