@@ -651,14 +651,6 @@ class EventListener(sublime_plugin.EventListener):
         views.lookup_view(v).on_modified()
         #update_overlays()
 
-    def on_selection_modified(self, v):
-        """ We use this to discover a "button" has been clicked."""
-        utils.assert_main_thread()
-        now = time.time()
-        if now - self.timing > 0.1:
-            views.lookup_view(v).check_click()
-        self.timing = now
-
     def on_activated(self, v):
         #todo can we move to on load?
         views.lookup_view(v).on_activated()
@@ -671,7 +663,6 @@ class EventListener(sublime_plugin.EventListener):
 
     def update_stack(self, command):
         """ Called on setScriptSource """
-
         update_stack(command.data)
 
 
@@ -1180,3 +1171,4 @@ def open_script_and_focus_line_callback(v, line_number):
     update_overlays()
 
 sublime.set_timeout(lambda: load_breaks(), 1000)
+
