@@ -10,6 +10,7 @@ if not swi_folder in sys.path:
 import threading
 import websocket
 import swi
+import utils
 
 class Protocol(object):
     """ Encapsulate websocket connection """
@@ -48,7 +49,7 @@ class Protocol(object):
         command.options = options
         self.commands[command.id] = command
         self.next_id += 1
-        if swi.get_setting('debug_mode'):
+        if utils.get_setting('debug_mode'):
             print ('SWI: ->> ' + json.dumps(command.request, sort_keys=True, indent=4, separators=(',', ': ')))
         self.socket.send(json.dumps(command.request))
 
@@ -66,7 +67,7 @@ class Protocol(object):
             Parse it and call matching callback.
         """
         parsed = json.loads(message)
-        if swi.get_setting('debug_mode'):
+        if utils.get_setting('debug_mode'):
             print ('SWI: <<- ' + json.dumps(parsed, sort_keys=True, indent=4, separators=(',', ': ')))
         if 'method' in parsed:
             if parsed['method'] in self.notifications:
@@ -81,9 +82,10 @@ class Protocol(object):
             if parsed['id'] in self.commands:
 
                 command = self.commands[parsed['id']]
+                del self.commands[parsed['id']]
 
                 if 'error' in parsed:
-                    self.to_main_thread(sublime.error_message("Error from debuggee:\n" + parsed['error']['message']), ())
+                    self.to_main_thread(print, ("Error from debuggee: " + parsed['error']['message'], )) # comma makes it a tuple
                 else:
                     if 'result' in parsed:
                         command.data = command.parser(parsed['result'])
