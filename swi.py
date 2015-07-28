@@ -37,7 +37,6 @@ imp.reload(sys.modules['webkit.Network'])
 imp.reload(sys.modules['webkit.Page'])
 
 brk_object = {}
-buffers = {}
 channel = None
 original_layout = None
 window = None
