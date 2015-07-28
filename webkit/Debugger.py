@@ -1,4 +1,4 @@
-from .utils import Command, Notification, WebkitObject
+from .wkutils import Command, Notification, WebkitObject
 from .Runtime import RemoteObject
 import json
 import re
@@ -39,7 +39,7 @@ def evaluateOnCallFrame_parser(result):
 
 
 def disable():
-    command = Command('Debugger.disable', {})
+    command = Command('Debugger.disable', {}) 
     return command
 
 
