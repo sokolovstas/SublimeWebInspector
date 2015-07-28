@@ -52,7 +52,6 @@ def resume():
     command = Command('Debugger.resume', {})
     return command
 
-
 def stepInto():
     command = Command('Debugger.stepInto', {})
     return command
@@ -160,6 +159,9 @@ def paused():
     notification = Notification('Debugger.paused')
     return notification
 
+def globalObjectCleared():
+    notification = Notification("Debugger.globalObjectCleared")
+    return notification
 
 def paused_parser(params):
     data = {}
