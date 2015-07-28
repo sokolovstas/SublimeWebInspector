@@ -219,6 +219,7 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
         channel.subscribe(webkit.Debugger.scriptParsed(), self.scriptParsed)
         channel.subscribe(webkit.Debugger.paused(), self.paused)
         channel.subscribe(webkit.Debugger.resumed(), self.resumed)
+        channel.subscribe(webkit.Debugger.globalObjectCleared(), self.globalObjectCleared)
 
         channel.send(webkit.Debugger.enable(), self.enabled)
         channel.send(webkit.Debugger.setPauseOnExceptions(get_setting('pause_on_exceptions')))
@@ -269,6 +270,9 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
                 if int(scriptId) > int(script['scriptId']):
                     script['scriptId'] = str(scriptId)
                 file_name = script['file']
+
+                # Create a file mapping to look for mapped source code 
+                projectsystem.DocumentMapping.MappingsManager.create_mapping(file_name)
             else:
                 del url_parts[0:3]
                 while len(url_parts) > 0:
@@ -295,7 +299,7 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
                     if len(url_parts) > 0:
                         del url_parts[0]
 
-            if debugger_enabled:
+            if debugger_enabled and not file_name:
                 self.add_breakpoints_to_file(file_name)
 
     def paused(self, data, notification):
@@ -338,6 +342,9 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
 
         update_overlays()
 
+    def globalObjectCleared(self, data, notification):
+        projectsystem.DocumentMapping.MappingsManager.delete_all_mappings()
+
     def enabled(self, command):
         """ Notification that debugging was enabled """
         assert_main_thread()
@@ -351,6 +358,10 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
             Called when debugging starts, and when a new script
             is loaded.
         """
+
+        if not file:
+            return
+
         scriptId = find_script(file)
         if is_source_map_enabled():
             mapping = projectsystem.DocumentMapping.MappingsManager.get_mapping(file)
@@ -508,6 +519,7 @@ class SwiDebugToggleBreakpointCommand(sublime_plugin.WindowCommand):
             del_breakpoint_by_full_path(view_name, row)
         else:
             if channel:
+                scriptUrl = ''
                 if projectsystem.DocumentMapping.MappingsManager.is_authored_file(view_name):
                     mapping = projectsystem.DocumentMapping.MappingsManager.get_mapping(view_name)
                     sel = active_view.sel()[0]
@@ -544,11 +556,14 @@ class SwiDebugToggleBreakpointCommand(sublime_plugin.WindowCommand):
 
             file_name = find_script(str(scriptId))
             if projectsystem.DocumentMapping.MappingsManager.is_generated_file(file_name):
-                position = get_authored_position_if_necessary(file_name, lineNumber, columnNumber)
+                # Only line number is one-based. TODO: Fix this next
+                position = get_authored_position_if_necessary(file_name, lineNumber - 1, columnNumber)
+
                 if position:
                     lineNumber = position.one_based_line()
-                    columnNumber = position.one_based_column()
+                    columnNumber = position.zero_based_column()
                     file_name = position.file_name()
+                    init_breakpoint_for_file(file_name)
 
             # If this breakpoint is in TS file, then store the column number as well for future restoration
             if projectsystem.DocumentMapping.MappingsManager.is_generated_file(file_name):
@@ -1494,7 +1509,7 @@ def set_selection(view, start_line, start_column, end_line, end_column):
 
 
 def get_authored_position_if_necessary(file_name, line_number, column_number):
-    if is_source_map_enabled:
+    if is_source_map_enabled():
         mapping = projectsystem.DocumentMapping.MappingsManager.get_mapping(file_name)
         return mapping.get_authored_position(line_number, line_number)
 
