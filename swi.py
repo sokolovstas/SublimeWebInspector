@@ -111,7 +111,8 @@ class SwiDebugCommand(sublime_plugin.WindowCommand):
 
         if command == 'swi_show_file_mappings':
             # we wrap this command so we can use the correct view
-            v = views.find_view('mapping')
+            print(command)
+            v = views.find_or_create_view('mapping')
             v.run_command('swi_show_file_mappings_internal')
             return
 
@@ -680,7 +681,7 @@ def on_reload(command):
 
 
 def clear_view(v):
-    v = views.find_view(v)
+    v = views.find_existing_view(v)
 
     if not v:
         return
@@ -767,7 +768,7 @@ class SwiClearViewInternalCommand(sublime_plugin.TextCommand):
         self.view.erase(edit, sublime.Region(0, self.view.size()))
 
 def console_repeat_message(count):
-    v = views.find_view('console')
+    v = views.find_or_create_view('console')
 
     v.run_command('swi_console_repeat_message_internal', {"count":count})
 
@@ -785,7 +786,7 @@ class SwiConsoleRepeatMessageInternalCommand(sublime_plugin.TextCommand):
 eval_object_queue = []
 
 def console_add_evaluate(eval_object):
-    v = views.find_view('console')
+    v = views.find_or_create_view('console')
 
     eval_object_queue.append(eval_object)
     v.run_command('swi_console_add_evaluate_internal')
@@ -804,7 +805,7 @@ class SwiConsoleAddEvaluateInternalCommand(sublime_plugin.TextCommand):
 message_queue = []
 
 def console_add_message(message):
-    v = views.find_view('console')
+    v = views.find_or_create_view('console')
 
     message_queue.append(message)
     v.run_command('swi_console_add_message_internal')
@@ -891,7 +892,7 @@ properties_queue = []
 def console_add_properties(params):
     utils.assert_main_thread()
 
-    v = views.find_view('scope')
+    v = views.find_or_create_view('scope')
 
     properties_queue.append(params)
     v.run_command('swi_console_print_properties_internal')
@@ -935,7 +936,7 @@ class SwiConsolePrintPropertiesInternalCommand(sublime_plugin.TextCommand):
 call_frames_queue = []
 def console_show_stack(callFrames):
 
-    v = views.find_view('stack')
+    v = views.find_or_create_view('stack')
 
     call_frames_queue.append(callFrames)
 
