@@ -125,7 +125,10 @@ class SwiDebugCommand(sublime_plugin.WindowCommand):
             mapping = {}
             for page in pages:
                 if 'webSocketDebuggerUrl' in page:
-                    if page['url'].find('chrome-extension://') == -1:
+                    url = page['url']
+                    # exclude the chrome folder itself, currently launching chrome on a url opens this in 
+                    # a second tab. When we figure out how to stop that, we can remove this filter here
+                    if url.find('chrome-extension://') == -1 and url.lower().find('google/chrome/application') == -1:
                         mapping[page['webSocketDebuggerUrl']] = page['url']
 
             self.urls = list(mapping.keys())
