@@ -67,13 +67,8 @@ class SwiDebugCommand(sublime_plugin.WindowCommand):
     def run(self):
         """ Called by Sublime to display the quick panel entries """
         mapping = []
-        try:
-            if not paused and not channel:
-                proxy = urllib.request.ProxyHandler({})
-                opener = urllib.request.build_opener(proxy)
-                urllib.request.install_opener(opener)
-                urllib.request.urlopen('http://127.0.0.1:' + utils.get_setting('chrome_remote_port') + '/json')
 
+        if chrome_launched():
             spacer = " " * 7
             if paused:
                 mapping.append(['swi_debug_step_into', 'Step in' + spacer + '    F11'])
@@ -94,7 +89,7 @@ class SwiDebugCommand(sublime_plugin.WindowCommand):
                 mapping.append(['swi_debug_start', 'Start debugging'])
             
             mapping.append(['swi_debug_toggle_breakpoint', 'Toggle Breakpoint'])
-        except:
+        else:
             mapping.append(['swi_debug_start_chrome', 'Start Google Chrome with remote debug port ' + utils.get_setting('chrome_remote_port')])
 
         self.cmds = [entry[0] for entry in mapping]
@@ -116,46 +111,22 @@ class SwiDebugCommand(sublime_plugin.WindowCommand):
             v.run_command('swi_show_file_mappings_internal')
             return
 
-        if command == 'swi_debug_start':
-            proxy = urllib.request.ProxyHandler({})
-            opener = urllib.request.build_opener(proxy)
-            urllib.request.install_opener(opener)
-            response = urllib.request.urlopen('http://127.0.0.1:' + utils.get_setting('chrome_remote_port') + '/json')
-            pages = json.loads(response.read().decode('utf-8'))
-            mapping = {}
-            for page in pages:
-                if 'webSocketDebuggerUrl' in page:
-                    url = page['url']
-                    # exclude the chrome folder itself, currently launching chrome on a url opens this in 
-                    # a second tab. When we figure out how to stop that, we can remove this filter here
-                    if url.find('chrome-extension://') == -1 and url.lower().find('google/chrome/application') == -1:
-                        mapping[page['webSocketDebuggerUrl']] = page['url']
-
-            self.urls = list(mapping.keys())
-            items = list(mapping.values())
-            self.window.show_quick_panel(items, self.remote_debug_url_selected)
-            return
-
         self.window.run_command(command)
+        
+def chrome_launched():
+    if channel:
+        return True
 
-    def remote_debug_url_selected(self, index):
-        utils.assert_main_thread()
-        if index == -1:
-            return
+    try:
+        proxy = urllib.request.ProxyHandler({})
+        opener = urllib.request.build_opener(proxy)
+        urllib.request.install_opener(opener)
+        urllib.request.urlopen('http://127.0.0.1:' + utils.get_setting('chrome_remote_port') + '/json')
+        return True
+    except:
+        pass
 
-        url = self.urls[index]
-
-        global window
-        window = sublime.active_window()
-
-        global original_layout
-        original_layout = window.get_layout()
-
-        window.set_layout(utils.get_setting('console_layout'))
-
-        load_breaks()
-        self.window.run_command('swi_debug_start', {'url': url})
-
+    return False
 
 class SwiDebugStartChromeCommand(sublime_plugin.WindowCommand):
     """ Represents the start chrome command """
@@ -183,8 +154,48 @@ class SwiDebugStartChromeCommand(sublime_plugin.WindowCommand):
 class SwiDebugStartCommand(sublime_plugin.WindowCommand):
     """ Connect to the socket. """
 
-    def run(self, url):
+    def run(self):
         utils.assert_main_thread()
+        proxy = urllib.request.ProxyHandler({})
+        opener = urllib.request.build_opener(proxy)
+        urllib.request.install_opener(opener)
+        response = urllib.request.urlopen('http://127.0.0.1:' + utils.get_setting('chrome_remote_port') + '/json')
+        pages = json.loads(response.read().decode('utf-8'))
+        mapping = {}
+        for page in pages:
+            if 'webSocketDebuggerUrl' in page:
+                url = page['url']
+                # exclude the chrome folder itself, currently launching chrome on a url opens this in 
+                # a second tab. When we figure out how to stop that, we can remove this filter here
+                if url.find('chrome-extension://') == -1 and url.lower().find('google/chrome/application') == -1:
+                    mapping[page['webSocketDebuggerUrl']] = page['url']
+
+        self.urls = list(mapping.keys())
+        items = list(mapping.values())
+
+        if len(self.urls) == 1:
+            # just one URL - pick it automatically
+            print('Connecting to ' + str(items[0]) + " as it's the only URL offered by the debuggee")
+            self.remote_debug_url_selected(0)
+        else:
+            self.window.show_quick_panel(items, self.remote_debug_url_selected)
+
+    def remote_debug_url_selected(self, index):
+        utils.assert_main_thread()
+        if index == -1:
+            return
+
+        url = self.urls[index]
+
+        global window
+        window = sublime.active_window()
+
+        global original_layout
+        original_layout = window.get_layout()
+
+        window.set_layout(utils.get_setting('console_layout'))
+
+        load_breaks()
 
         close_all_our_windows()
 
@@ -193,15 +204,13 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
         global file_to_scriptId
         file_to_scriptId = []
         self.project_folders = self.window.folders()
-        print ('Starting SWI')
         self.url = url
 
         global channel
-        if(channel):
+        if channel:
             print ('SWI: Socket closed')
             channel.socket.close()
         else:
-            print ('SWI: Creating protocol')
             channel = protocol.Protocol()
             channel.connect(self.url, self.connected, self.disconnected)
 
@@ -394,8 +403,14 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
 class SwiDebugPauseResumeCommand(sublime_plugin.WindowCommand):
     def run(self):
         utils.assert_main_thread()
+        # As a convenience, we'll set up the connection
+        # if there isn't one. So F5 (etc) can be hit 
+        # to get started.
         if not channel:
-            SwiDebugStartChromeCommand.run(self)
+            if not chrome_launched():
+                SwiDebugStartChromeCommand.run(self)
+            else:
+                self.window.run_command('swi_debug_start')
         elif paused:
             channel.send(webkit.Debugger.resume())
         else:
@@ -730,6 +745,9 @@ def update_stack(data):
 
     if (not 'callFrames' in data):
         return;
+
+    if not channel: # race with shutdown
+        return
     
     channel.send(webkit.Debugger.setOverlayMessage('Paused in Sublime Web Inspector'))
 
