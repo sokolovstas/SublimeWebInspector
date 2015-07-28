@@ -1,4 +1,4 @@
-
+import config
 import utils
 import sublime
 import sublime_plugin
@@ -167,8 +167,6 @@ def find_view(console_type, title=''):
 
     return lookup_view(v)
 
-buffers  = {}
-
 def lookup_view(v):
     """     Convert a Sublime View into an SWIDebugView
     """
@@ -179,15 +177,15 @@ def lookup_view(v):
         # Take this opportunity to replace the wrapped view,
         # if it's against the same buffer as the previously 
         # seen view
-        if id in buffers:
-            buffers[id].view = v
+        if id in config.buffers:
+            config.buffers[id].view = v
         else:
-            buffers[id] = SwiDebugView(v)
-        return buffers[id]
+            config.buffers[id] = SwiDebugView(v)
+        return config.buffers[id]
     return None
 
 
-class SwiMouseUpCommand(sublime_plugin.WindowCommand):
+class SwiMouseUpCommand(sublime_plugin.TextCommand):
     """ We use this to discover a "button" has been clicked.
         Previously used on_selection_modified, but it fires
         more than once per click. and there is no "mouse_up" 
@@ -196,16 +194,15 @@ class SwiMouseUpCommand(sublime_plugin.WindowCommand):
         Default (xxx).sublime-mousemap - it's not via
         the standard EventListener.
     """
-    def run(self):
+    def run(self, edit):
         utils.assert_main_thread()
-        v = self.window.active_view()
-        lookup_view(v).check_click()
+        lookup_view(self.view).check_click()
 
-class SwiDoubleMouseUpCommand(sublime_plugin.WindowCommand):
+class SwiDoubleMouseUpCommand(sublime_plugin.TextCommand):
     """ On a double click, we get one of each event, so
         run the command only once.
         Triple click does not get handled reliably, it
         may only be treated as two.
     """
-    def run(self):
-        self.window.run_command("swi_mouse_up")
+    def run(self, edit):
+        self.view.run_command("swi_mouse_up")
