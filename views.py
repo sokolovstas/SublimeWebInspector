@@ -110,7 +110,10 @@ class SwiDebugView(object):
 
             index += 1
 
-def find_view(console_type, title=''):
+def find_existing_view(console_type):
+    return find_or_create_view(console_type, False)
+
+def find_or_create_view(console_type, create = True):
     found = False
     v = None
     window = sublime.active_window()
@@ -136,12 +139,14 @@ def find_view(console_type, title=''):
         fullName = "Styles"
 
     window.focus_group(group)
-    fullName = fullName + ' ' + title
 
     for v in window.views():
         if v.name() == fullName:
             found = True
             break
+
+    if not found and not create:
+        return None
 
     if not found:
         v = window.new_file()

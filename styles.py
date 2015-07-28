@@ -8,7 +8,7 @@ class SwiStylesWindowCommand(sublime_plugin.WindowCommand):
     """ Initializes the Styles pane """
 
     def run(self):
-        v = views.find_view('styles')
+        v = views.find_or_create_view('styles')
         v.run_command('swi_styles_window_internal')
 
 
