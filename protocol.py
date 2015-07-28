@@ -82,6 +82,7 @@ class Protocol(object):
             if parsed['id'] in self.commands:
 
                 command = self.commands[parsed['id']]
+                del self.commands[parsed['id']]
 
                 if 'error' in parsed:
                     self.to_main_thread(print, ("Error from debuggee: " + parsed['error']['message'], )) # comma makes it a tuple
