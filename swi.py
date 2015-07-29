@@ -12,6 +12,7 @@ import re
 import time
 import sys
 import imp
+import re
 
 swi_folder = os.path.dirname(os.path.realpath(__file__))
 if not swi_folder in sys.path:
@@ -932,12 +933,32 @@ class SwiConsolePrintPropertiesInternalCommand(sublime_plugin.TextCommand):
         else:
             name = ""
 
+        if 'file' in command.options and 'line' in command.options:
+            file = command.options['file']
+            line = command.options['line']
+        else:
+            # eg., name can be
+            #     c:\foo\bar\baz.js:422 (local)
+            p = re.compile("^\s*(?P<file>.+)\s*:\s*(?P<line>\d+)(?P<remainder>\s+.*)$")
+            m = p.search(name)
+            if m:
+                file = m.group('file')
+                line = m.group('line')
+                name = m.group('remainder')
+            else:
+                file = ""
+                line = ""
+
         if 'prev' in command.options:
             prev = command.options['prev'] + ' -> ' + name
         else:
             prev = name
 
         v.erase(edit, sublime.Region(0, v.size()))
+
+        if file and line:
+            callback = lambda: open_script_and_focus_line_by_filename(file, line)
+            v.print_click(edit, v.size(), "%s:%s" % (file, line), callback)
 
         v.insert(edit, v.size(), prev)
 
@@ -947,7 +968,7 @@ class SwiConsolePrintPropertiesInternalCommand(sublime_plugin.TextCommand):
             v.insert(edit, v.size(), prop.name + ': ')
             if(prop.value):
                 if prop.value.type == 'object':
-                    callback = lambda: channel.send(webkit.Runtime.getProperties(prop.value.objectId, True), console_add_properties, {'objectId': prop.value.objectId, 'name': prop.name, 'prev': prev})
+                    callback = lambda: channel.send(webkit.Runtime.getProperties(prop.value.objectId, True), console_add_properties, {'objectId': prop.value.objectId, 'file': file, 'line': line, 'name': prop.name, 'prev': prev})
                     v.print_click(edit, v.size(), str(prop.value) + '\n', callback)
                 else:
                     v.insert(edit, v.size(), str(prop.value) + '\n')
@@ -1180,10 +1201,13 @@ def do_when(conditional, callback, *args, **kwargs):
 def open_script_and_focus_line(scriptId, line_number):
     file_name = find_script(str(scriptId))
     if file_name:   # race with browser
-        window = sublime.active_window()
-        window.focus_group(0)
-        v = window.open_file(file_name)
-        do_when(lambda: not v.is_loading(), lambda: open_script_and_focus_line_callback(v, line_number))
+        open_script_and_focus_line_by_filename(file_name, line_number)
+
+def open_script_and_focus_line_by_filename(file_name, line_number):
+    window = sublime.active_window()
+    window.focus_group(0)
+    v = window.open_file(file_name)
+    do_when(lambda: not v.is_loading(), lambda: open_script_and_focus_line_callback(v, line_number))
 
 def open_script_and_focus_line_callback(v, line_number):
     v.run_command("goto_line", {"line": line_number})
