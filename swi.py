@@ -147,7 +147,7 @@ class SwiDebugStartChromeCommand(sublime_plugin.WindowCommand):
             url = ''
 
         self.window.run_command('exec', {
-            "cmd": [os.getenv('GOOGLE_CHROME_PATH', '') + utils.get_setting('chrome_path')[key], '--remote-debugging-port=' + utils.get_setting('chrome_remote_port'), '--profile-directory=' + utils.get_setting('chrome_profile'), url, '']
+            "cmd": [os.getenv('GOOGLE_CHROME_PATH', '') + utils.get_setting('chrome_path')[key], '--remote-debugging-port=' + utils.get_setting('chrome_remote_port'), '--profile-directory=' + utils.get_setting('chrome_profile'), url]
         })
 
 
@@ -165,9 +165,7 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
         for page in pages:
             if 'webSocketDebuggerUrl' in page:
                 url = page['url']
-                # exclude the chrome folder itself, currently launching chrome on a url opens this in 
-                # a second tab. When we figure out how to stop that, we can remove this filter here
-                if url.find('chrome-extension://') == -1 and url.lower().find('google/chrome/application') == -1:
+                if url.find('chrome-extension://') == -1:
                     mapping[page['webSocketDebuggerUrl']] = page['url']
 
         self.urls = list(mapping.keys())
