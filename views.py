@@ -8,8 +8,10 @@ import sublime_plugin
 ####################################################################################
 
 class SwiDebugView(object):
-    """ The SWIDebugView is sort of a normal view with some convenience methods.
+    """ The SWIDebugView wraps a normal view, adding some convenience methods.
         See lookup_view.
+        All calls to a View should be made through an SWIDebugView, 
+        adding more passthroughs if necessary. This makes the code flow explicit.
     """
     def __init__(self, v):
         self.view = v
@@ -18,8 +20,8 @@ class SwiDebugView(object):
         self.prev_click_position = 0
 
     def __getattr__(self, attr):
-        if hasattr(self.view, attr):
-            return getattr(self.view, attr)
+        # a trick (with the empty __call__)
+        # to implement default empty event handlers
         if attr.startswith('on_'):
             return self
         raise AttributeError
@@ -27,11 +29,38 @@ class SwiDebugView(object):
     def __call__(self, *args, **kwargs):
         pass
 
+    def file_name(self):
+        return self.view.file_name()
+
+    def erase_regions(self, key):
+        return self.view.erase_regions(key)
+
+    def get_regions(self, key):
+        return self.view.get_regions(key)
+
+    def add_regions(self, key, regions, scope = "", icon = "", flags = 0):
+        return self.view.add_regions(key, regions, scope, icon, flags)
+
+    def run_command(self, cmd, args = None):
+        return self.view.run_command(cmd, args)
+
+    def size(self):
+        return self.view.size()
+
     def window(self):
         return self.view.window()
 
+    def sel(self):
+        return self.view.sel()
+
+    def insert(self, edit, pt, text):
+        return self.view.insert(edit, pt, text)
+
     def uri(self):
         return 'file://' + os.path.realpath(self.view.file_name())
+
+    def show(self, x, show_surrounds = True):
+        return self.view.show(x, show_surrounds)
 
     def lines(self, data=None):
         """ Takes a list of line numbers, regions, or else uses the selection.
@@ -89,9 +118,12 @@ class SwiDebugView(object):
         del regions[index]
         self.view.add_regions('swi_log_clicks', regions, scope=utils.get_setting('interactive_scope'), flags=sublime.DRAW_NO_FILL)
 
-    def clear_clicks(self):
-        """ Removes all clickable regions """
-        self.callbacks = []
+    def erase(self, edit, region):
+        """ Removes our clickable regions 
+            then erases the view
+        """
+        self.callbacks = [] # bug, should only erase callbacks in the region
+        self.view.erase(edit, region)
 
     def check_click(self):
         if not isinstance(self, SwiDebugView):
