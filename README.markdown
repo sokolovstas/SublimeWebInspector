@@ -24,7 +24,8 @@ To use against:
 Please help us prioritize. You can add feature requests or bugs to the [Issues List](https://github.com/sokolovstas/SublimeWebInspector/issues) here.
 
 ## Installation
-Find the "Web Inspector" package in the Sublime Package Manager and install it.
+Make sure the [Sublime Package Manager is installed](https://packagecontrol.io/installation) in Sublime.
+Run "Package Control: Install Package" command and choose "Web Inspector"
 
 ## Getting started
 - Open your web site root with "Open Folder" in Sublime. (This will allow Web Inspector to map a file on disk to a file in the browser.)
@@ -71,5 +72,8 @@ You can change layouts for the debugger, color options, and path to Google Chrom
 By default, after "Start Chrome" you must navigate to your site. To do this automatically, add a setting like this to your user settings for the plugin:
 
 "chrome_url": "http://localhost/your/site"
+
+## Stats
+[Download graph](https://packagecontrol.io/packages/Web%20Inspector)
 
 *Thanks XDebug Authors for inspiration*
