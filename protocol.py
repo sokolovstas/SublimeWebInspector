@@ -19,14 +19,12 @@ class Protocol(object):
         self.next_id = 0
         self.commands = {}
         self.notifications = {}
-        self.last_log_object = None
 
     def connect(self, url, on_open=None, on_close=None):
         """ Attempt to connect to the web socket """
         print (('SWI: Connecting to ' + url))
         websocket.enableTrace(False)
         self.last_break = None
-        self.last_log_object = None
         self.url = url
         self.on_open = on_open
         self.on_close = on_close

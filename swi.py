@@ -258,7 +258,7 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
     def messagesCleared(self, data, notification):
         """ Notification when console cleared (by navigate or on request) """
         utils.assert_main_thread()
-        clear_view('console')
+        views.clear_view('console')
 
     # build table of mappings from local to server
     def scriptParsed(self, data, notification):
@@ -318,9 +318,9 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
         """
         utils.assert_main_thread()
 
-        clear_view('stack')
-        clear_view('scope')
-        clear_view('styles')
+        views.clear_view('stack')
+        views.clear_view('scope')
+        views.clear_view('styles')
 
         channel.send(webkit.Debugger.setOverlayMessage())
 
@@ -435,7 +435,7 @@ class SwiDebugStepOverCommand(sublime_plugin.WindowCommand):
 
 class SwiDebugClearConsoleCommand(sublime_plugin.WindowCommand):
     def run(self):
-        clear_view('console')
+        views.clear_view('console')
 
 
 class SwiDebugEvaluateCommand(sublime_plugin.WindowCommand):
@@ -481,7 +481,7 @@ class SwiDebugToggleBreakpointCommand(sublime_plugin.WindowCommand):
         utils.assert_main_thread()
         active_view = self.window.active_view()
 
-        v = views.lookup_view(active_view)
+        v = views.wrap_view(active_view)
         view_name = v.file_name();
         if not view_name: # eg file mapping pane
             return
@@ -566,7 +566,7 @@ class SwiShowFileMappingsInternalCommand(sublime_plugin.TextCommand):
     """ Called internally on the file mapping view """
     def run(self, edit):
         
-        clear_view('mapping')
+        views.clear_view('mapping')
         self.view.insert(edit, 0, json.dumps(file_to_scriptId, sort_keys=True, indent=4, separators=(',', ': ')))
 
 
@@ -577,7 +577,7 @@ def update_overlays():
     # loop over all views, identifying the files
     # we need to draw into
     for v in window.views():
-        v = views.lookup_view(v)
+        v = views.wrap_view(v)
 
         if not v.file_name():
             continue
@@ -620,20 +620,20 @@ class EventListener(sublime_plugin.EventListener):
         self.timing = time.time()
 
     def on_new(self, v):
-        views.lookup_view(v).on_new()
+        views.wrap_view(v).on_new()
 
     def on_clone(self, v):
-        views.lookup_view(v).on_clone()
+        views.wrap_view(v).on_clone()
 
     def on_load(self, v):
         update_overlays()
-        views.lookup_view(v).on_load()
+        views.wrap_view(v).on_load()
 
     def on_close(self, v):
-        views.lookup_view(v).on_close()
+        views.wrap_view(v).on_close()
 
     def on_pre_save(self, v):
-        views.lookup_view(v).on_pre_save()
+        views.wrap_view(v).on_pre_save()
 
     def reload_styles(self):
         channel.send(webkit.Runtime.evaluate("var files = document.getElementsByTagName('link');var links = [];for (var a = 0, l = files.length; a < l; a++) {var elem = files[a];var rel = elem.rel;if (typeof rel != 'string' || rel.length === 0 || rel === 'stylesheet') {links.push({'elem': elem,'href': elem.getAttribute('href').split('?')[0],'last': false});}}for ( a = 0, l = links.length; a < l; a++) {var link = links[a];link.elem.setAttribute('href', (link.href + '?x=' + Math.random()));}"))
@@ -662,21 +662,21 @@ class EventListener(sublime_plugin.EventListener):
             else:
                 sublime.set_timeout(lambda: self.reload_page(), utils.get_setting('reload_timeout'))
 
-        views.lookup_view(v).on_post_save()
+        views.wrap_view(v).on_post_save()
 
     def on_modified(self, v):
-        views.lookup_view(v).on_modified()
+        views.wrap_view(v).on_modified()
         #update_overlays()
 
     def on_activated(self, v):
         #todo can we move to on load?
-        views.lookup_view(v).on_activated()
+        views.wrap_view(v).on_activated()
 
     def on_deactivated(self, v):
-        views.lookup_view(v).on_deactivated()
+        views.wrap_view(v).on_deactivated()
 
     def on_query_context(self, v, key, operator, operand, match_all):
-        views.lookup_view(v).on_query_context(key, operator, operand, match_all)
+        views.wrap_view(v).on_query_context(key, operator, operand, match_all)
 
     def update_stack(self, command):
         """ Called on setScriptSource """
@@ -696,26 +696,11 @@ def on_reload(command):
 #   Console
 ####################################################################################
 
-
-def clear_view(name):
-    v = views.find_existing_view(name)
-
-    if not v:
-        return
-
-    v.run_command('swi_clear_view_internal')
-    v.show(v.size())
-
-    if not window:
-        return
-
-    window.focus_group(0)
-
 def clear_all_views():
-    clear_view('console')
-    clear_view('stack')
-    clear_view('scope')
-    clear_view('mapping')
+    views.clear_view('console')
+    views.clear_view('stack')
+    views.clear_view('scope')
+    views.clear_view('mapping')
 
 def close_all_our_windows():
     global window
@@ -781,12 +766,6 @@ def change_to_call_frame(callFrame):
 
     open_script_and_focus_line(scriptId, line_number)
 
-class SwiClearViewInternalCommand(sublime_plugin.TextCommand): 
-    """ Called internally on the console view """
-    def run(self, edit, user_input=None):
-        v = views.lookup_view(self.view)
-        v.erase(edit, sublime.Region(0, self.view.size()))
-
 def console_repeat_message(count):
     v = views.find_or_create_view('console')
 
@@ -817,7 +796,7 @@ def console_add_evaluate(eval_object):
 class SwiConsoleAddEvaluateInternalCommand(sublime_plugin.TextCommand):
     """ Called internally on the console view """
     def run(self, edit):
-        v = views.lookup_view(self.view)
+        v = views.wrap_view(self.view)
         eval_object = eval_object_queue.pop(0)
 
         v.insert(edit, v.size(), str(eval_object) + ' \n')
@@ -837,7 +816,7 @@ def console_add_message(message):
 class SwiConsoleAddMessageInternalCommand(sublime_plugin.TextCommand):
     """ Called internally on the console view """
     def run(self, edit):
-        v = views.lookup_view(self.view)
+        v = views.wrap_view(self.view)
         message = message_queue.pop(0)
 
         if message.level == 'debug':
@@ -925,7 +904,7 @@ class SwiConsolePrintPropertiesInternalCommand(sublime_plugin.TextCommand):
     """ Called internally on the console view """
     def run(self, edit):
 
-        v = views.lookup_view(self.view)
+        v = views.wrap_view(self.view)
         command = properties_queue.pop(0)
 
         if 'name' in command.options:
@@ -988,7 +967,7 @@ def console_show_stack(callFrames):
 class SwiConsoleShowStackInternalCommand(sublime_plugin.TextCommand):
     """ Called internally on the stack view """
     def run(self, edit):
-        v = views.lookup_view(self.view)
+        v = views.wrap_view(self.view)
 
         callFrames = call_frames_queue.pop(0) 
 
