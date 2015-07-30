@@ -697,8 +697,8 @@ def on_reload(command):
 ####################################################################################
 
 
-def clear_view(v):
-    v = views.find_existing_view(v)
+def clear_view(name):
+    v = views.find_existing_view(name)
 
     if not v:
         return
@@ -710,7 +710,6 @@ def clear_view(v):
         return
 
     window.focus_group(0)
-    views.lookup_view(v).clear_clicks()
 
 def clear_all_views():
     clear_view('console')
@@ -785,7 +784,8 @@ def change_to_call_frame(callFrame):
 class SwiClearViewInternalCommand(sublime_plugin.TextCommand): 
     """ Called internally on the console view """
     def run(self, edit, user_input=None):
-        self.view.erase(edit, sublime.Region(0, self.view.size()))
+        v = views.lookup_view(self.view)
+        v.erase(edit, sublime.Region(0, self.view.size()))
 
 def console_repeat_message(count):
     v = views.find_or_create_view('console')
