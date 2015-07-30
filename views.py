@@ -9,7 +9,7 @@ import sublime_plugin
 
 class SwiDebugView(object):
     """ The SWIDebugView wraps a normal view, adding some convenience methods.
-        See lookup_view.
+        See wrap_view.
         All calls to a View should be made through an SWIDebugView, 
         adding more passthroughs if necessary. This makes the code flow explicit.
     """
@@ -202,9 +202,9 @@ def find_or_create_view(console_type, create = True):
 
     v.set_read_only(False)
 
-    return lookup_view(v)
+    return wrap_view(v)
 
-def lookup_view(v):
+def wrap_view(v):
     """     Convert a Sublime View into an SWIDebugView
     """
     if isinstance(v, SwiDebugView):
@@ -221,6 +221,26 @@ def lookup_view(v):
         return config.buffers[id]
     return None
 
+def clear_view(name):
+    v = find_existing_view(name)
+
+    if not v:
+        return
+
+    v.run_command('swi_clear_view_internal')
+    v.show(v.size())
+
+    window = sublime.active_window()
+    if not window:
+        return
+
+    window.focus_group(0)
+
+class SwiClearViewInternalCommand(sublime_plugin.TextCommand): 
+    """ Called internally on a specific view """
+    def run(self, edit, user_input=None):
+        v = wrap_view(self.view)
+        v.erase(edit, sublime.Region(0, self.view.size()))
 
 class SwiMouseUpCommand(sublime_plugin.TextCommand):
     """ We use this to discover a "button" has been clicked.
@@ -233,7 +253,7 @@ class SwiMouseUpCommand(sublime_plugin.TextCommand):
     """
     def run(self, edit):
         utils.assert_main_thread()
-        lookup_view(self.view).check_click()
+        wrap_view(self.view).check_click()
 
 class SwiDoubleMouseUpCommand(sublime_plugin.TextCommand):
     """ On a double click, we get one of each event, so
