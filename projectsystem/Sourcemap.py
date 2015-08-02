@@ -4,13 +4,16 @@ from projectsystem import VLQDecoder
 
 def get_sourcemap_file(file_name):
     sourcemap_prefix = "//# sourceMappingURL="
-    map_file = ""
+    map_file = None
+
     with open(file_name, "r") as f:
         # Read the last line of the file containing sourcemap information
         sourcemap_info = f.readlines()[-1]
 
-        if (len(sourcemap_info) > 0 and sourcemap_info.index(sourcemap_prefix) is 0):
-            map_file = sourcemap_info[len(sourcemap_prefix):].strip()
+        index = sourcemap_info.find(sourcemap_prefix)
+
+        if index != -1:
+            map_file = sourcemap_info[index + len(sourcemap_prefix):].strip()
             map_file = os.path.dirname(file_name) + os.path.sep + map_file
         f.close()
 

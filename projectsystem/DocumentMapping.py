@@ -48,6 +48,9 @@ class MappingsManager:
 
     @staticmethod
     def get_mapping(file_name):
+        if not file_name:
+            return
+
         file_name = file_name.lower()
         if file_name in MappingsManager.source_file_mappings:
             return MappingsManager.source_file_mappings[file_name]
@@ -74,6 +77,10 @@ class MappingsManager:
 class MappingInfo:
     def __init__(self, generated_file):
         source_map_file = Sourcemap.get_sourcemap_file(generated_file)
+
+        if not source_map_file:
+            return
+
         self.parsed_source_map = Sourcemap.ParsedSourceMap(source_map_file)
         self.generated_file = generated_file
 

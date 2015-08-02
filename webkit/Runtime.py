@@ -1,5 +1,5 @@
 import json
-from .utils import WebkitObject, Command
+from .wkutils import WebkitObject, Command
 
 
 def evaluate(expression, objectGroup=None, returnByValue=None):
