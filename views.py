@@ -61,6 +61,9 @@ class SwiDebugView(object):
     def show(self, x, show_surrounds = True):
         return self.view.show(x, show_surrounds)
 
+    def rowcol(self, tp):
+        return self.view.rowcol(tp)
+
     def lines(self, data=None):
         """ Takes a list of line numbers, regions, or else uses the selection.
             Returns regions, each covering one complete line, 
