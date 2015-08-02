@@ -823,7 +823,7 @@ def close_all_our_windows():
 
     window.focus_group(0)
     for v in window.views_in_group(0):
-        if v.name() == 'File mapping ':
+        if v.name() == 'File mapping':
             window.run_command("close")
             break
 
