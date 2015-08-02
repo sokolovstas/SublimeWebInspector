@@ -28,6 +28,10 @@ class SwiDebugView(object):
     def __call__(self, *args, **kwargs):
         pass
 
+    def on_deactivated(self):
+        if self.view.name() == "File mapping":
+            self.view.close()
+
     def file_name(self):
         return self.view.file_name()
 
