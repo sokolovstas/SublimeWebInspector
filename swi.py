@@ -645,9 +645,12 @@ class SwiShowFileMappingsInternalCommand(sublime_plugin.TextCommand):
 
 
 class SwiToggleAuthoredCodeCommand(sublime_plugin.TextCommand):
+    """ This is a TextCommand because it specifically applies only
+        to the active view
+    """
     def run(self, edit):
-        assert_main_thread()
-        view = lookup_view(self.view)
+        utils.assert_main_thread()
+        view = views.wrap_view(self.view)
         view_name = view.file_name();
         if not view_name: # eg file mapping pane
             return
@@ -880,7 +883,7 @@ def change_to_call_frame(callFrame):
     global current_line
     current_line = display_line_number
 
-    open_file_and_focus_line(file_name, display_line_number)
+    open_script_and_focus_line_by_filename(file_name, display_line_number)
 
 def console_repeat_message(count):
     v = views.find_or_create_view('console')
@@ -962,7 +965,7 @@ class SwiConsoleAddMessageInternalCommand(sublime_plugin.TextCommand):
             line = 0
 
         if scriptId and line > 0:
-            v.print_click(edit, v.size(),  "%s:%d" % (url, line), open_script_and_focus_line, scriptId, str(line))
+            v.print_click(edit, v.size(),  "%s:%d" % (url, line), open_script_by_id_and_focus_line, scriptId, str(line))
         else:
             v.insert(edit, v.size(), "%s:%d" % (url, line))
 
@@ -990,7 +993,7 @@ class SwiConsoleAddMessageInternalCommand(sublime_plugin.TextCommand):
                 v.insert(edit, v.size(),  '\t\u21E1 ')
 
                 if scriptId:
-                    v.print_click(edit, v.size(), "%s:%s %s" % (file_name, callFrame.lineNumber, callFrame.functionName), open_script_and_focus_line, scriptId, str(callFrame.lineNumber))
+                    v.print_click(edit, v.size(), "%s:%s %s" % (file_name, callFrame.lineNumber, callFrame.functionName), open_script_by_id_and_focus_line, scriptId, str(callFrame.lineNumber))
                 else:
                     v.insert(edit, v.size(),  "%s:%s %s" % (file_name, callFrame.lineNumber, callFrame.functionName))
 
@@ -1288,17 +1291,14 @@ def do_when(conditional, callback, *args, **kwargs):
 
 def open_script_by_id_and_focus_line(scriptId, line_number):
     file_name = find_script(str(scriptId))
-    open_file_and_focus_line(file_name, line_number)
-
-def open_file_and_focus_line(file_name, line_number):
-    if file_name:   # race with browser
-        open_script_and_focus_line_by_filename(file_name, line_number)
+    open_script_and_focus_line_by_filename(file_name, line_number)
 
 def open_script_and_focus_line_by_filename(file_name, line_number):
-    window = sublime.active_window()
-    window.focus_group(0)
-    v = window.open_file(file_name)
-    do_when(lambda: not v.is_loading(), lambda: open_script_and_focus_line_callback(v, line_number))
+    if file_name:   # race with browser
+        window = sublime.active_window()
+        window.focus_group(0)
+        v = window.open_file(file_name)
+        do_when(lambda: not v.is_loading(), lambda: open_script_and_focus_line_callback(v, line_number))
 
 def open_script_and_focus_line_callback(v, line_number):
     v.run_command("goto_line", {"line": line_number})
