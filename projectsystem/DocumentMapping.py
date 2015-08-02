@@ -75,6 +75,10 @@ class MappingsManager:
 
 
 class MappingInfo:
+    authored_sources = []
+    generated_file = None
+    line_mappings = []
+ 
     def __init__(self, generated_file):
         source_map_file = Sourcemap.get_sourcemap_file(generated_file)
 
@@ -84,7 +88,6 @@ class MappingInfo:
         self.parsed_source_map = Sourcemap.ParsedSourceMap(source_map_file)
         self.generated_file = generated_file
 
-        self.authored_sources = []
         if self.parsed_source_map: 
             self.authored_sources = self.parsed_source_map.get_authored_sources_path()
             self.line_mappings = self.parsed_source_map.line_mappings
