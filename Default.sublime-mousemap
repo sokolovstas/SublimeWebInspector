@@ -1,0 +1,13 @@
+[
+	{
+		"button": "button1", "count": 1,
+		"press_command": "drag_select",
+		"command": "swi_mouse_up"
+	},
+	{
+		"button": "button1", "count": 2,
+		"press_command": "drag_select",
+		"command": "swi_double_mouse_up"
+	}
+	
+]

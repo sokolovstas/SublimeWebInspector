@@ -1,4 +1,4 @@
-from .utils import Command, Notification, WebkitObject
+from .wkutils import Command, Notification, WebkitObject
 from .Runtime import RemoteObject
 from .Network import RequestId
 
