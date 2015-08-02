@@ -91,7 +91,7 @@ class SwiDebugView(object):
             lines = [lines]
         return [self.view.rowcol(line.begin())[0] + 1 for line in lines]
 
-    def print_click(self, edit, position, text, callback):
+    def print_click(self, edit, position, text, callback, *args):
         """ Inserts the specified text and creates a clickable "button"
             around it.
         """
@@ -106,7 +106,7 @@ class SwiDebugView(object):
                 break
             insert_before += 1
 
-        self.callbacks.insert(insert_before, callback)
+        self.callbacks.insert(insert_before, { "callback": callback, "args": args })
 
         regions.append(new_region)
         self.view.add_regions('swi_log_clicks', regions, scope=utils.get_setting('interactive_scope'), flags=sublime.DRAW_NO_FILL)
@@ -137,7 +137,7 @@ class SwiDebugView(object):
 
                 if index < len(self.callbacks):
                     callback = self.callbacks[index]
-                    callback()
+                    callback["callback"](*callback["args"])
 
             index += 1
 
