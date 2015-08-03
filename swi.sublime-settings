@@ -1,46 +1,48 @@
 {
-	// Path to google chrome
-	"chrome_path": {
-		"osx": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-		"windows": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
-		"windows_x64": "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
-		"linux": "/usr/bin/google-chrome"
-	},
-	// Chrome profile
-	"chrome_profile": "Default",
-	// Chrome remote port
-	"chrome_remote_port": "9222",
-	"breakpoint_scope": "swi.breakpoint",
-	"current_line_scope": "swi.current",
-	"interactive_scope": "mcol_0088CCFF.settings",
-	// Layout for stack
-	"stack_layout": {
-	    "cols": [0.0, 0.6, 1.0],
-	    "rows": [0.0, 0.7, 1.0],
-	    "cells": [[0, 0, 2, 1], [0, 1, 1, 2], [1, 1, 2, 2]]
-	},
-	// Layout for console
-	"console_layout": {
-	    "cols": [0.0, 0.6, 1.0],
-	    "rows": [0.0, 0.7, 1.0],
-	    "cells": [[0, 0, 2, 1], [0, 1, 1, 2], [1, 1, 2, 2]]
-	},
-	// Reload page on start
-	"reload_on_start": false,
-	// Reload page on save
-	"reload_on_save": true,
-	// Reload timeout
-	"reload_timeout": 0,
-	// Override User Agent
-	"user_agent": "",
-	// Set script source in live mode
-	"set_script_source": false,
-	// Open stack on click in new tab
-	"open_stack_current_in_new_tab": false,
-	// Pause on exception ("all", "none", "uncaught")
-	"pause_on_exceptions": "uncaught",
-	// Plugin debug mode
-	"debug_mode": false,
-	// Breakpoints
-	"breaks": {}
+    // Path to google chrome
+    "chrome_path": {
+        "osx": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+        "windows": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+        "windows_x64": "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+        "linux": "/usr/bin/google-chrome"
+    },
+    // Chrome profile
+    "chrome_profile": "Default",
+    // Chrome remote port
+    "chrome_remote_port": "9222",
+    "breakpoint_scope": "swi.breakpoint",
+    "current_line_scope": "swi.current",
+    "interactive_scope": "mcol_0088CCFF.settings",
+    // Layout for stack
+    "stack_layout": {
+        "cols": [0.0, 0.6, 1.0],
+        "rows": [0.0, 0.7, 1.0],
+        "cells": [[0, 0, 2, 1], [0, 1, 1, 2], [1, 1, 2, 2]]
+    },
+    // Layout for console
+    "console_layout": {
+        "cols": [0.0, 0.6, 1.0],
+        "rows": [0.0, 0.7, 1.0],
+        "cells": [[0, 0, 2, 1], [0, 1, 1, 2], [1, 1, 2, 2]]
+    },
+    // Reload page on start
+    "reload_on_start": false,
+    // Reload page on save
+    "reload_on_save": true,
+    // Reload timeout
+    "reload_timeout": 0,
+    // Override User Agent
+    "user_agent": "",
+    // Set script source in live mode
+    "set_script_source": false,
+    // Enable source maps
+    "enable_source_maps": true,
+    // Open stack on click in new tab
+    "open_stack_current_in_new_tab": false,
+    // Pause on exception ("all", "none", "uncaught")
+    "pause_on_exceptions": "uncaught",
+    // Plugin debug mode
+    "debug_mode": false,
+    // Breakpoints
+    "breaks": {}
 }

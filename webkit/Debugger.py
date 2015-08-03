@@ -52,7 +52,6 @@ def resume():
     command = Command('Debugger.resume', {})
     return command
 
-
 def stepInto():
     command = Command('Debugger.stepInto', {})
     return command
@@ -115,7 +114,7 @@ def setScriptSource_parser(result):
 
 def setBreakpointByUrl(lineNumber, url, urlRegex=None, columnNumber=None, condition=None):
     params = {}
-    params['lineNumber'] = lineNumber-1
+    params['lineNumber'] = lineNumber - 1
     params['url'] = restoreQueryString(url)
 
     if urlRegex:
@@ -160,6 +159,9 @@ def paused():
     notification = Notification('Debugger.paused')
     return notification
 
+def globalObjectCleared():
+    notification = Notification("Debugger.globalObjectCleared")
+    return notification
 
 def paused_parser(params):
     data = {}
@@ -251,7 +253,6 @@ class CallFrame(WebkitObject):
         self.set_class(value, 'callFrameId', CallFrameId)
         self.set(value, 'functionName')
         self.set_class(value, 'location', Location)
-        self.location.lineNumber = self.location.lineNumber+1
         self.scopeChain = []
         if 'scopeChain' in value:
             for scope in value['scopeChain']:
