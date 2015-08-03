@@ -20,6 +20,7 @@ if not swi_folder in sys.path:
 
 import utils
 import webkit
+import projectsystem
 import protocol
 import views
 import styles
@@ -29,6 +30,8 @@ from webkit import Runtime
 from webkit import Debugger
 from webkit import Network
 from webkit import Page
+
+from projectsystem import DocumentMapping
 
 imp.reload(sys.modules['webkit.wkutils'])
 imp.reload(sys.modules['webkit.Console'])
@@ -47,6 +50,7 @@ current_line = None
 set_script_source = False
 current_call_frame = None
 current_call_frame_position = None
+source_map_state = None
 
 breakpoint_active_icon = 'Packages/Web Inspector/icons/breakpoint_active.png'
 breakpoint_inactive_icon = 'Packages/Web Inspector/icons/breakpoint_inactive.png'
@@ -56,7 +60,7 @@ def plugin_loaded():
 
     close_all_our_windows()
     clear_all_views()
-        
+
 ####################################################################################
 #   COMMANDS
 ####################################################################################
@@ -86,6 +90,9 @@ class SwiDebugCommand(sublime_plugin.WindowCommand):
                 mapping.append(['swi_debug_reload', 'Reload page'])
                 mapping.append(['swi_show_file_mappings', 'Show file mappings'])
                 mapping.append(['swi_debug_clear_breakpoints', 'Clear all Breakpoints'])
+
+                if is_source_map_enabled:
+                    mapping.append(['swi_toggle_authored_code', 'Toggle authored code'])
             else:
                 mapping.append(['swi_debug_start', 'Start debugging'])
             
@@ -225,6 +232,7 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
         channel.subscribe(webkit.Debugger.scriptParsed(), self.scriptParsed)
         channel.subscribe(webkit.Debugger.paused(), self.paused)
         channel.subscribe(webkit.Debugger.resumed(), self.resumed)
+        channel.subscribe(webkit.Debugger.globalObjectCleared(), self.globalObjectCleared)
 
         channel.send(webkit.Debugger.enable(), self.enabled)
         channel.send(webkit.Debugger.setPauseOnExceptions(utils.get_setting('pause_on_exceptions')))
@@ -277,6 +285,9 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
                 if int(scriptId) > int(script['scriptId']):
                     script['scriptId'] = str(scriptId)
                 file_name = script['file']
+
+                # Create a file mapping to look for mapped source code 
+                projectsystem.DocumentMapping.MappingsManager.create_mapping(file_name)
             else:
                 del url_parts[0:3]
                 while len(url_parts) > 0:
@@ -284,19 +295,26 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
                         if sublime.platform() == "windows":
                             # eg., folder is c:\site and url is http://localhost/app.js
                             # glob for c:\site\app.js (primary) and c:\site\*\app.js (fallback only - there may be a c:\site\foo\app.js)
-                            files =  glob.glob(folder + "\\" + "\\".join(url_parts)) + glob.glob(folder + "\\*\\" + "\\".join(url_parts))
+                            try:
+                                files =  glob.glob(folder + "\\" + "\\".join(url_parts)) + glob.glob(folder + "\\*\\" + "\\".join(url_parts))
+                            except:
+                                pass
                         else:
                             files = glob.glob(folder + "/" + "/".join(url_parts)) + glob.glob(folder + "/*/" + "/".join(url_parts))
 
                         if len(files) > 0 and files[0] != '':
                             file_name = files[0]
+
+                            # Create a file mapping to look for mapped source code 
+                            projectsystem.DocumentMapping.MappingsManager.create_mapping(file_name)
+
                             file_to_scriptId.append({'file': file_name, 'scriptId': str(scriptId), 'url': data['url']})
                             # don't try to match shorter fragments, we already found a match
                             url_parts = []
                     if len(url_parts) > 0:
                         del url_parts[0]
 
-            if debugger_enabled:
+            if debugger_enabled and not file_name:
                 self.add_breakpoints_to_file(file_name)
 
     def paused(self, data, notification):
@@ -341,6 +359,9 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
 
         update_overlays()
 
+    def globalObjectCleared(self, data, notification):
+        projectsystem.DocumentMapping.MappingsManager.delete_all_mappings()
+
     def enabled(self, command):
         """ Notification that debugging was enabled """
         utils.assert_main_thread()
@@ -354,12 +375,33 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
             Called when debugging starts, and when a new script
             is loaded.
         """
-        breakpoints = get_breakpoints_by_full_path(file)
+
+        if not file:
+            return
+
         scriptId = find_script(file)
-        if breakpoints:
-            for line in list(breakpoints.keys()):
-                location = webkit.Debugger.Location({'lineNumber': int(line), 'scriptId': scriptId})
-                channel.send(webkit.Debugger.setBreakpoint(location), self.breakpointAdded)
+        if is_source_map_enabled():
+            mapping = projectsystem.DocumentMapping.MappingsManager.get_mapping(file)
+            authored_files = mapping.get_authored_files()
+            for file_name in authored_files:
+                 breakpoints = get_breakpoints_by_full_path(file_name)
+                 if breakpoints:
+                     for line in list(breakpoints.keys()):
+                         if breakpoints[line]['column'] and int(breakpoints[line]['column']) >= 0:
+                             position = mapping.get_generated_position(file_name, int(line), int(breakpoints[line]['column']))
+                             if position:
+                                location = webkit.Debugger.Location({'lineNumber': position.one_based_line(), 'scriptId': scriptId})
+                                channel.send(webkit.Debugger.setBreakpoint(location), self.updateAuthoredDocument)
+        else:
+            breakpoints = get_breakpoints_by_full_path(file)
+            if breakpoints:
+                for line in list(breakpoints.keys()):
+                    location = webkit.Debugger.Location({'lineNumber': int(line), 'scriptId': scriptId})
+                    channel.send(webkit.Debugger.setBreakpoint(location), self.breakpointAdded)
+
+    def updateAuthoredDocument(self, command):
+        save_breaks()
+        update_overlays()
 
     def breakpointAdded(self, command):
         """ Notification that a breakpoint was set.
@@ -482,7 +524,8 @@ class SwiDebugToggleBreakpointCommand(sublime_plugin.WindowCommand):
         active_view = self.window.active_view()
 
         v = views.wrap_view(active_view)
-        view_name = v.file_name();
+        view_name = v.file_name()
+
         if not view_name: # eg file mapping pane
             return
 
@@ -492,12 +535,28 @@ class SwiDebugToggleBreakpointCommand(sublime_plugin.WindowCommand):
         if row in breaks:
             if channel:
                 if row in breaks:
-                    channel.send(webkit.Debugger.removeBreakpoint(breaks[row]['breakpointId']))
+                    try:
+                        channel.send(webkit.Debugger.removeBreakpoint(breaks[row]['breakpointId']))
+                    except KeyError:
+                        print("SWI: A key error occurred while removing the breakpoint")
 
             del_breakpoint_by_full_path(view_name, row)
         else:
             if channel:
-                scriptUrl = find_script_url(view_name)
+                scriptUrl = ''
+                if projectsystem.DocumentMapping.MappingsManager.is_authored_file(view_name):
+                    mapping = projectsystem.DocumentMapping.MappingsManager.get_mapping(view_name)
+                    sel = active_view.sel()[0]
+                    start = active_view.rowcol(sel.begin())
+        
+                    position = mapping.get_generated_position(view_name, start[0], start[1])
+                    scriptUrl = find_script_url(position.file_name())
+                    row = str(position.one_based_line())
+                    scriptUrl = find_script_url(position.file_name())
+
+                if not scriptUrl:
+                    scriptUrl = find_script_url(view_name)
+
                 if scriptUrl:
                     channel.send(webkit.Debugger.setBreakpointByUrl(int(row), scriptUrl), self.breakpointAdded, view_name)
             else:
@@ -519,7 +578,22 @@ class SwiDebugToggleBreakpointCommand(sublime_plugin.WindowCommand):
             lineNumber = location.lineNumber
             columnNumber = location.columnNumber
 
-            set_breakpoint_by_scriptId(str(scriptId), str(lineNumber), 'enabled', breakpointId)
+            file_name = find_script(str(scriptId))
+            if projectsystem.DocumentMapping.MappingsManager.is_generated_file(file_name):
+                # Only line number is one-based. TODO: Fix this next
+                position = get_authored_position_if_necessary(file_name, lineNumber - 1, columnNumber)
+
+                if position:
+                    lineNumber = position.one_based_line()
+                    columnNumber = position.zero_based_column()
+                    file_name = position.file_name()
+                    init_breakpoint_for_file(file_name)
+
+            # If this breakpoint is in TS file, then store the column number as well for future restoration
+            if projectsystem.DocumentMapping.MappingsManager.is_generated_file(file_name):
+                set_breakpoint_by_full_path(file_name, str(lineNumber), -1, 'enabled', breakpointId)
+            else:
+                set_breakpoint_by_full_path(file_name, str(lineNumber), columnNumber, 'enabled', breakpointId)
 
         update_overlays()
 
@@ -570,7 +644,46 @@ class SwiShowFileMappingsInternalCommand(sublime_plugin.TextCommand):
         self.view.insert(edit, 0, json.dumps(file_to_scriptId, sort_keys=True, indent=4, separators=(',', ': ')))
 
 
+class SwiToggleAuthoredCodeCommand(sublime_plugin.TextCommand):
+    """ This is a TextCommand because it specifically applies only
+        to the active view
+    """
+    def run(self, edit):
+        utils.assert_main_thread()
+        view = views.wrap_view(self.view)
+        view_name = view.file_name();
+        if not view_name: # eg file mapping pane
+            return
 
+        file_mapping = projectsystem.DocumentMapping.MappingsManager.get_mapping(view_name)
+        if file_mapping:
+            is_authored_file = projectsystem.DocumentMapping.MappingsManager.is_authored_file(view_name)
+ 
+            sel = view.sel()[0]
+            start = view.rowcol(sel.begin())
+            end = view.rowcol(sel.end())
+            print("Getting mapped code info for:", view_name, start, end)
+
+            mapped_start = file_mapping.get_generated_position(view_name, start[0], start[1]) \
+                                        if is_authored_file \
+                                        else file_mapping.get_authored_position(start[0], start[1])
+
+            if (start != end):
+                mapped_end = file_mapping.get_generated_position(view_name, end[0], end[1]) \
+                                          if is_authored_file \
+                                          else file_mapping.get_authored_position(end[0], end[1])
+            else:
+                mapped_end = mapped_start
+
+            window = sublime.active_window()
+            window.focus_group(0)
+            view = window.open_file(mapped_start.file_name())
+            
+            do_when(lambda: not view.is_loading(), lambda: set_selection(view,
+                                                                         mapped_start.zero_based_line(),
+                                                                         mapped_start.zero_based_column(),
+                                                                         mapped_end.zero_based_line(),
+                                                                         mapped_end.zero_based_column()))
 
 def update_overlays():
 
@@ -710,7 +823,7 @@ def close_all_our_windows():
 
     window.focus_group(0)
     for v in window.views_in_group(0):
-        if v.name() == 'File mapping ':
+        if v.name() == 'File mapping':
             window.run_command("close")
             break
 
@@ -746,25 +859,31 @@ def change_to_call_frame(callFrame):
 
     scriptId = callFrame.location.scriptId
     line_number = callFrame.location.lineNumber
+    display_line_number = line_number + 1
     file_name = find_script(str(scriptId))
     first_scope = callFrame.scopeChain[0]
 
     params = {'objectId': first_scope.object.objectId, 'name': "%s:%s (%s)" % (file_name, line_number, first_scope.type)}
     channel.send(webkit.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, params)
 
+    position = get_authored_position_if_necessary(file_name, callFrame.location.lineNumber, callFrame.location.columnNumber)
+    if position:
+        file_name = position.file_name()
+        display_line_number = position.one_based_line()
+
     global current_call_frame
     current_call_frame = callFrame.callFrameId
 
     global current_call_frame_position
-    current_call_frame_position = "%s:%s" % (file_name, line_number)
+    current_call_frame_position = "%s:%s" % (file_name, display_line_number)
 
     global current_file
     current_file = file_name
 
     global current_line
-    current_line = line_number
+    current_line = display_line_number
 
-    open_script_and_focus_line(scriptId, line_number)
+    open_script_and_focus_line_by_filename(file_name, display_line_number)
 
 def console_repeat_message(count):
     v = views.find_or_create_view('console')
@@ -846,7 +965,7 @@ class SwiConsoleAddMessageInternalCommand(sublime_plugin.TextCommand):
             line = 0
 
         if scriptId and line > 0:
-            v.print_click(edit, v.size(),  "%s:%d" % (url, line), lambda: open_script_and_focus_line(scriptId, str(line)))
+            v.print_click(edit, v.size(),  "%s:%d" % (url, line), open_script_by_id_and_focus_line, scriptId, str(line))
         else:
             v.insert(edit, v.size(), "%s:%d" % (url, line))
 
@@ -856,8 +975,7 @@ class SwiConsoleAddMessageInternalCommand(sublime_plugin.TextCommand):
         if len(message.parameters) > 0:
             for param in message.parameters:
                 if param.type == 'object': #if channel here
-                    callback = lambda: channel.send(webkit.Runtime.getProperties(param.objectId, True), console_add_properties, {'objectId': param.objectId})
-                    v.print_click(edit, v.size(), str(param) + ' ', callback)
+                    v.print_click(edit, v.size(), str(param) + ' ', channel.send, webkit.Runtime.getProperties(param.objectId, True), console_add_properties, {'objectId': param.objectId})
                 else:
                     v.insert(edit, v.size(), str(param) + ' ')
         else:
@@ -875,8 +993,7 @@ class SwiConsoleAddMessageInternalCommand(sublime_plugin.TextCommand):
                 v.insert(edit, v.size(),  '\t\u21E1 ')
 
                 if scriptId:
-                    callback = lambda: open_script_and_focus_line(scriptId, str(callFrame.lineNumber))
-                    v.print_click(edit, v.size(), "%s:%s %s" % (file_name, callFrame.lineNumber, callFrame.functionName), callback)
+                    v.print_click(edit, v.size(), "%s:%s %s" % (file_name, callFrame.lineNumber, callFrame.functionName), open_script_by_id_and_focus_line, scriptId, str(callFrame.lineNumber))
                 else:
                     v.insert(edit, v.size(),  "%s:%s %s" % (file_name, callFrame.lineNumber, callFrame.functionName))
 
@@ -947,8 +1064,7 @@ class SwiConsolePrintPropertiesInternalCommand(sublime_plugin.TextCommand):
             v.insert(edit, v.size(), prop.name + ': ')
             if(prop.value):
                 if prop.value.type == 'object':
-                    callback = lambda: channel.send(webkit.Runtime.getProperties(prop.value.objectId, True), console_add_properties, {'objectId': prop.value.objectId, 'file': file, 'line': line, 'name': prop.name, 'prev': prev})
-                    v.print_click(edit, v.size(), str(prop.value) + '\n', callback)
+                    v.print_click(edit, v.size(), str(prop.value) + '\n', channel.send, webkit.Runtime.getProperties(prop.value.objectId, True), console_add_properties, {'objectId': prop.value.objectId, 'file': file, 'line': line, 'name': prop.name, 'prev': prev})
                 else:
                     v.insert(edit, v.size(), str(prop.value) + '\n')
 
@@ -974,26 +1090,32 @@ class SwiConsoleShowStackInternalCommand(sublime_plugin.TextCommand):
         v.erase(edit, sublime.Region(0, v.size()))
 
         v.insert(edit, v.size(), "\n")
-        v.print_click(edit, v.size(), "  Resume  ", lambda: self.view.window().run_command('swi_debug_pause_resume'))
+        v.print_click(edit, v.size(), "  Resume  ", self.view.window().run_command, 'swi_debug_pause_resume')
         v.insert(edit, v.size(), "  ")
-        v.print_click(edit, v.size(), "  Step Over  ", lambda: self.view.window().run_command('swi_debug_step_over'))
+        v.print_click(edit, v.size(), "  Step Over  ", self.view.window().run_command, 'swi_debug_step_over')
         v.insert(edit, v.size(), "  ")
-        v.print_click(edit, v.size(), "  Step Into  ", lambda: self.view.window().run_command('swi_debug_step_into'))
+        v.print_click(edit, v.size(), "  Step Into  ", self.view.window().run_command, 'swi_debug_step_into')
         v.insert(edit, v.size(), "  ")
-        v.print_click(edit, v.size(), "  Step Out  ", lambda: self.view.window().run_command('swi_debug_step_out'))
+        v.print_click(edit, v.size(), "  Step Out  ", self.view.window().run_command, 'swi_debug_step_out')
         v.insert(edit, v.size(), "\n\n")
 
         for callFrame in callFrames:
-            line = str(callFrame.location.lineNumber)
+            # Location indexes are zero-based, so add one to them
+            line = str(callFrame.location.lineNumber + 1)
             file_name = find_script(str(callFrame.location.scriptId))
 
             if file_name:
+                position = get_authored_position_if_necessary(file_name, callFrame.location.lineNumber, callFrame.location.columnNumber)
+                if position:
+                    file_name = position.file_name()
+                    line = position.one_based_line() 
+
                 file_name = file_name.split('/')[-1]
             else:
                 file_name = '-'
 
             if file_name != '-':
-                v.print_click(edit, v.size(),  "%s:%s" % (file_name, line), lambda: change_to_call_frame(callFrame))
+                v.print_click(edit, v.size(),  "%s:%s" % (file_name, line), change_to_call_frame, callFrame)
             else:
                 v.insert(edit, v.size(), "%s:%s" % (file_name, line))
 
@@ -1002,8 +1124,7 @@ class SwiConsoleShowStackInternalCommand(sublime_plugin.TextCommand):
             for scope in callFrame.scopeChain:
                 v.insert(edit, v.size(), "\t")
                 if scope.object.type == 'object':
-                    callback = lambda: channel.send(webkit.Runtime.getProperties(scope.object.objectId, True), console_add_properties, {'objectId': scope.object.objectId, 'name': "%s:%s (%s)" % (file_name, line, scope.type)})
-                    v.print_click(edit, v.size(), "%s\n" % (scope.type), callback)
+                    v.print_click(edit, v.size(), "%s\n" % (scope.type), channel.send, webkit.Runtime.getProperties(scope.object.objectId, True), console_add_properties, {'objectId': scope.object.objectId, 'name': "%s:%s (%s)" % (file_name, line, scope.type)})
                 else:
                     v.insert(edit, v.size(), "%s\n" % (scope.type))
 
@@ -1047,7 +1168,6 @@ def get_project():
 
     return project
 
-
 def load_breaks():
     global brk_object
     brk_object = utils.get_setting('breaks')
@@ -1066,16 +1186,21 @@ def save_breaks():
 def full_path_to_file_name(path):
     return os.path.basename(os.path.realpath(path))
 
-def set_breakpoint_by_full_path(file_name, line, status='disabled', breakpointId=None):
+def set_breakpoint_by_full_path(file_name, line, column=-1, status='disabled', breakpointId=None):
     breaks = get_breakpoints_by_full_path(file_name)
 
     if not line in breaks:
         breaks[line] = {}
         breaks[line]['status'] = status
         breaks[line]['breakpointId'] = str(breakpointId)
+        if column != -1:
+            breaks[line]['column'] = str(column)
     else:
         breaks[line]['status'] = status
         breaks[line]['breakpointId'] = str(breakpointId)
+        if column != -1:
+            breaks[line]['column'] = str(column)
+
     save_breaks()
 
 
@@ -1093,19 +1218,6 @@ def del_breakpoint_by_full_path(file_name, line):
 
 def get_breakpoints_by_full_path(file_name):
     return brk_object.get(file_name, None)
-
-
-def set_breakpoint_by_scriptId(scriptId, line, status='disabled', breakpointId=None):
-    file_name = find_script(str(scriptId))
-    if file_name:
-        set_breakpoint_by_full_path(file_name, line, status, breakpointId)
-
-
-def del_breakpoint_by_scriptId(scriptId, line):
-    file_name = find_script(str(scriptId))
-    if file_name:
-        del_breakpoint_by_full_path(file_name, line)
-
 
 def get_breakpoints_by_scriptId(scriptId):
     file_name = find_script(str(scriptId))
@@ -1177,20 +1289,44 @@ def do_when(conditional, callback, *args, **kwargs):
     sublime.set_timeout(functools.partial(do_when, conditional, callback, *args, **kwargs), 50) 
 
 
-def open_script_and_focus_line(scriptId, line_number):
+def open_script_by_id_and_focus_line(scriptId, line_number):
     file_name = find_script(str(scriptId))
-    if file_name:   # race with browser
-        open_script_and_focus_line_by_filename(file_name, line_number)
+    open_script_and_focus_line_by_filename(file_name, line_number)
 
 def open_script_and_focus_line_by_filename(file_name, line_number):
-    window = sublime.active_window()
-    window.focus_group(0)
-    v = window.open_file(file_name)
-    do_when(lambda: not v.is_loading(), lambda: open_script_and_focus_line_callback(v, line_number))
+    if file_name:   # race with browser
+        window = sublime.active_window()
+        window.focus_group(0)
+        v = window.open_file(file_name)
+        do_when(lambda: not v.is_loading(), lambda: open_script_and_focus_line_callback(v, line_number))
 
 def open_script_and_focus_line_callback(v, line_number):
     v.run_command("goto_line", {"line": line_number})
     update_overlays()
 
-sublime.set_timeout(lambda: load_breaks(), 1000)
+def set_selection(view, start_line, start_column, end_line, end_column):
+    if not view or start_line < 0 or start_column < 0 or end_line < 0 or end_column < 0:
+        return
 
+    start_point = view.text_point(start_line, start_column)
+    end_point = view.text_point(end_line, end_column)
+
+    selection = view.sel()
+    selection.clear()
+    selection.add(sublime.Region(start_point, end_point))
+
+
+def get_authored_position_if_necessary(file_name, line_number, column_number):
+    if is_source_map_enabled():
+        mapping = projectsystem.DocumentMapping.MappingsManager.get_mapping(file_name)
+        return mapping.get_authored_position(line_number, line_number)
+
+def is_source_map_enabled():
+    global source_map_state
+    if source_map_state == None:
+        source_map_state = utils.get_setting("enable_source_maps")
+
+    return source_map_state
+
+
+sublime.set_timeout(lambda: load_breaks(), 1000)
