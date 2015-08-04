@@ -1,4 +1,4 @@
-import hashlib
+﻿import hashlib
 import functools
 import glob
 import sublime
@@ -239,7 +239,7 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
         channel.send(webkit.Console.enable())
         channel.send(webkit.Debugger.canSetScriptSource(), self.canSetScriptSource)
 
-        #self.window.run_command('swi_styles_window')
+        styles.show_styles()
 
         if utils.get_setting('user_agent') is not "":
             channel.send(webkit.Network.setUserAgentOverride(utils.get_setting('user_agent')))
