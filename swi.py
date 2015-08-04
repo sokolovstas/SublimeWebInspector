@@ -277,6 +277,7 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
         url = data['url']
         if url != '':
             url_parts = url.split("/")
+            url_parts = list(filter(None, url_parts)) # remove empty entries so we have eg ['http:', 'foo.com', 'bar', 'baz.biz']
             scriptId = str(data['scriptId'])
             file_name = ''
             script = get_script(data['url'])
@@ -289,7 +290,7 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
                 # Create a file mapping to look for mapped source code 
                 projectsystem.DocumentMapping.MappingsManager.create_mapping(file_name)
             else:
-                del url_parts[0:3]
+                del url_parts[0:2] # remove protocol and domain
                 while len(url_parts) > 0:
                     for folder in self.project_folders:
                         if sublime.platform() == "windows":
