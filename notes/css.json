@@ -1,0 +1,680 @@
+{ "domain": "CSS",
+        "hidden": true,
+        "description": "This domain exposes CSS read/write operations. All CSS objects (stylesheets, rules, and styles) have an associated <code>id</code> used in subsequent operations on the related object. Each object type has a specific <code>id</code> structure, and those are not interchangeable between objects of different kinds. CSS objects can be loaded using the <code>get*ForNode()</code> calls (which accept a DOM node id). A client can also discover all the existing stylesheets with the <code>getAllStyleSheets()</code> method (or keeping track of the <code>styleSheetAdded</code>/<code>styleSheetRemoved</code> events) and subsequently load the required stylesheet contents using the <code>getStyleSheet[Text]()</code> methods.",
+        "types": [{
+            "id": "StyleSheetId",
+            "type": "string"
+        }, {
+            "id": "StyleSheetOrigin",
+            "type": "string",
+            "enum": ["injected", "user-agent", "inspector", "regular"],
+            "description": "Stylesheet type: \"injected\" for stylesheets injected via extension, \"user-agent\" for user-agent stylesheets, \"inspector\" for stylesheets created by the inspector (i.e. those holding the \"via inspector\" rules), \"regular\" for regular stylesheets."
+        }, {
+            "id": "PseudoIdMatches",
+            "type": "object",
+            "properties": [{
+                "name": "pseudoId",
+                "type": "integer",
+                "description": "Pseudo style identifier (see <code>enum PseudoId</code> in <code>ComputedStyleConstants.h</code>)."
+            }, {
+                "name": "matches",
+                "type": "array",
+                "items": {
+                    "$ref": "RuleMatch"
+                },
+                "description": "Matches of CSS rules applicable to the pseudo style."
+            }],
+            "description": "CSS rule collection for a single pseudo style."
+        }, {
+            "id": "InheritedStyleEntry",
+            "type": "object",
+            "properties": [{
+                "name": "inlineStyle",
+                "$ref": "CSSStyle",
+                "optional": true,
+                "description": "The ancestor node's inline style, if any, in the style inheritance chain."
+            }, {
+                "name": "matchedCSSRules",
+                "type": "array",
+                "items": {
+                    "$ref": "RuleMatch"
+                },
+                "description": "Matches of CSS rules matching the ancestor node in the style inheritance chain."
+            }],
+            "description": "Inherited CSS rule collection from ancestor node."
+        }, {
+            "id": "RuleMatch",
+            "type": "object",
+            "properties": [{
+                "name": "rule",
+                "$ref": "CSSRule",
+                "description": "CSS rule in the match."
+            }, {
+                "name": "matchingSelectors",
+                "type": "array",
+                "items": {
+                    "type": "integer"
+                },
+                "description": "Matching selector indices in the rule's selectorList selectors (0-based)."
+            }],
+            "description": "Match data for a CSS rule."
+        }, {
+            "id": "Selector",
+            "type": "object",
+            "properties": [{
+                "name": "value",
+                "type": "string",
+                "description": "Selector text."
+            }, {
+                "name": "range",
+                "$ref": "SourceRange",
+                "optional": true,
+                "description": "Selector range in the underlying resource (if available)."
+            }],
+            "description": "Data for a simple selector (these are delimited by commas in a selector list)."
+        }, {
+            "id": "SelectorList",
+            "type": "object",
+            "properties": [{
+                "name": "selectors",
+                "type": "array",
+                "items": {
+                    "$ref": "Selector"
+                },
+                "description": "Selectors in the list."
+            }, {
+                "name": "text",
+                "type": "string",
+                "description": "Rule selector text."
+            }],
+            "description": "Selector list data."
+        }, {
+            "id": "CSSStyleSheetHeader",
+            "type": "object",
+            "properties": [{
+                "name": "styleSheetId",
+                "$ref": "StyleSheetId",
+                "description": "The stylesheet identifier."
+            }, {
+                "name": "frameId",
+                "$ref": "Page.FrameId",
+                "description": "Owner frame identifier."
+            }, {
+                "name": "sourceURL",
+                "type": "string",
+                "description": "Stylesheet resource URL."
+            }, {
+                "name": "sourceMapURL",
+                "type": "string",
+                "optional": true,
+                "description": "URL of source map associated with the stylesheet (if any)."
+            }, {
+                "name": "origin",
+                "$ref": "StyleSheetOrigin",
+                "description": "Stylesheet origin."
+            }, {
+                "name": "title",
+                "type": "string",
+                "description": "Stylesheet title."
+            }, {
+                "name": "ownerNode",
+                "$ref": "DOM.BackendNodeId",
+                "optional": true,
+                "description": "The backend id for the owner node of the stylesheet."
+            }, {
+                "name": "disabled",
+                "type": "boolean",
+                "description": "Denotes whether the stylesheet is disabled."
+            }, {
+                "name": "hasSourceURL",
+                "type": "boolean",
+                "optional": true,
+                "description": "Whether the sourceURL field value comes from the sourceURL comment."
+            }, {
+                "name": "isInline",
+                "type": "boolean",
+                "description": "Whether this stylesheet is created for STYLE tag by parser. This flag is not set for document.written STYLE tags."
+            }, {
+                "name": "startLine",
+                "type": "number",
+                "description": "Line offset of the stylesheet within the resource (zero based)."
+            }, {
+                "name": "startColumn",
+                "type": "number",
+                "description": "Column offset of the stylesheet within the resource (zero based)."
+            }],
+            "description": "CSS stylesheet metainformation."
+        }, {
+            "id": "CSSRule",
+            "type": "object",
+            "properties": [{
+                "name": "styleSheetId",
+                "$ref": "StyleSheetId",
+                "optional": true,
+                "description": "The css style sheet identifier (absent for user agent stylesheet and user-specified stylesheet rules) this rule came from."
+            }, {
+                "name": "selectorList",
+                "$ref": "SelectorList",
+                "description": "Rule selector data."
+            }, {
+                "name": "origin",
+                "$ref": "StyleSheetOrigin",
+                "description": "Parent stylesheet's origin."
+            }, {
+                "name": "style",
+                "$ref": "CSSStyle",
+                "description": "Associated style declaration."
+            }, {
+                "name": "media",
+                "type": "array",
+                "items": {
+                    "$ref": "CSSMedia"
+                },
+                "optional": true,
+                "description": "Media list array (for rules involving media queries). The array enumerates media queries starting with the innermost one, going outwards."
+            }],
+            "description": "CSS rule representation."
+        }, {
+            "id": "SourceRange",
+            "type": "object",
+            "properties": [{
+                "name": "startLine",
+                "type": "integer",
+                "description": "Start line of range."
+            }, {
+                "name": "startColumn",
+                "type": "integer",
+                "description": "Start column of range (inclusive)."
+            }, {
+                "name": "endLine",
+                "type": "integer",
+                "description": "End line of range"
+            }, {
+                "name": "endColumn",
+                "type": "integer",
+                "description": "End column of range (exclusive)."
+            }],
+            "description": "Text range within a resource. All numbers are zero-based."
+        }, {
+            "id": "ShorthandEntry",
+            "type": "object",
+            "properties": [{
+                "name": "name",
+                "type": "string",
+                "description": "Shorthand name."
+            }, {
+                "name": "value",
+                "type": "string",
+                "description": "Shorthand value."
+            }, {
+                "name": "important",
+                "type": "boolean",
+                "optional": true,
+                "description": "Whether the property has \"!important\" annotation (implies <code>false</code> if absent)."
+            }]
+        }, {
+            "id": "CSSComputedStyleProperty",
+            "type": "object",
+            "properties": [{
+                "name": "name",
+                "type": "string",
+                "description": "Computed style property name."
+            }, {
+                "name": "value",
+                "type": "string",
+                "description": "Computed style property value."
+            }]
+        }, {
+            "id": "CSSStyle",
+            "type": "object",
+            "properties": [{
+                "name": "styleSheetId",
+                "$ref": "StyleSheetId",
+                "optional": true,
+                "description": "The css style sheet identifier (absent for user agent stylesheet and user-specified stylesheet rules) this rule came from."
+            }, {
+                "name": "cssProperties",
+                "type": "array",
+                "items": {
+                    "$ref": "CSSProperty"
+                },
+                "description": "CSS properties in the style."
+            }, {
+                "name": "shorthandEntries",
+                "type": "array",
+                "items": {
+                    "$ref": "ShorthandEntry"
+                },
+                "description": "Computed values for all shorthands found in the style."
+            }, {
+                "name": "cssText",
+                "type": "string",
+                "optional": true,
+                "description": "Style declaration text (if available)."
+            }, {
+                "name": "range",
+                "$ref": "SourceRange",
+                "optional": true,
+                "description": "Style declaration range in the enclosing stylesheet (if available)."
+            }],
+            "description": "CSS style representation."
+        }, {
+            "id": "CSSProperty",
+            "type": "object",
+            "properties": [{
+                "name": "name",
+                "type": "string",
+                "description": "The property name."
+            }, {
+                "name": "value",
+                "type": "string",
+                "description": "The property value."
+            }, {
+                "name": "important",
+                "type": "boolean",
+                "optional": true,
+                "description": "Whether the property has \"!important\" annotation (implies <code>false</code> if absent)."
+            }, {
+                "name": "implicit",
+                "type": "boolean",
+                "optional": true,
+                "description": "Whether the property is implicit (implies <code>false</code> if absent)."
+            }, {
+                "name": "text",
+                "type": "string",
+                "optional": true,
+                "description": "The full property text as specified in the style."
+            }, {
+                "name": "parsedOk",
+                "type": "boolean",
+                "optional": true,
+                "description": "Whether the property is understood by the browser (implies <code>true</code> if absent)."
+            }, {
+                "name": "disabled",
+                "type": "boolean",
+                "optional": true,
+                "description": "Whether the property is disabled by the user (present for source-based properties only)."
+            }, {
+                "name": "range",
+                "$ref": "SourceRange",
+                "optional": true,
+                "description": "The entire property range in the enclosing style declaration (if available)."
+            }],
+            "description": "CSS property declaration data."
+        }, {
+            "id": "CSSMedia",
+            "type": "object",
+            "properties": [{
+                "name": "text",
+                "type": "string",
+                "description": "Media query text."
+            }, {
+                "name": "source",
+                "type": "string",
+                "enum": ["mediaRule", "importRule", "linkedSheet", "inlineSheet"],
+                "description": "Source of the media query: \"mediaRule\" if specified by a @media rule, \"importRule\" if specified by an @import rule, \"linkedSheet\" if specified by a \"media\" attribute in a linked stylesheet's LINK tag, \"inlineSheet\" if specified by a \"media\" attribute in an inline stylesheet's STYLE tag."
+            }, {
+                "name": "sourceURL",
+                "type": "string",
+                "optional": true,
+                "description": "URL of the document containing the media query description."
+            }, {
+                "name": "range",
+                "$ref": "SourceRange",
+                "optional": true,
+                "description": "The associated rule (@media or @import) header range in the enclosing stylesheet (if available)."
+            }, {
+                "name": "parentStyleSheetId",
+                "$ref": "StyleSheetId",
+                "optional": true,
+                "description": "Identifier of the stylesheet containing this object (if exists)."
+            }, {
+                "name": "mediaList",
+                "type": "array",
+                "items": {
+                    "$ref": "MediaQuery"
+                },
+                "optional": true,
+                "hidden": true,
+                "description": "Array of media queries."
+            }],
+            "description": "CSS media rule descriptor."
+        }, {
+            "id": "MediaQuery",
+            "type": "object",
+            "properties": [{
+                "name": "expressions",
+                "type": "array",
+                "items": {
+                    "$ref": "MediaQueryExpression"
+                },
+                "description": "Array of media query expressions."
+            }, {
+                "name": "active",
+                "type": "boolean",
+                "description": "Whether the media query condition is satisfied."
+            }],
+            "description": "Media query descriptor.",
+            "hidden": true
+        }, {
+            "id": "MediaQueryExpression",
+            "type": "object",
+            "properties": [{
+                "name": "value",
+                "type": "number",
+                "description": "Media query expression value."
+            }, {
+                "name": "unit",
+                "type": "string",
+                "description": "Media query expression units."
+            }, {
+                "name": "feature",
+                "type": "string",
+                "description": "Media query expression feature."
+            }, {
+                "name": "valueRange",
+                "$ref": "SourceRange",
+                "optional": true,
+                "description": "The associated range of the value text in the enclosing stylesheet (if available)."
+            }, {
+                "name": "computedLength",
+                "type": "number",
+                "optional": true,
+                "description": "Computed length of media query expression (if applicable)."
+            }],
+            "description": "Media query expression descriptor.",
+            "hidden": true
+        }, {
+            "id": "PlatformFontUsage",
+            "type": "object",
+            "properties": [{
+                "name": "familyName",
+                "type": "string",
+                "description": "Font's family name reported by platform."
+            }, {
+                "name": "glyphCount",
+                "type": "number",
+                "description": "Amount of glyphs that were rendered with this font."
+            }],
+            "description": "Information about amount of glyphs that were rendered with given font.",
+            "hidden": true
+        }],
+        "commands": [{
+            "name": "enable",
+            "async": true,
+            "description": "Enables the CSS agent for the given page. Clients should not assume that the CSS agent has been enabled until the result of this command is received."
+        }, {
+            "name": "disable",
+            "description": "Disables the CSS agent for the given page."
+        }, {
+            "name": "getMatchedStylesForNode",
+            "parameters": [{
+                "name": "nodeId",
+                "$ref": "DOM.NodeId"
+            }, {
+                "name": "excludePseudo",
+                "type": "boolean",
+                "optional": true,
+                "description": "Whether to exclude pseudo styles (default: false)."
+            }, {
+                "name": "excludeInherited",
+                "type": "boolean",
+                "optional": true,
+                "description": "Whether to exclude inherited styles (default: false)."
+            }],
+            "returns": [{
+                "name": "matchedCSSRules",
+                "type": "array",
+                "items": {
+                    "$ref": "RuleMatch"
+                },
+                "optional": true,
+                "description": "CSS rules matching this node, from all applicable stylesheets."
+            }, {
+                "name": "pseudoElements",
+                "type": "array",
+                "items": {
+                    "$ref": "PseudoIdMatches"
+                },
+                "optional": true,
+                "description": "Pseudo style matches for this node."
+            }, {
+                "name": "inherited",
+                "type": "array",
+                "items": {
+                    "$ref": "InheritedStyleEntry"
+                },
+                "optional": true,
+                "description": "A chain of inherited styles (from the immediate node parent up to the DOM tree root)."
+            }],
+            "description": "Returns requested styles for a DOM node identified by <code>nodeId</code>."
+        }, {
+            "name": "getInlineStylesForNode",
+            "parameters": [{
+                "name": "nodeId",
+                "$ref": "DOM.NodeId"
+            }],
+            "returns": [{
+                "name": "inlineStyle",
+                "$ref": "CSSStyle",
+                "optional": true,
+                "description": "Inline style for the specified DOM node."
+            }, {
+                "name": "attributesStyle",
+                "$ref": "CSSStyle",
+                "optional": true,
+                "description": "Attribute-defined element style (e.g. resulting from \"width=20 height=100%\")."
+            }],
+            "description": "Returns the styles defined inline (explicitly in the \"style\" attribute and implicitly, using DOM attributes) for a DOM node identified by <code>nodeId</code>."
+        }, {
+            "name": "getComputedStyleForNode",
+            "parameters": [{
+                "name": "nodeId",
+                "$ref": "DOM.NodeId"
+            }],
+            "returns": [{
+                "name": "computedStyle",
+                "type": "array",
+                "items": {
+                    "$ref": "CSSComputedStyleProperty"
+                },
+                "description": "Computed style for the specified DOM node."
+            }],
+            "description": "Returns the computed style for a DOM node identified by <code>nodeId</code>."
+        }, {
+            "name": "getPlatformFontsForNode",
+            "parameters": [{
+                "name": "nodeId",
+                "$ref": "DOM.NodeId"
+            }],
+            "returns": [{
+                "name": "fonts",
+                "type": "array",
+                "items": {
+                    "$ref": "PlatformFontUsage"
+                },
+                "description": "Usage statistics for every employed platform font."
+            }],
+            "description": "Requests information about platform fonts which we used to render child TextNodes in the given node.",
+            "hidden": true
+        }, {
+            "name": "getStyleSheetText",
+            "parameters": [{
+                "name": "styleSheetId",
+                "$ref": "StyleSheetId"
+            }],
+            "returns": [{
+                "name": "text",
+                "type": "string",
+                "description": "The stylesheet text."
+            }],
+            "description": "Returns the current textual content and the URL for a stylesheet."
+        }, {
+            "name": "setStyleSheetText",
+            "parameters": [{
+                "name": "styleSheetId",
+                "$ref": "StyleSheetId"
+            }, {
+                "name": "text",
+                "type": "string"
+            }],
+            "description": "Sets the new stylesheet text."
+        }, {
+            "name": "setRuleSelector",
+            "parameters": [{
+                "name": "styleSheetId",
+                "$ref": "StyleSheetId"
+            }, {
+                "name": "range",
+                "$ref": "SourceRange"
+            }, {
+                "name": "selector",
+                "type": "string"
+            }],
+            "returns": [{
+                "name": "rule",
+                "$ref": "CSSRule",
+                "description": "The resulting rule after the selector modification."
+            }],
+            "description": "Modifies the rule selector."
+        }, {
+            "name": "setStyleText",
+            "parameters": [{
+                "name": "styleSheetId",
+                "$ref": "StyleSheetId"
+            }, {
+                "name": "range",
+                "$ref": "SourceRange"
+            }, {
+                "name": "text",
+                "type": "string"
+            }],
+            "returns": [{
+                "name": "style",
+                "$ref": "CSSStyle",
+                "description": "The resulting style after the selector modification."
+            }],
+            "description": "Modifies the style text."
+        }, {
+            "name": "setMediaText",
+            "parameters": [{
+                "name": "styleSheetId",
+                "$ref": "StyleSheetId"
+            }, {
+                "name": "range",
+                "$ref": "SourceRange"
+            }, {
+                "name": "text",
+                "type": "string"
+            }],
+            "returns": [{
+                "name": "media",
+                "$ref": "CSSMedia",
+                "description": "The resulting CSS media rule after modification."
+            }],
+            "description": "Modifies the rule selector."
+        }, {
+            "name": "createStyleSheet",
+            "parameters": [{
+                "name": "frameId",
+                "$ref": "Page.FrameId",
+                "description": "Identifier of the frame where \"via-inspector\" stylesheet should be created."
+            }],
+            "returns": [{
+                "name": "styleSheetId",
+                "$ref": "StyleSheetId",
+                "description": "Identifier of the created \"via-inspector\" stylesheet."
+            }],
+            "description": "Creates a new special \"via-inspector\" stylesheet in the frame with given <code>frameId</code>."
+        }, {
+            "name": "addRule",
+            "parameters": [{
+                "name": "styleSheetId",
+                "$ref": "StyleSheetId",
+                "description": "The css style sheet identifier where a new rule should be inserted."
+            }, {
+                "name": "ruleText",
+                "type": "string",
+                "description": "The text of a new rule."
+            }, {
+                "name": "location",
+                "$ref": "SourceRange",
+                "description": "Text position of a new rule in the target style sheet."
+            }],
+            "returns": [{
+                "name": "rule",
+                "$ref": "CSSRule",
+                "description": "The newly created rule."
+            }],
+            "description": "Inserts a new rule with the given <code>ruleText</code> in a stylesheet with given <code>styleSheetId</code>, at the position specified by <code>location</code>."
+        }, {
+            "name": "forcePseudoState",
+            "parameters": [{
+                "name": "nodeId",
+                "$ref": "DOM.NodeId",
+                "description": "The element id for which to force the pseudo state."
+            }, {
+                "name": "forcedPseudoClasses",
+                "type": "array",
+                "items": {
+                    "type": "string",
+                    "enum": ["active", "focus", "hover", "visited"]
+                },
+                "description": "Element pseudo classes to force when computing the element's style."
+            }],
+            "description": "Ensures that the given node will have specified pseudo-classes whenever its style is computed by the browser."
+        }, {
+            "name": "getMediaQueries",
+            "returns": [{
+                "name": "medias",
+                "type": "array",
+                "items": {
+                    "$ref": "CSSMedia"
+                }
+            }],
+            "description": "Returns all media queries parsed by the rendering engine.",
+            "hidden": true
+        }, {
+            "name": "setEffectivePropertyValueForNode",
+            "parameters": [{
+                "name": "nodeId",
+                "$ref": "DOM.NodeId",
+                "description": "The element id for which to set property."
+            }, {
+                "name": "propertyName",
+                "type": "string"
+            }, {
+                "name": "value",
+                "type": "string"
+            }],
+            "description": "Find a rule with the given active property for the given node and set the new value for this property",
+            "hidden": true
+        }],
+        "events": [{
+            "name": "mediaQueryResultChanged",
+            "description": "Fires whenever a MediaQuery result changes (for example, after a browser window has been resized.) The current implementation considers only viewport-dependent media features."
+        }, {
+            "name": "styleSheetChanged",
+            "parameters": [{
+                "name": "styleSheetId",
+                "$ref": "StyleSheetId"
+            }],
+            "description": "Fired whenever a stylesheet is changed as a result of the client operation."
+        }, {
+            "name": "styleSheetAdded",
+            "parameters": [{
+                "name": "header",
+                "$ref": "CSSStyleSheetHeader",
+                "description": "Added stylesheet metainfo."
+            }],
+            "description": "Fired whenever an active document stylesheet is added."
+        }, {
+            "name": "styleSheetRemoved",
+            "parameters": [{
+                "name": "styleSheetId",
+                "$ref": "StyleSheetId",
+                "description": "Identifier of the removed stylesheet."
+            }],
+            "description": "Fired whenever an active document stylesheet is removed."
+        }]
+    }
