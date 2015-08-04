@@ -9,8 +9,8 @@ if not swi_folder in sys.path:
 
 import threading
 import websocket
-import swi
 import utils
+# do not import swi or styles
 
 class Protocol(object):
     """ Encapsulate websocket connection """
