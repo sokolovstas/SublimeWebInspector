@@ -22,6 +22,7 @@ import utils
 import webkit
 import projectsystem
 import protocol
+from protocol import channel
 import views
 import styles
 
@@ -41,7 +42,6 @@ imp.reload(sys.modules['webkit.Network'])
 imp.reload(sys.modules['webkit.Page'])
 
 brk_object = {}
-channel = None
 original_layout = None
 window = None
 file_to_scriptId = []
