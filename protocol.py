@@ -12,6 +12,8 @@ import websocket
 import utils
 # do not import swi or styles
 
+channel = {}
+
 class Protocol(object):
     """ Encapsulate websocket connection """
 
