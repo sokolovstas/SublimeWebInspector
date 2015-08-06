@@ -704,7 +704,7 @@ def update_overlays():
         v.add_regions('swi_breakpoint_inactive', v.lines(disabled), utils.get_setting('breakpoint_scope'), icon=breakpoint_inactive_icon, flags=sublime.HIDDEN)
 
         if current_line:
-            if v.file_name() == current_file:
+            if v.file_name().lower() == current_file.lower():
                 if (str(current_line) in breaks and breaks[str(current_line)]['status'] == 'enabled'): # always draw current line region, but selectively draw icon
                     current_icon = breakpoint_current_icon
                 else:
