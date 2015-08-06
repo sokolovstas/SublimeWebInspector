@@ -1,4 +1,4 @@
-﻿import hashlib
+import hashlib
 import functools
 import glob
 import sublime
@@ -21,8 +21,7 @@ if not swi_folder in sys.path:
 import utils
 import webkit
 import projectsystem
-import protocol
-from protocol import channel
+from .protocol import Channel
 import views
 import styles
 
@@ -80,10 +79,10 @@ class SwiDebugCommand(sublime_plugin.WindowCommand):
                 mapping.append(['swi_debug_step_out', 'Step out' + spacer + ' Shift+F11'])
                 mapping.append(['swi_debug_step_over', 'Step over' + spacer + 'F10'])
                 mapping.append(['swi_debug_pause_resume', 'Resume' + spacer + '   F8'])
-            elif channel:
+            elif Channel.channel.connected():
                 mapping.append(['swi_debug_pause_resume', 'Pause' + spacer + '    F8'])
 
-            if channel:
+            if Channel.channel.connected():
                 mapping.append(['swi_debug_evaluate', 'Evaluate selection'])
                 mapping.append(['swi_debug_clear_console', 'Clear console'])
                 mapping.append(['swi_debug_stop', 'Stop debugging'])
@@ -122,7 +121,7 @@ class SwiDebugCommand(sublime_plugin.WindowCommand):
         self.window.run_command(command)
         
 def chrome_launched():
-    if channel:
+    if Channel.channel.connected():
         return True
 
     try:
@@ -212,13 +211,10 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
         self.project_folders = self.window.folders()
         self.url = url
 
-        global channel
-        if channel:
-            print ('SWI: Socket closed')
-            channel.socket.close()
+        if Channel.channel.connected():
+            Channel.channel.disconnect()
         else:
-            channel = protocol.Protocol()
-            channel.connect(self.url, self.connected, self.disconnected)
+            Channel.channel.connect(self.url, self.connected, self.disconnected)
 
         global set_script_source
         set_script_source = utils.get_setting('set_script_source')
@@ -226,27 +222,27 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
     def connected(self):
         """ Callback when socket connects """ 
         utils.assert_main_thread()
-        channel.subscribe(webkit.Console.messageAdded(), self.messageAdded)
-        channel.subscribe(webkit.Console.messageRepeatCountUpdated(), self.messageRepeatCountUpdated)
-        channel.subscribe(webkit.Console.messagesCleared(), self.messagesCleared)
-        channel.subscribe(webkit.Debugger.scriptParsed(), self.scriptParsed)
-        channel.subscribe(webkit.Debugger.paused(), self.paused)
-        channel.subscribe(webkit.Debugger.resumed(), self.resumed)
-        channel.subscribe(webkit.Debugger.globalObjectCleared(), self.globalObjectCleared)
+        Channel.channel.subscribe(webkit.Console.messageAdded(), self.messageAdded)
+        Channel.channel.subscribe(webkit.Console.messageRepeatCountUpdated(), self.messageRepeatCountUpdated)
+        Channel.channel.subscribe(webkit.Console.messagesCleared(), self.messagesCleared)
+        Channel.channel.subscribe(webkit.Debugger.scriptParsed(), self.scriptParsed)
+        Channel.channel.subscribe(webkit.Debugger.paused(), self.paused)
+        Channel.channel.subscribe(webkit.Debugger.resumed(), self.resumed)
+        Channel.channel.subscribe(webkit.Debugger.globalObjectCleared(), self.globalObjectCleared)
 
-        channel.send(webkit.Debugger.enable(), self.enabled)
-        channel.send(webkit.Debugger.setPauseOnExceptions(utils.get_setting('pause_on_exceptions')))
-        channel.send(webkit.Console.enable())
-        channel.send(webkit.Debugger.canSetScriptSource(), self.canSetScriptSource)
+        Channel.channel.send(webkit.Debugger.enable(), self.enabled)
+        Channel.channel.send(webkit.Debugger.setPauseOnExceptions(utils.get_setting('pause_on_exceptions')))
+        Channel.channel.send(webkit.Console.enable())
+        Channel.channel.send(webkit.Debugger.canSetScriptSource(), self.canSetScriptSource)
 
         styles.show_styles()
 
         if utils.get_setting('user_agent') is not "":
-            channel.send(webkit.Network.setUserAgentOverride(utils.get_setting('user_agent')))
+            Channel.channel.send(webkit.Network.setUserAgentOverride(utils.get_setting('user_agent')))
 
         if utils.get_setting('reload_on_start'):
-            channel.send(webkit.Network.clearBrowserCache())
-            channel.send(webkit.Page.reload(), on_reload)
+            Channel.channel.send(webkit.Network.clearBrowserCache())
+            Channel.channel.send(webkit.Page.reload(), on_reload)
 
     def disconnected(self):
         """ Notification when socket disconnects """
@@ -341,7 +337,7 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
         views.clear_view('scope')
         views.clear_view('styles')
 
-        channel.send(webkit.Debugger.setOverlayMessage())
+        Channel.channel.send(webkit.Debugger.setOverlayMessage())
 
         global current_file
         current_file = None
@@ -392,13 +388,13 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
                              position = mapping.get_generated_position(file_name, int(line), int(breakpoints[line]['column']))
                              if position:
                                 location = webkit.Debugger.Location({'lineNumber': position.one_based_line(), 'scriptId': scriptId})
-                                channel.send(webkit.Debugger.setBreakpoint(location), self.updateAuthoredDocument)
+                                Channel.channel.send(webkit.Debugger.setBreakpoint(location), self.updateAuthoredDocument)
         else:
             breakpoints = get_breakpoints_by_full_path(file)
             if breakpoints:
                 for line in list(breakpoints.keys()):
                     location = webkit.Debugger.Location({'lineNumber': int(line), 'scriptId': scriptId})
-                    channel.send(webkit.Debugger.setBreakpoint(location), self.breakpointAdded)
+                    Channel.channel.send(webkit.Debugger.setBreakpoint(location), self.breakpointAdded)
 
     def updateAuthoredDocument(self, command):
         save_breaks()
@@ -448,32 +444,32 @@ class SwiDebugPauseResumeCommand(sublime_plugin.WindowCommand):
         # As a convenience, we'll set up the connection
         # if there isn't one. So F5 (etc) can be hit 
         # to get started.
-        if not channel:
+        if not Channel.channel.connected():
             if not chrome_launched():
                 SwiDebugStartChromeCommand.run(self)
             else:
                 self.window.run_command('swi_debug_start')
         elif paused:
-            channel.send(webkit.Debugger.resume())
+            Channel.channel.send(webkit.Debugger.resume())
         else:
-            channel.send(webkit.Debugger.pause())
+            Channel.channel.send(webkit.Debugger.pause())
 
 class SwiDebugStepIntoCommand(sublime_plugin.WindowCommand):
     def run(self):
         if paused:
-            channel.send(webkit.Debugger.stepInto())
+            Channel.channel.send(webkit.Debugger.stepInto())
 
 
 class SwiDebugStepOutCommand(sublime_plugin.WindowCommand):
     def run(self):
         if paused:
-            channel.send(webkit.Debugger.stepOut())
+            Channel.channel.send(webkit.Debugger.stepOut())
 
 
 class SwiDebugStepOverCommand(sublime_plugin.WindowCommand):
     def run(self):
         if paused:
-            channel.send(webkit.Debugger.stepOver())
+            Channel.channel.send(webkit.Debugger.stepOver())
 
 
 class SwiDebugClearConsoleCommand(sublime_plugin.WindowCommand):
@@ -491,13 +487,13 @@ class SwiDebugEvaluateCommand(sublime_plugin.WindowCommand):
             if paused:
                 if current_call_frame_position:
                     title = "%s on %s" % (active_view.substr(regions[i]), current_call_frame_position)
-                channel.send(webkit.Debugger.evaluateOnCallFrame(current_call_frame, active_view.substr(regions[i])), self.evaluated, {'name': title})
+                Channel.channel.send(webkit.Debugger.evaluateOnCallFrame(current_call_frame, active_view.substr(regions[i])), self.evaluated, {'name': title})
             else:
-                channel.send(webkit.Runtime.evaluate(active_view.substr(regions[i])), self.evaluated, {'name': title})
+                Channel.channel.send(webkit.Runtime.evaluate(active_view.substr(regions[i])), self.evaluated, {'name': title})
 
     def evaluated(self, command):
         if command.data.type == 'object':
-            channel.send(webkit.Runtime.getProperties(command.data.objectId, True), console_add_properties, command.options)
+            Channel.channel.send(webkit.Runtime.getProperties(command.data.objectId, True), console_add_properties, command.options)
         else:
             console_add_evaluate(command.data)
 
@@ -512,7 +508,7 @@ class SwiDebugClearBreakpointsCommand(sublime_plugin.WindowCommand):
             if breaks:
                 for row in breaks:
                     if 'breakpointId' in breaks[row]:
-                        channel.send(webkit.Debugger.removeBreakpoint(breaks[row]['breakpointId']))
+                        Channel.channel.send(webkit.Debugger.removeBreakpoint(breaks[row]['breakpointId']))
 
                 del brk_object[file_name];
 
@@ -534,16 +530,16 @@ class SwiDebugToggleBreakpointCommand(sublime_plugin.WindowCommand):
         init_breakpoint_for_file(view_name)
         breaks = get_breakpoints_by_full_path(view_name)
         if row in breaks:
-            if channel:
+            if Channel.channel.connected():
                 if row in breaks:
                     try:
-                        channel.send(webkit.Debugger.removeBreakpoint(breaks[row]['breakpointId']))
+                        Channel.channel.send(webkit.Debugger.removeBreakpoint(breaks[row]['breakpointId']))
                     except KeyError:
                         print("SWI: A key error occurred while removing the breakpoint")
 
             del_breakpoint_by_full_path(view_name, row)
         else:
-            if channel:
+            if Channel.channel.connected():
                 scriptUrl = ''
                 if projectsystem.DocumentMapping.MappingsManager.is_authored_file(view_name):
                     mapping = projectsystem.DocumentMapping.MappingsManager.get_mapping(view_name)
@@ -559,7 +555,7 @@ class SwiDebugToggleBreakpointCommand(sublime_plugin.WindowCommand):
                     scriptUrl = find_script_url(view_name)
 
                 if scriptUrl:
-                    channel.send(webkit.Debugger.setBreakpointByUrl(int(row), scriptUrl), self.breakpointAdded, view_name)
+                    Channel.channel.send(webkit.Debugger.setBreakpointByUrl(int(row), scriptUrl), self.breakpointAdded, view_name)
             else:
                 set_breakpoint_by_full_path(view_name, row)
 
@@ -621,21 +617,14 @@ class SwiDebugStopCommand(sublime_plugin.WindowCommand):
 
         update_overlays()
         
-        global channel
-        if channel:
-            try:
-                channel.socket.close()
-            except:
-                print ('SWI: Can\'t close socket')
-            finally:
-                channel = None
+        Channel.channel.disconnect()
 
 
 class SwiDebugReloadCommand(sublime_plugin.WindowCommand):
     def run(self):
-        if channel:
-            channel.send(webkit.Network.clearBrowserCache())
-            channel.send(webkit.Page.reload(), on_reload)
+        if Channel.channel:
+            Channel.channel.send(webkit.Network.clearBrowserCache())
+            Channel.channel.send(webkit.Page.reload(), on_reload)
 
 class SwiShowFileMappingsInternalCommand(sublime_plugin.TextCommand):
     """ Called internally on the file mapping view """
@@ -750,20 +739,20 @@ class EventListener(sublime_plugin.EventListener):
         views.wrap_view(v).on_pre_save()
 
     def reload_styles(self):
-        channel.send(webkit.Runtime.evaluate("var files = document.getElementsByTagName('link');var links = [];for (var a = 0, l = files.length; a < l; a++) {var elem = files[a];var rel = elem.rel;if (typeof rel != 'string' || rel.length === 0 || rel === 'stylesheet') {links.push({'elem': elem,'href': elem.getAttribute('href').split('?')[0],'last': false});}}for ( a = 0, l = links.length; a < l; a++) {var link = links[a];link.elem.setAttribute('href', (link.href + '?x=' + Math.random()));}"))
+        Channel.channel.send(webkit.Runtime.evaluate("var files = document.getElementsByTagName('link');var links = [];for (var a = 0, l = files.length; a < l; a++) {var elem = files[a];var rel = elem.rel;if (typeof rel != 'string' || rel.length === 0 || rel === 'stylesheet') {links.push({'elem': elem,'href': elem.getAttribute('href').split('?')[0],'last': false});}}for ( a = 0, l = links.length; a < l; a++) {var link = links[a];link.elem.setAttribute('href', (link.href + '?x=' + Math.random()));}"))
 
     def reload_set_script_source(self, scriptId, scriptSource):
         """ Calls update_stack because script can be edited when debugger is paused, and
             by this means potentially update the callstack.
         """
-        channel.send(webkit.Debugger.setScriptSource(scriptId, scriptSource), self.update_stack)
+        Channel.channel.send(webkit.Debugger.setScriptSource(scriptId, scriptSource), self.update_stack)
 
     def reload_page(self):
-        channel.send(webkit.Page.reload(), on_reload)
+        Channel.channel.send(webkit.Page.reload(), on_reload)
 
     def on_post_save(self, v):
-        if channel and utils.get_setting('reload_on_save'):
-            channel.send(webkit.Network.clearBrowserCache())
+        if Channel.channel and utils.get_setting('reload_on_save'):
+            Channel.channel.send(webkit.Network.clearBrowserCache())
             if v.file_name().endswith('.css') or v.file_name().endswith('.less') or v.file_name().endswith('.sass') or v.file_name().endswith('.scss'):
                 sublime.set_timeout(lambda: self.reload_styles(), utils.get_setting('reload_timeout'))
             elif v.file_name().endswith('.js'):
@@ -843,10 +832,10 @@ def update_stack(data):
     if (not 'callFrames' in data):
         return;
 
-    if not channel: # race with shutdown
+    if not Channel.channel: # race with shutdown
         return
     
-    channel.send(webkit.Debugger.setOverlayMessage('Paused in Sublime Web Inspector'))
+    Channel.channel.send(webkit.Debugger.setOverlayMessage('Paused in Sublime Web Inspector'))
 
     window.set_layout(utils.get_setting('stack_layout'))
 
@@ -865,7 +854,7 @@ def change_to_call_frame(callFrame):
     first_scope = callFrame.scopeChain[0]
 
     params = {'objectId': first_scope.object.objectId, 'name': "%s:%s (%s)" % (file_name, line_number, first_scope.type)}
-    channel.send(webkit.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, params)
+    Channel.channel.send(webkit.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, params)
 
     position = get_authored_position_if_necessary(file_name, callFrame.location.lineNumber, callFrame.location.columnNumber)
     if position:
@@ -939,6 +928,7 @@ class SwiConsoleAddMessageInternalCommand(sublime_plugin.TextCommand):
         v = views.wrap_view(self.view)
         message = message_queue.pop(0)
 
+#["log", "warning", "error", "debug", "info", "revokedError"]
         if message.level == 'debug':
             level = "DBG"
         elif message.level == 'error':
@@ -979,8 +969,8 @@ class SwiConsoleAddMessageInternalCommand(sublime_plugin.TextCommand):
         # Add text
         if len(message.parameters) > 0:
             for param in message.parameters:
-                if param.type == 'object': #if channel here
-                    v.print_click(edit, v.size(), str(param) + ' ', channel.send, webkit.Runtime.getProperties(param.objectId, True), console_add_properties, {'objectId': param.objectId})
+                if param.type == 'object': #if Channel.channel here
+                    v.print_click(edit, v.size(), str(param) + ' ', Channel.channel.send, webkit.Runtime.getProperties(param.objectId, True), console_add_properties, {'objectId': param.objectId})
                 else:
                     v.insert(edit, v.size(), str(param) + ' ')
         else:
@@ -1069,7 +1059,7 @@ class SwiConsolePrintPropertiesInternalCommand(sublime_plugin.TextCommand):
             v.insert(edit, v.size(), prop.name + ': ')
             if(prop.value):
                 if prop.value.type == 'object':
-                    v.print_click(edit, v.size(), str(prop.value) + '\n', channel.send, webkit.Runtime.getProperties(prop.value.objectId, True), console_add_properties, {'objectId': prop.value.objectId, 'file': file, 'line': line, 'name': prop.name, 'prev': prev})
+                    v.print_click(edit, v.size(), str(prop.value) + '\n', Channel.channel.send, webkit.Runtime.getProperties(prop.value.objectId, True), console_add_properties, {'objectId': prop.value.objectId, 'file': file, 'line': line, 'name': prop.name, 'prev': prev})
                 else:
                     v.insert(edit, v.size(), str(prop.value) + '\n')
 
@@ -1129,7 +1119,7 @@ class SwiConsoleShowStackInternalCommand(sublime_plugin.TextCommand):
             for scope in callFrame.scopeChain:
                 v.insert(edit, v.size(), "\t")
                 if scope.object.type == 'object':
-                    v.print_click(edit, v.size(), "%s\n" % (scope.type), channel.send, webkit.Runtime.getProperties(scope.object.objectId, True), console_add_properties, {'objectId': scope.object.objectId, 'name': "%s:%s (%s)" % (file_name, line, scope.type)})
+                    v.print_click(edit, v.size(), "%s\n" % (scope.type), Channel.channel.send, webkit.Runtime.getProperties(scope.object.objectId, True), console_add_properties, {'objectId': scope.object.objectId, 'name': "%s:%s (%s)" % (file_name, line, scope.type)})
                 else:
                     v.insert(edit, v.size(), "%s\n" % (scope.type))
 
@@ -1324,7 +1314,10 @@ def set_selection(view, start_line, start_column, end_line, end_column):
 def get_authored_position_if_necessary(file_name, line_number, column_number):
     if is_source_map_enabled():
         mapping = projectsystem.DocumentMapping.MappingsManager.get_mapping(file_name)
-        return mapping.get_authored_position(line_number, line_number)
+        if mapping:
+            return mapping.get_authored_position(line_number, line_number)
+
+    return None
 
 def is_source_map_enabled():
     global source_map_state

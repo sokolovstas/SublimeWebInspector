@@ -12,19 +12,24 @@ import websocket
 import utils
 # do not import swi or styles
 
-channel = {}
-
-class Protocol(object):
-    """ Encapsulate websocket connection """
-
+class _Protocol(object):
+    """ Encapsulate websocket connection 
+        Private class
+    """
     def __init__(self):
         self.next_id = 0
         self.commands = {}
         self.notifications = {}
+        self._socket = None
+
+    def connected(self):
+        return self._socket != None
 
     def connect(self, url, on_open=None, on_close=None):
         """ Attempt to connect to the web socket """
-        print (('SWI: Connecting to ' + url))
+        if self._socket:
+            self.disconnect()
+        print ('SWI: Connecting to ' + url)
         websocket.enableTrace(False)
         self.last_break = None
         self.url = url
@@ -33,13 +38,22 @@ class Protocol(object):
         thread = threading.Thread(target=self.thread_callback)
         thread.start()
 
+    def disconnect(self):
+        """ Safe to call when not connected """
+        try:
+            if self._socket:
+                print ('SWI: Socket closed')
+                self._socket.close()
+        finally:
+            self._socket = None
+
     def thread_callback(self):
         """ Threadproc owning the socket.
             Sets up the callbacks for open, close, and message.
         """
         print ('SWI: Thread started')
-        self.socket = websocket.WebSocketApp(self.url, on_message=self.message_callback, on_open=self.open_callback, on_close=self.close_callback)
-        self.socket.run_forever()
+        self._socket = websocket.WebSocketApp(self.url, on_message=self.message_callback, on_open=self.open_callback, on_close=self.close_callback)
+        self._socket.run_forever()
         print ('SWI: Thread stopped')
 
     def send(self, command, callback=None, options=None):
@@ -51,7 +65,7 @@ class Protocol(object):
         self.next_id += 1
         if utils.get_setting('debug_mode'):
             print ('SWI: ->> ' + json.dumps(command.request, sort_keys=True, indent=4, separators=(',', ': ')))
-        self.socket.send(json.dumps(command.request))
+        self._socket.send(json.dumps(command.request))
 
     def subscribe(self, notification, callback):
         """ Subscribe to notification with callback """
@@ -112,3 +126,9 @@ class Protocol(object):
         assert(f)
         if f:   # shutdown timing races
             sublime.set_timeout(lambda: f(*args))
+
+class Channel(object):
+    """ Exposes singleton 
+        without using a global
+    """
+    channel = _Protocol()
