@@ -941,12 +941,16 @@ class SwiConsoleAddMessageInternalCommand(sublime_plugin.TextCommand):
 
         if message.level == 'debug':
             level = "DBG"
-        if message.level == 'error':
+        elif message.level == 'error':
             level = "ERR"
-        if message.level == 'log':
+        elif message.level == 'log':
             level = "LOG"
-        if message.level == 'warning':
+        elif message.level == 'warning':
             level = "WRN"
+        elif message.level == 'info':
+            level = "INF"
+        else:
+            level = message.level
 
         v.insert(edit, v.size(), "[%s] " % (level))
         # Add file and line
