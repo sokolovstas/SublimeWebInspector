@@ -6,7 +6,6 @@ import webkit
 from webkit import DOM
 from webkit import CSS
 
-#from protocol import channel
 import protocol
 # do not import swi
 
@@ -26,6 +25,6 @@ class SwiStylesWindowInternalCommand(sublime_plugin.TextCommand):
 class SwiStylesInspectElement(sublime_plugin.WindowCommand):
     def run(self):
         utils.assert_main_thread()
-        #channel.send(webkit.DOM.setInspectModeEnabled())
+        protocol.Channel.channel.send(webkit.DOM.setInspectModeEnabled())
 
     #def elementSelected(self, data):
