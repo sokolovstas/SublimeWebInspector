@@ -235,7 +235,7 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
         protocol.Channel.channel.send(webkit.Console.enable())
         protocol.Channel.channel.send(webkit.Debugger.canSetScriptSource(), self.canSetScriptSource)
 
-        styles.show_styles()
+        styles.init_styles()
 
         if utils.get_setting('user_agent') is not "":
             protocol.Channel.channel.send(webkit.Network.setUserAgentOverride(utils.get_setting('user_agent')))
