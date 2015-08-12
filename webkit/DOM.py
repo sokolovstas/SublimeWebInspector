@@ -3,8 +3,11 @@ from .Runtime import RemoteObject
 import json
 import re
 
+def enable():
+    return Command('DOM.enable', {})
+
 def getDocument():
-    command = Command('DOM.getDocument', params)
+    command = Command('DOM.getDocument')
     return command
 
 def getDocument_parser():
@@ -56,7 +59,7 @@ def inspectNodeRequested_parser(params):
 def pushNodesByBackendIdsToFrontend(backendNodeIds):
     return Command('DOM.pushNodesByBackendIdsToFrontend', {"backendNodeIds": backendNodeIds })
 
-def pushNodesByBackendIdsToFrontEnd_parser(params):
+def pushNodesByBackendIdsToFrontend_parser(params):
     return params['nodeIds'] #array
 
 def setInspectedNode(nodeId):
@@ -71,6 +74,8 @@ def setChildNodes_parser(params):
     data['nodes'] = []
     for node in params['nodes']:
         data['nodes'].append(Node(node))
+
+    return data
 
 def requestChildNodes(nodeId):
     return Command('DOM.requestChildNodes', { "nodeId": nodeId })

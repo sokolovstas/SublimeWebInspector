@@ -229,6 +229,7 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
         protocol.Channel.channel.subscribe(webkit.Debugger.paused(), self.paused)
         protocol.Channel.channel.subscribe(webkit.Debugger.resumed(), self.resumed)
         protocol.Channel.channel.subscribe(webkit.Debugger.globalObjectCleared(), self.globalObjectCleared)
+        protocol.Channel.channel.subscribe(webkit.CSS.styleSheetAdded(), self.styleSheetAdded)
 
         protocol.Channel.channel.send(webkit.Debugger.enable(), self.enabled)
         protocol.Channel.channel.send(webkit.Debugger.setPauseOnExceptions(utils.get_setting('pause_on_exceptions')))
@@ -263,6 +264,11 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
         """ Notification when console cleared (by navigate or on request) """
         utils.assert_main_thread()
         views.clear_view('console')
+
+    def styleSheetAdded(data, notification):
+        file_name = data["sourceURL"]
+        styleSheetId = data["styleSheetId"]
+        # TODO: Add stylesheets to file mappings
 
     # build table of mappings from local to server
     def scriptParsed(self, data, notification):
