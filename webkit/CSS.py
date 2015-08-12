@@ -1,10 +1,16 @@
-﻿from .wkutils import Command, Notification, WebkitObject
+from .wkutils import Command, Notification, WebkitObject
 from .Runtime import RemoteObject
 import json
 import re
 
-def getMatchedStylesForNode(nodeid):
+def getMatchedStylesForNode(nodeId):
     return Command('CSS.getMatchedStylesForNode', { "nodeId": nodeId })
+
+def getInlineStylesForNode(nodeId):
+    return Command('CSS.getInlineStylesForNode', { "nodeId": nodeId })
+
+def getComputedStyleForNode(nodeId):
+    return Command('CSS.getComputedStyleForNode', { "nodeId": nodeId })
 
 #def getMatchedStylesForNode_parser(params):
 #    data = {}
