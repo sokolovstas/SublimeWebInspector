@@ -1,4 +1,4 @@
-﻿from .wkutils import Command, Notification, WebkitObject
+from .wkutils import Command, Notification, WebkitObject
 from .Runtime import RemoteObject
 import json
 import re
@@ -23,25 +23,28 @@ class Node(WebkitObject):
 
 def setInspectModeEnabled():
     params = {}
-    params['enabled'] = "true"
+    params['enabled'] = True
+    params["inspectUAShadowDOM"] = False
 
     # these are the values that Chrome inspector uses itself
     highlightConfig = {}
-    highlightConfig['showInfo'] = true
-    highlightConfig['showRulers'] = true
-    highlightConfig['showExtensionLines'] = false
+    highlightConfig['showInfo'] = True
+    highlightConfig['showRulers'] = False
+    highlightConfig['showExtensionLines'] = False
     highlightConfig['contentColor'] = json.loads("""
-        "contentColor": { "r": 111, "g": 168, "b": 220, "a": 0.66 },
-        "paddingColor": { "r": 147, "g": 196, "b": 125, "a": 0.55 },
-        "borderColor": { "r": 255, "g": 229, "b": 153, "a": 0.66 },
-        "marginColor": { "r": 246, "g": 178, "b": 107, "a": 0.66 },
-        "eventTargetColor": { "r": 255, "g": 196, "b": 196, "a": 0.66 },
-        "shapeColor": { "r": 96, "g": 82, "b": 177, "a": 0.8 },
-        "shapeMarginColor": { "r": 96, "g": 82, "b": 127, "a": 0.6 }
+        {
+            "contentColor": { "r": 111, "g": 168, "b": 220, "a": 0.66 },
+            "paddingColor": { "r": 147, "g": 196, "b": 125, "a": 0.55 },
+            "borderColor": { "r": 255, "g": 229, "b": 153, "a": 0.66 },
+            "marginColor": { "r": 246, "g": 178, "b": 107, "a": 0.66 },
+            "eventTargetColor": { "r": 255, "g": 196, "b": 196, "a": 0.66 },
+            "shapeColor": { "r": 96, "g": 82, "b": 177, "a": 0.8 },
+            "shapeMarginColor": { "r": 96, "g": 82, "b": 127, "a": 0.6 }
+        }
     """)
    
     params['highlightConfig'] = highlightConfig
-    command = Command('DOM.setInspectModeEnabled', {})
+    command = Command('DOM.setInspectModeEnabled', params)
     return command
 
 def inspectNodeRequested():
@@ -50,11 +53,14 @@ def inspectNodeRequested():
 def inspectNodeRequested_parser(params):
     return params['backendNodeId']
 
-def pushNodesByBackendIdsToFrontEnd(backendNodeIds):
-    return Command('DOM.pushNodesByBackendIdsToFrontEnd', {"backendNodeIds": backendNodeIds })
+def pushNodesByBackendIdsToFrontend(backendNodeIds):
+    return Command('DOM.pushNodesByBackendIdsToFrontend', {"backendNodeIds": backendNodeIds })
 
 def pushNodesByBackendIdsToFrontEnd_parser(params):
     return params['nodeIds'] #array
+
+def setInspectedNode(nodeId):
+    return Command('DOM.setInspectedNode', {"nodeId": nodeId})
 
 def setChildNodes():
     return Notification('DOM.setChildNodes')
