@@ -23,39 +23,14 @@ def styleSheetAdded_parser(params):
     return params["header"]
 
 def getInlineStylesForNode_parser(params):
-    data = params["inlineStyle"]
+    data = {}
+    data["content"] = params["inlineStyle"]
+    data["type"] = "inline"
     return data
 
 def getMatchedStylesForNode_parser(params):
-   data = {}
-   data['matchedCSSRules'] = []
-   for match in params['matchedCSSRules']:
-       data['matchedCSSRules'].append(RuleMatch(match))
+    data = dict({})
+    data["type"] = "matched"
 
-   return data
-
-
-class RuleMatch:
-   def __init__(self, value):
-       self.rule = Rule(value['rule'])
-       self.matchingSelectors= []
-       # if 'children' in value:
-        #    for child in value['children']:
-        #        self.children.append(Node(child))
-
-
-class Rule:
-    def __init__(self, value):
-        self.origin = value["origin"]
-        self.selectorList = value["selectorList"]
-        self.sourceUrl = None
-        if "sourceUrl" in value:
-            self.sourceUrl = value["sourceUrl"]
-
-        if "style" in value:
-            self.style = Style(value["style"])
-
-
-class Style:
-    def __init__(self,value):
-        self.value = value
+    data["content"] = params['matchedCSSRules']
+    return data

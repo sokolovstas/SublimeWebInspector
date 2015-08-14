@@ -265,7 +265,7 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
         utils.assert_main_thread()
         views.clear_view('console')
 
-    def styleSheetAdded(data, notification):
+    def styleSheetAdded(self, data, notification):
         file_name = data["sourceURL"]
         styleSheetId = data["styleSheetId"]
         # TODO: Add stylesheets to file mappings
