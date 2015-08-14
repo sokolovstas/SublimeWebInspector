@@ -21,6 +21,9 @@ def init_styles():
     protocol.Channel.channel.send(webkit.CSS.enable())
 
 def inspectNodeRequested(backendNodeId, notification):
+    views.clear_view('styles')
+    v = views.find_or_create_view('styles')
+    v.run_command('swi_styles_window_internal')
     protocol.Channel.channel.send(webkit.DOM.pushNodesByBackendIdsToFrontend([backendNodeId]), getStyleRules)
 
 def getStyleRules(command):
@@ -29,7 +32,7 @@ def getStyleRules(command):
     for nodeId in nodeIds:
         protocol.Channel.channel.send(webkit.CSS.getInlineStylesForNode(nodeId), updateStylesView)
         protocol.Channel.channel.send(webkit.CSS.getMatchedStylesForNode(nodeId), updateStylesView)
-        protocol.Channel.channel.send(webkit.CSS.getComputedStyleForNode(nodeId))
+        # protocol.Channel.channel.send(webkit.CSS.getComputedStyleForNode(nodeId))
 
 def updateStylesView(params):
     v = views.find_or_create_view('styles')
