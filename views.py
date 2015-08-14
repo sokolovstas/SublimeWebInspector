@@ -118,6 +118,28 @@ class SwiDebugView(object):
         regions.append(new_region)
         self.view.add_regions('swi_log_clicks', regions, scope=utils.get_setting('interactive_scope'), flags=sublime.DRAW_NO_FILL)
 
+    def print_checkbox(self, edit, position, enabled, text, callback, *args):
+        """ Inserts the specified text and creates a clickable "button"
+            around it.
+        """
+        assert(callback)
+        marker = " x " if enabled else "   "
+        insert_length = self.insert(edit, position, marker)
+
+        insert_before = 0
+        new_region = sublime.Region(position, position + insert_length)
+        regions = self.view.get_regions('swi_log_clicks')
+        for region in regions:
+            if new_region.b < region.a:
+                break
+            insert_before += 1
+
+        self.callbacks.insert(insert_before, { "callback": callback, "args": args, "is_checkbox": True })
+
+        regions.append(new_region)
+        self.view.add_regions('swi_log_clicks', regions, scope=utils.get_setting('interactive_scope'), flags=sublime.DRAW_NO_FILL)
+        self.insert(edit, position + len(marker), " " + text)
+
     def remove_click(self, index):
         """ Removes a clickable "button" with the specified index."""
         regions = self.view.get_regions('swi_log_clicks')
@@ -139,14 +161,24 @@ class SwiDebugView(object):
 
         index = 0
         click_regions = self.get_regions('swi_log_clicks')
-        for callback in click_regions:
-            if cursor > callback.a and cursor < callback.b:
+        for region in click_regions:
+            if cursor > region.a and cursor < region.b:
 
                 if index < len(self.callbacks):
                     callback = self.callbacks[index]
-                    callback["callback"](*callback["args"])
+                    if "is_checkbox" in callback:
+                        enabled = self.get_enabled_state(region)
+                        callback["callback"](enabled, *callback["args"])
+                    else: 
+                        callback["callback"](*callback["args"])
 
             index += 1
+
+    def get_enabled_state(self, region):
+        text = self.view.substr(region)
+        if text == " x ":
+            return True
+        return False
 
 def find_existing_view(console_type):
     return find_or_create_view(console_type, False)
