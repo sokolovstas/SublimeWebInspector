@@ -61,23 +61,38 @@ class SwiStylesUpdateMatchedCommand(sublime_plugin.TextCommand):
         v = views.wrap_view(self.view)
         v.insert(edit, v.size(), "\n\nMatched styles: \n")
 
-        matchedCSSRules = []
-        for item in data:
-            matchedCSSRules.append(RuleMatch(item))
+        # Display matched CSS rules
+        self.parse_matched_rules(v, edit, data["matchedCSSRules"])
 
-        for matchedRule in matchedCSSRules:
-            rule = matchedRule.rule
-            v.insert(edit, v.size(), "\nOrigin: " + rule.origin)
-            v.insert(edit, v.size(), "\nSelectors: " + rule.selectorList + "\n\n")
+        v.insert(edit, v.size(), "\n\nInherited styles: \n")
 
-            for s in rule.style.cssProperties:
-                v.print_checkbox(edit, v.size(), True, s.name + ": " + s.value + "\n", self.click_handler)
+        # Display inherited CSS rules
+        inheritedData = data["inherited"]
+        inheritedStyles = {}
+        for item in inheritedData:
+            matchedData = item["matchedCSSRules"]
+            self.parse_matched_rules(v, edit, matchedData)
 
     def click_handler(self, enabled):
         if enabled:
             print("Checkbox enabled")
         else:
             print("Checkbox disabled")
+
+    def parse_matched_rules(self, v, edit, matchedData):
+        matchedCSSRules = []
+        for item in matchedData:
+            matchedCSSRules.append(RuleMatch(item))
+
+        for matchedRule in matchedCSSRules:
+            self.print_rule(v, edit, matchedRule.rule)
+
+    def print_rule(self, v, edit, rule):
+            v.insert(edit, v.size(), "\nOrigin: " + rule.origin)
+            v.insert(edit, v.size(), "\nSelectors: " + rule.selectorList + "\n\n")
+
+            for s in rule.style.cssProperties:
+                v.print_checkbox(edit, v.size(), True, s.name + ": " + s.value + "\n", self.click_handler)
 
 
 class SwiStylesWindowInternalCommand(sublime_plugin.TextCommand):

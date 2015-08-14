@@ -32,5 +32,5 @@ def getMatchedStylesForNode_parser(params):
     data = dict({})
     data["type"] = "matched"
 
-    data["content"] = params['matchedCSSRules']
+    data["content"] = params
     return data
