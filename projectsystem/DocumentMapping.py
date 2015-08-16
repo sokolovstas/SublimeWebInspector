@@ -59,6 +59,14 @@ class MappingsManager:
             return MappingsManager.authored_file_mappings[file_name]
 
     @staticmethod
+    def get_all_source_file_mappings():
+        result = {}
+        for val in MappingsManager.source_file_mappings.values():
+            result[val.generated_file] = val.authored_sources
+
+        return result
+
+    @staticmethod
     def delete_mapping(file_name):
         file_name = file_name.lower()
         if file_name in MappingsManager.source_file_mappings:
