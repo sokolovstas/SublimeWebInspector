@@ -88,15 +88,17 @@ class SwiDebugCommand(sublime_plugin.WindowCommand):
                 mapping.append(['swi_debug_clear_console', 'Clear console'])
                 mapping.append(['swi_debug_stop', 'Stop debugging'])
                 mapping.append(['swi_debug_reload', 'Reload page'])
-                mapping.append(['swi_show_file_mappings', 'Show file mappings'])
-                mapping.append(['swi_debug_clear_breakpoints', 'Clear all Breakpoints'])
-
-                if is_source_map_enabled:
-                    mapping.append(['swi_toggle_authored_code', 'Toggle authored code'])
             else:
                 mapping.append(['swi_debug_start', 'Start debugging'])
             
             mapping.append(['swi_debug_toggle_breakpoint', 'Toggle Breakpoint'])
+
+            if channel:
+                if is_source_map_enabled:
+                    mapping.append(['swi_toggle_authored_code', 'Toggle authored code'])
+
+                mapping.append(['swi_debug_clear_breakpoints', 'Clear all Breakpoints'])
+                mapping.append(['swi_dump_file_mappings', 'Dump file mappings'])
         else:
             mapping.append(['swi_debug_start_chrome', 'Start Google Chrome with remote debug port ' + utils.get_setting('chrome_remote_port')])
 
@@ -112,11 +114,11 @@ class SwiDebugCommand(sublime_plugin.WindowCommand):
 
         command = self.cmds[index]
 
-        if command == 'swi_show_file_mappings':
+        if command == 'swi_dump_file_mappings':
             # we wrap this command so we can use the correct view
             print(command)
             v = views.find_or_create_view('mapping')
-            v.run_command('swi_show_file_mappings_internal')
+            v.run_command('swi_dump_file_mappings_internal')
             return
 
         self.window.run_command(command)
@@ -637,12 +639,22 @@ class SwiDebugReloadCommand(sublime_plugin.WindowCommand):
             channel.send(webkit.Network.clearBrowserCache())
             channel.send(webkit.Page.reload(), on_reload)
 
-class SwiShowFileMappingsInternalCommand(sublime_plugin.TextCommand):
+class SwiDumpFileMappingsInternalCommand(sublime_plugin.TextCommand):
     """ Called internally on the file mapping view """
     def run(self, edit):
         
         views.clear_view('mapping')
-        self.view.insert(edit, 0, json.dumps(file_to_scriptId, sort_keys=True, indent=4, separators=(',', ': ')))
+
+        dump = lambda obj: json.dumps(obj, sort_keys=True, indent=4, separators=(',', ': '))
+
+        text = "File to URL mappings:\n\n"
+        text += dump(file_to_scriptId) + "\n\n"
+        text += "Authored to source mappings:\n\n"
+        text += dump(projectsystem.DocumentMapping.MappingsManager.get_all_source_file_mappings()) + "\n\n"
+        text += "Breakpoints:\n\n"
+        text += dump(brk_object) + "\n\n"
+
+        self.view.insert(edit, 0, text)
 
 
 class SwiToggleAuthoredCodeCommand(sublime_plugin.TextCommand):
