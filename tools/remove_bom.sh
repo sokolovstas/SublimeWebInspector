@@ -1,0 +1,1 @@
+sed -b -i -e "1s/^\xEF\xBB\xBF//" $1

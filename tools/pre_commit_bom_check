@@ -1,0 +1,11 @@
+#! /bin/sh
+# move to .git/hooks/pre-commit
+
+git diff --cached --no-renames --diff-filter=AM --name-only -- '*.py' |
+(status=0; while read path; do
+    if git show ":$path" | head -1 | grep $'^\xEF\xBB\xBF' >/dev/null; then
+        echo "Error: file '$path' starts with Unicode BOM. Run 'remove_bom.sh $path" then try commit again."
+        status=1
+    fi
+done
+exit $status)
