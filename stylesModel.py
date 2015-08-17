@@ -58,3 +58,23 @@ class StyleRulePair(wkutils.WebkitObject):
 
     def __call__(self):
         return self.value
+
+class StyleUtility:
+    __style_cache = {}
+
+    @staticmethod
+    def clear_cache():
+        StyleUtility.__style_cache = {}
+
+    @staticmethod
+    def calculate_applied_styles(matched_rules, property_name):
+        for item in matched_rules:
+            # Search for property name in the selectorList
+            props = [style_pair for style_pair in item.rule.style.cssProperties if property_name == style_pair.name]
+
+            # Search the list from bottom up, because a style property encountered later in the rule
+            # takes precedence over it.
+            for prop in reversed(props):
+                # Mark the first property encountered in the list as applied
+                prop.enabled = True
+                return
