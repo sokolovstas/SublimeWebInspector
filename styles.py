@@ -4,6 +4,7 @@ import json
 import views
 import utils
 import webkit
+import stylesModel
 
 from webkit import DOM
 from webkit import CSS
@@ -85,7 +86,7 @@ class SwiStylesUpdateMatchedCommand(sublime_plugin.TextCommand):
     def parse_matched_rules(self, v, edit, matchedData):
         matchedCSSRules = []
         for item in matchedData:
-            matchedCSSRules.append(RuleMatch(item))
+            matchedCSSRules.append(stylesModel.RuleMatch(item))
 
         for matchedRule in matchedCSSRules:
             self.print_rule(v, edit, matchedRule.rule)
@@ -95,7 +96,7 @@ class SwiStylesUpdateMatchedCommand(sublime_plugin.TextCommand):
             v.insert(edit, v.size(), "\nSelectors: " + rule.selectorList + "\n\n")
 
             for s in rule.style.cssProperties:
-                v.print_checkbox(edit, v.size(), True, s.name + ": " + s.value + "\n", self.click_handler)
+                v.print_checkbox(edit, v.size(), s.enabled, s.name + ": " + s.value + "\n", self.click_handler)
 
 
 class SwiStylesWindowInternalCommand(sublime_plugin.TextCommand):
@@ -111,57 +112,3 @@ class SwiStylesInspectElement(sublime_plugin.WindowCommand):
         utils.assert_main_thread()
         protocol.Channel.channel.send(webkit.DOM.setInspectModeEnabled())
 
-class RuleMatch(wkutils.WebkitObject):
-    def __init__(self, value):
-       self.value = value
-       self.set_class(value, 'rule', Rule)
-
-    def __str__(self):
-        return self.value
-
-    def __call__(self):
-        return self.value
-
-
-class Rule(wkutils.WebkitObject):
-    def __init__(self, value):
-        self.value = value
-        self.set(value, 'origin')
-        self.selectorList = value["selectorList"]["text"]
-
-        # If origin is user-agent, styleSheedId is not set
-        self.set(value, 'styleSheedId', "")
-        self.set_class(value, 'style', Style)
-
-    def __str__(self):
-        return self.value
-
-    def __call__(self):
-        return self.value
-
-class Style(wkutils.WebkitObject):
-    def __init__(self, value):
-        self.value = value
-        self.cssProperties = [] 
-
-        properties = value["cssProperties"]
-        for prop in properties:
-            self.cssProperties.append(StyleRulePair(prop))
-
-    def __str__(self):
-        return self.value
-
-    def __call__(self):
-        return self.value
-
-class StyleRulePair(wkutils.WebkitObject):
-    def __init__(self, value):
-        self.value = value
-        self.set(value, 'name')
-        self.set(value, 'value')
-
-    def __str__(self):
-        return self.value
-
-    def __call__(self):
-        return self.value
