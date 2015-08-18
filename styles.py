@@ -59,7 +59,6 @@ class SwiStylesUpdateInlineCommand(sublime_plugin.TextCommand):
         else:
             print("Checkbox disabled")
 
-
 class SwiStylesUpdateMatchedCommand(sublime_plugin.TextCommand):
     def run(self, edit, data):
         v = views.wrap_view(self.view)
@@ -122,4 +121,3 @@ class SwiStylesInspectElement(sublime_plugin.WindowCommand):
     def run(self):
         utils.assert_main_thread()
         protocol.Channel.channel.send(webkit.DOM.setInspectModeEnabled())
-
