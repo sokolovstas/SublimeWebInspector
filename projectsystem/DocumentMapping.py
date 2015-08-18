@@ -64,8 +64,8 @@ class MappingsManager:
     @staticmethod
     def get_all_source_file_mappings():
         result = {}
-        for val in MappingsManager.source_file_mappings.values():
-            result[val.generated_file] = val.authored_sources
+        for key, val in MappingsManager.source_file_mappings.items():
+            result[key] = val.authored_sources
 
         return result
 
@@ -92,14 +92,16 @@ class MappingInfo:
  
     def __init__(self, generated_file):
         source_map_file = Sourcemap.get_sourcemap_file(generated_file)
-        self.parsed_source_map = None
-        if len(source_map_file):
-            self.parsed_source_map = Sourcemap.ParsedSourceMap(source_map_file)
-        self.generated_file = generated_file
+        if not len(source_map_file):
+            return
 
-        if self.parsed_source_map: 
-            self.authored_sources = self.parsed_source_map.get_authored_sources_path()
-            self.line_mappings = self.parsed_source_map.line_mappings
+        self.parsed_source_map = Sourcemap.ParsedSourceMap(source_map_file)
+        if not self.parsed_source_map.is_valid():
+            return
+
+        self.generated_file = generated_file
+        self.authored_sources = self.parsed_source_map.get_authored_sources_path()
+        self.line_mappings = self.parsed_source_map.line_mappings
 
     def is_valid(self):
         return len(self.line_mappings) > 0

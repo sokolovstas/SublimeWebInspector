@@ -52,6 +52,10 @@ class MappingInfoTests(unittest.TestCase):
         mapping = DocumentMapping.MappingInfo("foobar.js")
         self.assertFalse(mapping.is_valid())
 
+    def test_invalid_map_file_does_not_throw(self):
+        mapping = DocumentMapping.MappingInfo(assets_path + "garbage.js")
+        self.assertFalse(mapping.is_valid())
+
     def test_valid_generated_file(self):
         mapping = DocumentMapping.MappingInfo(assets_path + "app.js")
         self.assertTrue(mapping.is_valid())
@@ -114,6 +118,13 @@ class MappingsManagerTests(unittest.TestCase):
         mapping = DocumentMapping.MappingsManager.get_mapping(file_name)
 
         self.assertFalse(mapping.is_valid())
+
+    def test_get_all_source_file_mappings_invalid(self):
+        file_name = assets_path + "garbage.js"
+        DocumentMapping.MappingsManager.create_mapping(file_name)
+        result = DocumentMapping.MappingsManager.get_all_source_file_mappings()
+
+        self.assertEqual(len(result[file_name]), 0)
 
     def test_create_valid_mapping(self):
         file_name = assets_path + "app.js"
