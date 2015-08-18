@@ -2,6 +2,9 @@ from projectsystem import Sourcemap
 
 class Position:
     def __init__(self, file_name, line, column):
+        if (line < 0 or column < 0):
+             raise ValueError("Invalid arguments")
+
         # zero-based line and column values
         self.__file_name = file_name
         self.__line = line
@@ -74,7 +77,7 @@ class MappingsManager:
 
             # Delete corresponding authored source mappings
             for authored_source in mapping.get_authored_files():
-                MappingsManager.authored_file_mappings.pop(authored_source)
+                MappingsManager.authored_file_mappings.pop(authored_source.lower())
 
     @staticmethod
     def delete_all_mappings():
@@ -89,16 +92,17 @@ class MappingInfo:
  
     def __init__(self, generated_file):
         source_map_file = Sourcemap.get_sourcemap_file(generated_file)
-
-        if not source_map_file:
-            return
-
-        self.parsed_source_map = Sourcemap.ParsedSourceMap(source_map_file)
+        self.parsed_source_map = None
+        if len(source_map_file):
+            self.parsed_source_map = Sourcemap.ParsedSourceMap(source_map_file)
         self.generated_file = generated_file
 
         if self.parsed_source_map: 
             self.authored_sources = self.parsed_source_map.get_authored_sources_path()
             self.line_mappings = self.parsed_source_map.line_mappings
+
+    def is_valid(self):
+        return len(self.line_mappings) > 0
 
     def get_authored_files(self):
         return self.authored_sources
@@ -123,6 +127,7 @@ class MappingInfo:
         return Position(self.authored_sources[file_number], line_number, column_number)
 
     def get_generated_position(self, authored_file_name, zero_based_line, zero_based_column):
+        authored_file_name = authored_file_name.lower()
         if not authored_file_name in self.authored_sources or zero_based_line < 0 or zero_based_column < 0:
             return None
 
@@ -143,4 +148,3 @@ class MappingInfo:
         file_number = max(line_mappings[mapping_index].file_num, 0)
 
         return Position(self.generated_file, line_number, column_number)
-
