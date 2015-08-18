@@ -1,6 +1,4 @@
 *.pyc
-*sln
-breakpoints*
-update.bat
-doit.sh
-
+*.sln
+breakpoints.xml
+icons/Thumbs.db

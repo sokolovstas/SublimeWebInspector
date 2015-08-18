@@ -4,78 +4,86 @@ from projectsystem import VLQDecoder
 
 def get_sourcemap_file(file_name):
     sourcemap_prefix = "//# sourceMappingURL="
-    map_file = None
-
-    with open(file_name, "r") as f:
-        # Read the last line of the file containing sourcemap information
-        sourcemap_info = f.readlines()[-1]
-
-        index = sourcemap_info.find(sourcemap_prefix)
-
-        if index != -1:
-            map_file = sourcemap_info[index + len(sourcemap_prefix):].strip()
-            map_file = os.path.dirname(file_name) + os.path.sep + map_file
-        f.close()
+    map_file = ""
+    try:
+        with open(file_name, "r") as f:
+            # Read the last line of the file containing sourcemap information
+            sourcemap_info = f.readlines()[-1]
+            if (sourcemap_info and len(sourcemap_info) > 0 and sourcemap_info.index(sourcemap_prefix) is 0):
+                map_file = sourcemap_info[len(sourcemap_prefix):].strip()
+                map_file = os.path.dirname(file_name) + os.path.sep + map_file
+            f.close()
+    except Exception as e:
+        print('Could not read %s: %s' % (file_name, str(e)))
+        pass
 
     return map_file
 
 
 class ParsedSourceMap:
     def __init__(self, file_name):
-        with open(file_name, "r") as f:
-            self.content = json.loads(f.read())
-            f.close()
+        try:
+            self.content = None
+            with open(file_name, "r") as f:
+                self.content = json.loads(f.read())
+                f.close()
+    
+            if self.content:
+                self.root_path = os.path.abspath(os.path.dirname(file_name) + os.path.sep + self.content["sourceRoot"]) 
+                self.version = self.content["version"]
+                self.authored_sources = self.content["sources"]
+                self.line_mappings = SourceMapParser.calculate_line_mappings(self.content)
+        except Exception as e:
+            print('Could not read %s: %s' % (file_name, str(e)))
+            pass
 
-        if self.content:
-            self.root_path = os.path.abspath(os.path.dirname(file_name) + os.path.sep + self.content["sourceRoot"]) 
-            self.version = self.content["version"]
-            self.authored_sources = self.content["sources"]
-            self.line_mappings = SourceMapParser.calculate_line_mappings(self.content)
+    def is_valid(self):
+        return not self.content is None
 
     def get_authored_sources_path(self):
-        return [os.path.abspath(self.root_path + os.path.sep + x) for x in self.authored_sources]
+        return [os.path.abspath(self.root_path + os.path.sep + x).lower() for x in self.authored_sources] if self.is_valid() else []
 
 
 class LineMapping:
-        # All line mappings are zero based
-        def __init__(self):
-            self.generated_line = 0
-            self.generated_column = 0
-            self.source_line = 0
-            self.source_column = 0
-            self.file_num = 0
+    # All line mappings are zero based
+    def __init__(self):
+        self.generated_line = 0
+        self.generated_column = 0
+        self.source_line = 0
+        self.source_column = 0
+        self.file_num = 0
 
-        @staticmethod
-        def compare_generated_mappings(mapping, line, column):
-            return (column - mapping.generated_column) if (mapping.generated_line == line) else line - mapping.generated_line
+    @staticmethod
+    def compare_generated_mappings(mapping, line, column):
+        return (column - mapping.generated_column) if (mapping.generated_line == line) else line - mapping.generated_line
 
-        @staticmethod
-        def compare_source_mappings(mapping, line, column):
-            return (column - mapping.source_column) if (mapping.source_line == line) else line - mapping.source_line 
+    @staticmethod
+    def compare_source_mappings(mapping, line, column):
+        return (column - mapping.source_column) if (mapping.source_line == line) else line - mapping.source_line 
 
-        @staticmethod
-        def binary_search(line_mappings, line, column, comparator):
-            max_index = len(line_mappings) - 1
-            min_index = 0
+    @staticmethod
+    def binary_search(line_mappings, line, column, comparator):
+        max_index = len(line_mappings) - 1
+        min_index = 0
 
-            while (min_index <= max_index):
-                mid = (max_index + min_index) >> 1
+        while (min_index <= max_index):
+            mid = (max_index + min_index) >> 1
 
-                comparison = comparator(line_mappings[mid], line, column)
-                if (comparison > 0):
-                    min_index = mid + 1
-                elif (comparison < 0):
-                    max_index = mid - 1
-                else:
-                    max_index = mid
-                    break
+            comparison = comparator(line_mappings[mid], line, column)
+            if (comparison > 0):
+                min_index = mid + 1
+            elif (comparison < 0):
+                max_index = mid - 1
+            else:
+                max_index = mid
+                break
 
-            # Find the closest match
-            result = max(min(len(line_mappings) - 1, max_index), 0)
-            while (result + 1 < len(line_mappings) and comparator(line_mappings[result + 1], line, column) == 0):
-                result += 1
+        # Find the closest match
+        result = max(min(len(line_mappings) - 1, max_index), 0)
+        while (result + 1 < len(line_mappings) and comparator(line_mappings[result + 1], line, column) == 0):
+            result += 1
 
-            return result
+        return result
 
 
 class SourceMapParser:
