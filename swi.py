@@ -24,6 +24,7 @@ import projectsystem
 import protocol
 import views
 import styles
+import stylesModel
 
 from webkit import Console
 from webkit import Runtime
@@ -268,7 +269,9 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
     def styleSheetAdded(self, data, notification):
         file_name = data["sourceURL"]
         styleSheetId = data["styleSheetId"]
-        # TODO: Add stylesheets to file mappings
+
+        # TODO: Map url to the project file
+        stylesModel.StyleUtility.add_stylesheet(styleSheetId, file_name, file_name)
 
     # build table of mappings from local to server
     def scriptParsed(self, data, notification):
