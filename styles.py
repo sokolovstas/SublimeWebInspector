@@ -79,7 +79,7 @@ class SwiStylesUpdateMatchedCommand(sublime_plugin.TextCommand):
         all_rules = []
         all_rules.extend(matchedRules)
         all_rules.extend(inheritedRules)
-        stylesModel.StyleUtility.calculate_applied_styles(all_rules, "display")
+        stylesModel.StyleUtility.set_matched_rules(all_rules)
 
         self.print_section(v, edit, "Matched styles", matchedRules)
         self.print_section(v, edit, "Inherited styles", inheritedRules)
@@ -107,7 +107,7 @@ class SwiStylesUpdateMatchedCommand(sublime_plugin.TextCommand):
             v.insert(edit, v.size(), "\nSelectors: " + rule.selectorList + "\n\n")
 
             for s in rule.style.cssProperties:
-                v.print_checkbox(edit, v.size(), s.enabled, s.name + ": " + s.value + "\n", self.click_handler)
+                v.print_checkbox(edit, v.size(), s.is_enabled(), s.name + ": " + s.value + "\n", self.click_handler)
 
 
 class SwiStylesWindowInternalCommand(sublime_plugin.TextCommand):
