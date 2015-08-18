@@ -308,8 +308,9 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
                         if len(files) > 0 and files[0] != '':
                             file_name = files[0]
 
-                            # Create a file mapping to look for mapped source code 
-                            projectsystem.DocumentMapping.MappingsManager.create_mapping(file_name)
+                            if (file_name):
+                                # Create a file mapping to look for mapped source code 
+                                projectsystem.DocumentMapping.MappingsManager.create_mapping(file_name)
 
                             file_to_scriptId.append({'file': file_name, 'scriptId': str(scriptId), 'url': data['url']})
                             # don't try to match shorter fragments, we already found a match
@@ -516,7 +517,7 @@ class SwiDebugClearBreakpointsCommand(sublime_plugin.WindowCommand):
                     if 'breakpointId' in breaks[row]:
                         channel.send(webkit.Debugger.removeBreakpoint(breaks[row]['breakpointId']))
 
-                del brk_object[file_name];
+                del brk_object[file_name.lower()];
 
         save_breaks()
         update_overlays()
@@ -675,7 +676,6 @@ class SwiToggleAuthoredCodeCommand(sublime_plugin.TextCommand):
             sel = view.sel()[0]
             start = view.rowcol(sel.begin())
             end = view.rowcol(sel.end())
-            print("Getting mapped code info for:", view_name, start, end)
 
             mapped_start = file_mapping.get_generated_position(view_name, start[0], start[1]) \
                                         if is_authored_file \
@@ -1228,13 +1228,13 @@ def del_breakpoint_by_full_path(file_name, line):
         del breaks[line]
 
     if len(breaks) == 0:
-        del brk_object[file_name]
+        del brk_object[file_name.lower()]
 
     save_breaks()
 
 
 def get_breakpoints_by_full_path(file_name):
-    return brk_object.get(file_name, None)
+    return brk_object.get(file_name.lower(), None)
 
 def get_breakpoints_by_scriptId(scriptId):
     file_name = find_script(str(scriptId))
@@ -1245,6 +1245,7 @@ def get_breakpoints_by_scriptId(scriptId):
 
 
 def init_breakpoint_for_file(file_path):
+    file_path = file_path.lower()
     if not file_path:   # eg., mapping view
         return
     if not file_path in brk_object:
@@ -1336,10 +1337,8 @@ def set_selection(view, start_line, start_column, end_line, end_column):
 def get_authored_position_if_necessary(file_name, line_number, column_number):
     if is_source_map_enabled():
         mapping = projectsystem.DocumentMapping.MappingsManager.get_mapping(file_name)
-        if mapping:
-            return mapping.get_authored_position(line_number, line_number)
-
-    return None
+        if mapping.is_valid():
+            return mapping.get_authored_position(line_number, column_number)
 
 def is_source_map_enabled():
     global source_map_state
