@@ -13,7 +13,8 @@ def get_sourcemap_file(file_name):
                 map_file = sourcemap_info[len(sourcemap_prefix):].strip()
                 map_file = os.path.dirname(file_name) + os.path.sep + map_file
             f.close()
-    except:
+    except Exception as e:
+        print('Could not read %s: %s' % (file_name, str(e)))
         pass
 
     return map_file
@@ -32,11 +33,15 @@ class ParsedSourceMap:
                 self.version = self.content["version"]
                 self.authored_sources = self.content["sources"]
                 self.line_mappings = SourceMapParser.calculate_line_mappings(self.content)
-        except:
+        except Exception as e:
+            print('Could not read %s: %s' % (file_name, str(e)))
             pass
 
+    def is_valid(self):
+        return not self.content is None
+
     def get_authored_sources_path(self):
-        return [os.path.abspath(self.root_path + os.path.sep + x).lower() for x in self.authored_sources] if self.content else []
+        return [os.path.abspath(self.root_path + os.path.sep + x).lower() for x in self.authored_sources] if self.is_valid() else []
 
 
 class LineMapping:

@@ -19,8 +19,12 @@ class SourceMapParserTests(unittest.TestCase):
 
     map_version_3 = '{"version":3,"file":"HelloWorld.js","sourceRoot":"","sources":["HelloWorld.ts"],"names":["Printer","printer","Printer.printer"],"mappings":"AAAA,IAAO,OAAO;AAGb,CAHD,UAAO,OAAO;IACHA,QAAIA,OAAOA,GAAGA,OAAOA,CAACA,GAAGA;IAChCA,QAASA;AACbA,CAACA,6BAAA","x_ms_mediaTypes":["application/x.typescript;version=1.0.3.0"],"x_ms_compilerFlags":"--target ES3 --module commonjs","x_ms_scopes":"CU>GT<","x_ms_locals":"CC"}'
 
-    def test_invalid_file_does_not_throw(self):
+    def test_nonexistent_file_does_not_throw(self):
         file_name = Sourcemap.get_sourcemap_file("NotExistentFile")
+        self.assertFalse(file_name)
+
+    def test_invalid_file_does_not_throw(self):
+        file_name = Sourcemap.get_sourcemap_file("app.js") # exists, but not valid map file
         self.assertFalse(file_name)
 
     def test_version_check(self):
