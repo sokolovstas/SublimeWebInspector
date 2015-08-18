@@ -103,7 +103,12 @@ class SwiStylesUpdateMatchedCommand(sublime_plugin.TextCommand):
 
     def print_rule(self, v, edit, rule):
             v.insert(edit, v.size(), "\nOrigin: " + rule.origin)
-            v.insert(edit, v.size(), "\nSelectors: " + rule.selectorList + "\n\n")
+            v.insert(edit, v.size(), "\nSelectors: " + rule.selectorList)
+
+            if rule.origin == "regular":
+                v.insert(edit, v.size(), "\nFile: " + rule.get_stylesheet_name() + "\n\n")
+            else:
+                v.insert(edit, v.size(), "\n\n")
 
             for s in rule.style.cssProperties:
                 v.print_checkbox(edit, v.size(), s.is_enabled(), s.name + ": " + s.value + "\n", self.click_handler)
