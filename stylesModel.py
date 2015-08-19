@@ -1,4 +1,4 @@
-import os
+import ntpath
 import webkit
 
 from webkit import wkutils 
@@ -39,7 +39,7 @@ class Rule(wkutils.WebkitObject):
         return self.value
 
     def get_stylesheet_name(self):
-        return os.path.basename(self.stylesheet_name)
+        return ntpath.split(self.stylesheet_name)[1]
 
 class Style(wkutils.WebkitObject):
     def __init__(self, value):
@@ -81,6 +81,7 @@ class StyleUtility:
     __style_cache = {}
     __matched_rules = []
     __stylesheet_map = {}
+    current_node_id = None
 
     @staticmethod
     def add_stylesheet(style_id, url, path):

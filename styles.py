@@ -17,9 +17,19 @@ def init_styles():
     v = views.find_or_create_view('styles')
     v.run_command('swi_styles_window_internal')
     protocol.Channel.channel.subscribe(webkit.DOM.inspectNodeRequested(), inspectNodeRequested)
+    protocol.Channel.channel.subscribe(webkit.DOM.inlineStyleInvalidated(), inlineStyleInvalidated)
 
     protocol.Channel.channel.send(webkit.DOM.enable())
     protocol.Channel.channel.send(webkit.CSS.enable())
+
+def inlineStyleInvalidated(nodeIds, notification):
+    for nodeId in stylesModel.StyleUtility.current_node_ids:
+        if nodeId in nodeIds:
+            views.clear_view('styles')
+            v = views.find_or_create_view('styles')
+            v.run_command('swi_styles_window_internal')
+            protocol.Channel.channel.send(webkit.CSS.getInlineStylesForNode(nodeId), updateStylesView)
+            protocol.Channel.channel.send(webkit.CSS.getMatchedStylesForNode(nodeId), updateStylesView)
 
 def inspectNodeRequested(backendNodeId, notification):
     views.clear_view('styles')
@@ -29,6 +39,7 @@ def inspectNodeRequested(backendNodeId, notification):
 
 def getStyleRules(command):
     nodeIds = command.data
+    stylesModel.StyleUtility.current_node_ids = nodeIds
 
     for nodeId in nodeIds:
         protocol.Channel.channel.send(webkit.CSS.getInlineStylesForNode(nodeId), updateStylesView)

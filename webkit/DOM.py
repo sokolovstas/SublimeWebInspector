@@ -53,8 +53,14 @@ def setInspectModeEnabled():
 def inspectNodeRequested():
     return Notification('DOM.inspectNodeRequested')
 
+def inlineStyleInvalidated():
+    return Notification('DOM.inlineStyleInvalidated')
+
 def inspectNodeRequested_parser(params):
     return params['backendNodeId']
+
+def inlineStyleInvalidated_parser(params):
+    return params['nodeIds']
 
 def pushNodesByBackendIdsToFrontend(backendNodeIds):
     return Command('DOM.pushNodesByBackendIdsToFrontend', {"backendNodeIds": backendNodeIds })
