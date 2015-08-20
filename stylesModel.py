@@ -41,6 +41,7 @@ class Rule(wkutils.WebkitObject):
     def get_stylesheet_name(self):
         return ntpath.split(self.stylesheet_name)[1]
 
+
 class Style(wkutils.WebkitObject):
     def __init__(self, value):
         self.value = value
@@ -56,12 +57,25 @@ class Style(wkutils.WebkitObject):
     def __call__(self):
         return self.value
 
+
 class StyleRulePair(wkutils.WebkitObject):
     def __init__(self, value):
         self.value = value
         self.uid = ""
         self.__enabled = None
 
+        # If the style property is coming from a CSS file, we have its 
+        # disabled property set.
+        if "disabled" in value:
+            self.__enabled = not value["disabled"]
+
+        # If the style property is coming from a CSS file, we have 
+        # information about its text range in the CSS file.
+        self.cssRange = None
+        if "range" in value:
+            self.cssRange = CSSRange(value["range"])
+
+        self.set(value, 'text', '')
         self.set(value, 'name')
         self.set(value, 'value')
 
@@ -76,6 +90,22 @@ class StyleRulePair(wkutils.WebkitObject):
 
     def __call__(self):
         return self.value
+
+
+class CSSRange(wkutils.WebkitObject):
+    def __init__(self, value):
+        self.value = value
+        self.set(value, "endColumn")
+        self.set(value, "endLine")
+        self.set(value, "startColumn")
+        self.set(value, "startLine")
+
+    def __str__(self):
+        self.value
+
+    def __call__(self):
+        return self.value
+
 
 class StyleUtility:
     __style_cache = {}

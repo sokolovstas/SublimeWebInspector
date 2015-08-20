@@ -91,14 +91,14 @@ class SwiStylesUpdateMatchedCommand(sublime_plugin.TextCommand):
         all_rules.extend(inheritedRules)
         stylesModel.StyleUtility.set_matched_rules(all_rules)
 
-        self.print_section(v, edit, "Matched styles", matchedRules)
-        self.print_section(v, edit, "Inherited styles", inheritedRules)
+        self.print_section(v, edit, "Matched styles", matchedRules, 0)
+        self.print_section(v, edit, "Inherited styles", inheritedRules, len(matchedRules))
 
-    def click_handler(self, enabled):
+    def click_handler(self, enabled, args):
         if enabled:
-            print("Checkbox enabled")
+            print("Checkbox enabled", args["ruleIndex"], args["propertyIndex"])
         else:
-            print("Checkbox disabled")
+            print("Checkbox disabled", args["ruleIndex"], args["propertyIndex"])
 
     def parse_matched_rules(self, matchedData):
         matchedCSSRules = []
@@ -106,13 +106,15 @@ class SwiStylesUpdateMatchedCommand(sublime_plugin.TextCommand):
             matchedCSSRules.append(stylesModel.RuleMatch(item))
         return matchedCSSRules
 
-    def print_section(self, v, edit, title, matchedCSSRules):
+    def print_section(self, v, edit, title, matchedCSSRules, startIndex):
         v.insert(edit, v.size(), "\n\n" + title + ": \n")
 
+        ruleIndex = startIndex
         for matchedRule in matchedCSSRules:
-            self.print_rule(v, edit, matchedRule.rule)
+            self.print_rule(v, edit, matchedRule.rule, ruleIndex)
+            ruleIndex = ruleIndex + 1
 
-    def print_rule(self, v, edit, rule):
+    def print_rule(self, v, edit, rule, ruleIndex):
             v.insert(edit, v.size(), "\nOrigin: " + rule.origin)
             v.insert(edit, v.size(), "\nSelectors: " + rule.selectorList)
 
@@ -121,8 +123,10 @@ class SwiStylesUpdateMatchedCommand(sublime_plugin.TextCommand):
             else:
                 v.insert(edit, v.size(), "\n\n")
 
+            propertyIndex = 0
             for s in rule.style.cssProperties:
-                v.print_checkbox(edit, v.size(), s.is_enabled(), s.name + ": " + s.value + "\n", self.click_handler)
+                v.print_checkbox(edit, v.size(), s.is_enabled(), s.name + ": " + s.value + "\n", self.click_handler, { "ruleIndex": ruleIndex, "propertyIndex": propertyIndex})
+                propertyIndex = propertyIndex + 1
 
 
 class SwiStylesWindowInternalCommand(sublime_plugin.TextCommand):
