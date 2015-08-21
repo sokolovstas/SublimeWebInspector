@@ -1,5 +1,7 @@
 import ntpath
 import webkit
+import protocol
+import styles
 
 from webkit import wkutils 
 
@@ -47,6 +49,9 @@ class Style(wkutils.WebkitObject):
         self.value = value
         self.cssProperties = []
 
+        # If origin is user-agent, styleSheetId is not set
+        self.set(value, 'styleSheetId', "")
+
         properties = value["cssProperties"]
         for prop in properties:
             self.cssProperties.append(StyleRulePair(prop))
@@ -71,9 +76,9 @@ class StyleRulePair(wkutils.WebkitObject):
 
         # If the style property is coming from a CSS file, we have 
         # information about its text range in the CSS file.
-        self.cssRange = None
+        self.sourceRange = None
         if "range" in value:
-            self.cssRange = CSSRange(value["range"])
+            self.sourceRange = SourceRange(value["range"])
 
         self.set(value, 'text', '')
         self.set(value, 'name')
@@ -92,7 +97,7 @@ class StyleRulePair(wkutils.WebkitObject):
         return self.value
 
 
-class CSSRange(wkutils.WebkitObject):
+class SourceRange(wkutils.WebkitObject):
     def __init__(self, value):
         self.value = value
         self.set(value, "endColumn")
@@ -109,9 +114,83 @@ class CSSRange(wkutils.WebkitObject):
 
 class StyleUtility:
     __style_cache = {}
-    __matched_rules = []
     __stylesheet_map = {}
+    __pending_property_updates_map = {}
+
+    __all_rules = []
+    __inline_rules = []
+    __matched_rules = []
+    __inherited_rules = []
+
     current_node_id = None
+
+    @staticmethod
+    def get_inline_rules():
+        return StyleUtility.__inline_rules
+        
+    @staticmethod
+    def set_inline_rules(inline_rules):
+        StyleUtility.__inline_rules = inline_rules
+
+    @staticmethod
+    def get_matched_rules():
+        return StyleUtility.__matched_rules
+
+    @staticmethod
+    def set_matched_rules(matched_rules):
+        StyleUtility.__matched_rules = matched_rules
+        StyleUtility.__all_rules.extend(matched_rules)
+
+    @staticmethod
+    def set_inherited_rules(inherited_rules):
+        StyleUtility.__inherited_rules = inherited_rules
+        StyleUtility.__all_rules.extend(inherited_rules)
+
+    @staticmethod
+    def get_inherited_rules():
+        return StyleUtility.__inherited_rules
+
+    @staticmethod
+    def clear_styles_cache():
+        StyleUtility.__style_cache = {}
+        StyleUtility.__inline_rules = []
+        StyleUtility.__matched_rules = []
+        StyleUtility.__inherited_rules = []
+        StyleUtility.__all_rules = []
+
+    @staticmethod
+    def set_property_enabled_state(ruleIndex, propertyIndex, enabled):
+        if (ruleIndex >= len(StyleUtility.__all_rules) or propertyIndex >= len(StyleUtility.__all_rules[ruleIndex].rule.style.cssProperties)):
+            return
+
+        rule = StyleUtility.__all_rules[ruleIndex].rule
+        prop_item = rule.style.cssProperties[propertyIndex]
+
+        text = ""
+        if (prop_item.sourceRange) and len(prop_item.text):
+            if enabled:
+                text = prop_item.name + ": " + prop_item.value
+            else:
+                text = "/* " + prop_item.text + " */"
+        if len(text) > 0:
+            # Store this in a map, to update the styles when we get a response back from the target.
+            StyleUtility.__pending_property_updates_map[rule.style.styleSheetId] = rule.style
+            protocol.Channel.channel.send(webkit.CSS.setPropertyText(rule.styleSheetId, prop_item.sourceRange.value, text), StyleUtility.update_style_change)
+
+    @staticmethod
+    def update_style_change(command):
+        if command.data["styleSheetId"] in StyleUtility.__pending_property_updates_map:
+            style = StyleUtility.__pending_property_updates_map[command.data["styleSheetId"]]
+
+            # Clear all its existing properties, and update with new ones
+            style.cssProperties = []
+            properties = command.data["cssProperties"]
+            for prop in properties:
+                style.cssProperties.append(StyleRulePair(prop))
+
+            styles.displayAppliedStyles()
+        else:
+            assert False, "Style rule for the update notification not found"
 
     @staticmethod
     def add_stylesheet(style_id, url, path):
@@ -123,11 +202,6 @@ class StyleUtility:
         return ""
 
     @staticmethod
-    def set_matched_rules(matched_rules):
-        StyleUtility.__matched_rules = matched_rules
-        StyleUtility.__style_cache = {}
-
-    @staticmethod
     def is_winning_property(property_name, uid):
         if not property_name in StyleUtility.__style_cache:
             StyleUtility.calculate_applied_style(property_name)
@@ -136,7 +210,7 @@ class StyleUtility:
 
     @staticmethod
     def calculate_applied_style(property_name):
-        for item in StyleUtility.__matched_rules:
+        for item in StyleUtility.__all_rules:
             # Search for property name in the selectorList
             props = [style_pair for style_pair in item.rule.style.cssProperties if property_name == style_pair.name]
 
@@ -149,3 +223,8 @@ class StyleUtility:
                 # Cache the winning property 
                 StyleUtility.__style_cache[property_name] = prop.uid
                 return
+
+    @staticmethod
+    def click_handler(enabled, args):
+        # Toggle the property state
+        StyleUtility.set_property_enabled_state(args["ruleIndex"], args["propertyIndex"], not enabled)

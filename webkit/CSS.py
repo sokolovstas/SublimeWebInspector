@@ -7,6 +7,14 @@ import re
 def enable():
     return Command('CSS.enable', {})
 
+def setPropertyText(styleSheetId, sourceRange, text):
+    params = dict({})
+    params["styleSheetId"] = styleSheetId
+    params["range"] = sourceRange
+    params["text"] = text
+
+    return Command('CSS.setPropertyText', params)
+
 def getMatchedStylesForNode(nodeId):
     return Command('CSS.getMatchedStylesForNode', { "nodeId": nodeId })
 
@@ -19,8 +27,8 @@ def getComputedStyleForNode(nodeId):
 def styleSheetAdded():
     return Notification('CSS.styleSheetAdded')
 
-def styleSheetAdded_parser(params):
-    return params["header"]
+def setPropertyText_parser(params):
+    return params["style"]
 
 def getInlineStylesForNode_parser(params):
     data = {}
@@ -34,3 +42,6 @@ def getMatchedStylesForNode_parser(params):
 
     data["content"] = params
     return data
+
+def styleSheetAdded_parser(params):
+    return params["header"]

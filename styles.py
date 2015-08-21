@@ -28,41 +28,54 @@ def inlineStyleInvalidated(nodeIds, notification):
             views.clear_view('styles')
             v = views.find_or_create_view('styles')
             v.run_command('swi_styles_window_internal')
-            protocol.Channel.channel.send(webkit.CSS.getInlineStylesForNode(nodeId), updateStylesView)
-            protocol.Channel.channel.send(webkit.CSS.getMatchedStylesForNode(nodeId), updateStylesView)
+            protocol.Channel.channel.send(webkit.CSS.getInlineStylesForNode(nodeId), displayAppliedStyles)
+            protocol.Channel.channel.send(webkit.CSS.getMatchedStylesForNode(nodeId), displayAppliedStyles)
 
-def inspectNodeRequested(backendNodeId, notification):
+def clear_styles_view():
     views.clear_view('styles')
     v = views.find_or_create_view('styles')
     v.run_command('swi_styles_window_internal')
+
+def inspectNodeRequested(backendNodeId, notification):
+    clear_styles_view()
     protocol.Channel.channel.send(webkit.DOM.pushNodesByBackendIdsToFrontend([backendNodeId]), getStyleRules)
 
 def getStyleRules(command):
     nodeIds = command.data
     stylesModel.StyleUtility.current_node_ids = nodeIds
+    stylesModel.StyleUtility.clear_styles_cache()
 
     for nodeId in nodeIds:
-        protocol.Channel.channel.send(webkit.CSS.getInlineStylesForNode(nodeId), updateStylesView)
-        protocol.Channel.channel.send(webkit.CSS.getMatchedStylesForNode(nodeId), updateStylesView)
-        # protocol.Channel.channel.send(webkit.CSS.getComputedStyleForNode(nodeId))
+        protocol.Channel.channel.send(webkit.CSS.getInlineStylesForNode(nodeId), displayAppliedStyles)
+        protocol.Channel.channel.send(webkit.CSS.getMatchedStylesForNode(nodeId), displayAppliedStyles)
 
-def updateStylesView(params):
+def displayAppliedStyles(command=None):
     v = views.find_or_create_view('styles')
 
-    if params.data["type"] == "inline":
-        v.run_command('swi_styles_update_inline', {"data": params.data["content"]})
-    elif params.data["type"] == "matched":
-        v.run_command('swi_styles_update_matched', {"data": params.data["content"]})
-
+    if command:
+        if command.data["type"] == "inline":
+            v.run_command('swi_styles_update_inline', {"data": command.data["content"]})
+        elif command.data["type"] == "matched":
+            v.run_command('swi_styles_update_matched', {"data": command.data["content"]})
+    else:
+        # Just refresh the view with latest styles information
+        clear_styles_view()
+        v.run_command('swi_styles_update_inline', {"data": {}})
+        v.run_command('swi_styles_update_matched', {"data": {}})
 
 class SwiStylesUpdateInlineCommand(sublime_plugin.TextCommand):
     def run(self, edit, data):
+        if len(data) > 0:
+            inline_rules = []
+            cssProperties = data["cssProperties"]
+            for rule in cssProperties:
+                inline_rules.append(stylesModel.StyleRulePair(rule))
+            stylesModel.StyleUtility.set_inline_rules(inline_rules)
+
         v = views.wrap_view(self.view)
         v.insert(edit, v.size(), "\n\nInline styles: \n\n")
-
-        cssProperties = data["cssProperties"]
-        for rule in cssProperties:
-            v.print_checkbox(edit, v.size(), True, rule["text"] + "\n", self.click_handler)
+        for rule in stylesModel.StyleUtility.get_inline_rules():
+            v.print_checkbox(edit, v.size(), True, rule.name + ": " + rule.value + "\n", self.click_handler)
 
     def click_handler(self, enabled):
         if enabled:
@@ -70,35 +83,28 @@ class SwiStylesUpdateInlineCommand(sublime_plugin.TextCommand):
         else:
             print("Checkbox disabled")
 
+
 class SwiStylesUpdateMatchedCommand(sublime_plugin.TextCommand):
     def run(self, edit, data):
+        if len(data) > 0:
+            # Display matched CSS rules
+            matchedRules = self.parse_matched_rules(data["matchedCSSRules"])
+    
+            # Display inherited CSS rules
+            inheritedData = data["inherited"]
+            inheritedRules = []
+            for item in inheritedData:
+                matchedData = item["matchedCSSRules"]
+                rules = self.parse_matched_rules(matchedData)
+                inheritedRules.extend(rules)
+    
+    
+            stylesModel.StyleUtility.set_matched_rules(matchedRules)
+            stylesModel.StyleUtility.set_inherited_rules(inheritedRules)
+
         v = views.wrap_view(self.view)
-
-        # Display matched CSS rules
-        matchedRules = self.parse_matched_rules(data["matchedCSSRules"])
-
-        # Display inherited CSS rules
-        inheritedData = data["inherited"]
-        inheritedRules = []
-        for item in inheritedData:
-            matchedData = item["matchedCSSRules"]
-            rules = self.parse_matched_rules(matchedData)
-            inheritedRules.extend(rules)
-
-        # Calculate all applied styles
-        all_rules = []
-        all_rules.extend(matchedRules)
-        all_rules.extend(inheritedRules)
-        stylesModel.StyleUtility.set_matched_rules(all_rules)
-
-        self.print_section(v, edit, "Matched styles", matchedRules, 0)
-        self.print_section(v, edit, "Inherited styles", inheritedRules, len(matchedRules))
-
-    def click_handler(self, enabled, args):
-        if enabled:
-            print("Checkbox enabled", args["ruleIndex"], args["propertyIndex"])
-        else:
-            print("Checkbox disabled", args["ruleIndex"], args["propertyIndex"])
+        self.print_section(v, edit, "Matched styles", stylesModel.StyleUtility.get_matched_rules(), 0)
+        self.print_section(v, edit, "Inherited styles", stylesModel.StyleUtility.get_inherited_rules(), len(stylesModel.StyleUtility.get_matched_rules()))
 
     def parse_matched_rules(self, matchedData):
         matchedCSSRules = []
@@ -108,24 +114,24 @@ class SwiStylesUpdateMatchedCommand(sublime_plugin.TextCommand):
 
     def print_section(self, v, edit, title, matchedCSSRules, startIndex):
         v.insert(edit, v.size(), "\n\n" + title + ": \n")
-
+    
         ruleIndex = startIndex
         for matchedRule in matchedCSSRules:
             self.print_rule(v, edit, matchedRule.rule, ruleIndex)
             ruleIndex = ruleIndex + 1
-
+    
     def print_rule(self, v, edit, rule, ruleIndex):
             v.insert(edit, v.size(), "\nOrigin: " + rule.origin)
             v.insert(edit, v.size(), "\nSelectors: " + rule.selectorList)
-
+    
             if rule.origin == "regular":
                 v.insert(edit, v.size(), "\nFile: " + rule.get_stylesheet_name() + "\n\n")
             else:
                 v.insert(edit, v.size(), "\n\n")
-
+    
             propertyIndex = 0
             for s in rule.style.cssProperties:
-                v.print_checkbox(edit, v.size(), s.is_enabled(), s.name + ": " + s.value + "\n", self.click_handler, { "ruleIndex": ruleIndex, "propertyIndex": propertyIndex})
+                v.print_checkbox(edit, v.size(), s.is_enabled(), s.name + ": " + s.value + "\n", stylesModel.StyleUtility.click_handler, { "ruleIndex": ruleIndex, "propertyIndex": propertyIndex})
                 propertyIndex = propertyIndex + 1
 
 
