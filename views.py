@@ -236,6 +236,9 @@ def find_or_create_view(console_type, create = True):
     if console_type.startswith('scope'):
         v.set_syntax_file('Packages/Web Inspector/swi_log.tmLanguage')
 
+    if console_type.startswith('styles'):
+        v.set_syntax_file('Packages/Web Inspector/swi_styles.tmLanguage')
+
     window.focus_view(v)
 
     v.set_read_only(False)
