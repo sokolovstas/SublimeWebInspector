@@ -168,10 +168,9 @@ class StyleUtility:
 
         text = ""
         if (prop_item.sourceRange) and len(prop_item.text):
-            if enabled:
-                text = prop_item.name + ": " + prop_item.value + "; \r\n"
-            else:
-                text = "/* " + prop_item.name + ": " + prop_item.value + "; */ \r\n"
+            text = prop_item.name + ": " + prop_item.value + ";"
+            text = text if enabled else "/* " + text + " */"
+
         if len(text) > 0:
             # Store this in a map, to update the styles when we get a response back from the target.
             StyleUtility.__pending_property_updates_map[rule.style.styleSheetId] = rule.style
@@ -182,11 +181,16 @@ class StyleUtility:
         if command.data["styleSheetId"] in StyleUtility.__pending_property_updates_map:
             style = StyleUtility.__pending_property_updates_map[command.data["styleSheetId"]]
 
+            uid_prefix = style.cssProperties[0].uid.split("#")[0]
             # Clear all its existing properties, and update with new ones
             style.cssProperties = []
+            uid = 1
             properties = command.data["cssProperties"]
             for prop in properties:
-                style.cssProperties.append(StyleRulePair(prop))
+                style_prop = StyleRulePair(prop)
+                style_prop.uid = uid_prefix + "#" + str(uid)
+                style.cssProperties.append(style_prop)
+                uid = uid + 1
 
             styles.displayAppliedStyles()
         else:
