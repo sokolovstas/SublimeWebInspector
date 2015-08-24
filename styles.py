@@ -97,8 +97,7 @@ class SwiStylesUpdateMatchedCommand(sublime_plugin.TextCommand):
                 matchedData = item["matchedCSSRules"]
                 rules = self.parse_matched_rules(matchedData)
                 inheritedRules.extend(rules)
-    
-    
+
             stylesModel.StyleUtility.set_matched_rules(matchedRules)
             stylesModel.StyleUtility.set_inherited_rules(inheritedRules)
 
