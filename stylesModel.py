@@ -130,7 +130,13 @@ class StyleUtility:
         
     @staticmethod
     def set_inline_rules(inline_rules):
+        # Since inline properties are not part of any rules, 
+        # we assign uids when we set it here
         StyleUtility.__inline_rules = inline_rules
+        uid = 1
+        for prop in StyleUtility.__inline_rules:
+            prop.uid = "inline#" + uid
+            uid = uid + 1
 
     @staticmethod
     def get_matched_rules():
@@ -182,6 +188,7 @@ class StyleUtility:
             style = StyleUtility.__pending_property_updates_map[command.data["styleSheetId"]]
 
             uid_prefix = style.cssProperties[0].uid.split("#")[0]
+
             # Clear all its existing properties, and update with new ones
             style.cssProperties = []
             uid = 1
@@ -214,6 +221,12 @@ class StyleUtility:
 
     @staticmethod
     def calculate_applied_style(property_name):
+        inline_prop = [p for p in StyleUtility.__inline_rules if p.name == property_name]
+        if len(inline_prop) > 0:
+            inline_prop[0].enabled = True
+            StyleUtility.__style_cache[property_name] = inline_prop[0].uid
+            return
+
         for item in StyleUtility.__all_rules:
             # Search for property name in the selectorList
             props = [style_pair for style_pair in item.rule.style.cssProperties if property_name == style_pair.name]
