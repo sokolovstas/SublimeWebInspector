@@ -169,9 +169,9 @@ class StyleUtility:
         text = ""
         if (prop_item.sourceRange) and len(prop_item.text):
             if enabled:
-                text = prop_item.name + ": " + prop_item.value
+                text = prop_item.name + ": " + prop_item.value + "; \r\n"
             else:
-                text = "/* " + prop_item.text + " */"
+                text = "/* " + prop_item.name + ": " + prop_item.value + "; */ \r\n"
         if len(text) > 0:
             # Store this in a map, to update the styles when we get a response back from the target.
             StyleUtility.__pending_property_updates_map[rule.style.styleSheetId] = rule.style
