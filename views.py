@@ -123,7 +123,8 @@ class SwiDebugView(object):
             around it.
         """
         assert(callback)
-        marker = " x " if enabled else "   "
+        # Add a checkmark if enabled 
+        marker = " "+ u"\u2713" + " " if enabled else "   "
         insert_length = self.insert(edit, position, marker)
 
         insert_before = 0
@@ -176,7 +177,7 @@ class SwiDebugView(object):
 
     def get_enabled_state(self, region):
         text = self.view.substr(region)
-        if text == " x ":
+        if text == " " + u"\u2713" + " ":
             return True
         return False
 
