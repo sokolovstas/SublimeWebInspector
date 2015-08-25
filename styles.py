@@ -124,7 +124,9 @@ class SwiStylesUpdateMatchedCommand(sublime_plugin.TextCommand):
             v.insert(edit, v.size(), "\nSelectors: " + rule.selectorList)
     
             if rule.origin == "regular":
-                v.insert(edit, v.size(), "\nFile: " + rule.get_stylesheet_name() + "\n\n")
+                v.insert(edit, v.size(), "\nFile: ")
+                v.print_click(edit, v.size(), rule.get_stylesheet_name(), open_styleSheet, { "name": rule.get_stylesheet_name(), "line":  })
+                v.insert(edit, v.size(), "\n\n")
             else:
                 v.insert(edit, v.size(), "\n\n")
     
@@ -146,3 +148,11 @@ class SwiStylesInspectElement(sublime_plugin.WindowCommand):
     def run(self):
         utils.assert_main_thread()
         protocol.Channel.channel.send(webkit.DOM.setInspectModeEnabled())
+
+
+def open_styleSheet(params):
+    file_name = params["name"]
+    if file_name: # race with browser
+        window = sublime.active_window()
+        window.focus_group(0)
+        v = window.open_file(file_name)
