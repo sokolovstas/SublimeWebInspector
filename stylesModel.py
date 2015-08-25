@@ -135,7 +135,7 @@ class StyleUtility:
         StyleUtility.__inline_rules = inline_rules
         uid = 1
         for prop in StyleUtility.__inline_rules:
-            prop.uid = "inline#" + uid
+            prop.uid = "inline#" + str(uid)
             uid = uid + 1
 
     @staticmethod
