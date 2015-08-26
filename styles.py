@@ -66,22 +66,17 @@ def displayAppliedStyles(command=None):
 class SwiStylesUpdateInlineCommand(sublime_plugin.TextCommand):
     def run(self, edit, data):
         if len(data) > 0:
-            inline_rules = []
-            cssProperties = data["cssProperties"]
-            for rule in cssProperties:
-                inline_rules.append(stylesModel.StyleRulePair(rule))
-            stylesModel.StyleUtility.set_inline_rules(inline_rules)
+            style = stylesModel.Style(data)
+            stylesModel.StyleUtility.set_inline_rule(style)
 
         v = views.wrap_view(self.view)
         v.insert(edit, v.size(), "\n\nInline styles: \n\n")
-        for rule in stylesModel.StyleUtility.get_inline_rules():
-            v.print_checkbox(edit, v.size(), True, rule.name + ": " + rule.value + "\n", self.click_handler)
-
-    def click_handler(self, enabled):
-        if enabled:
-            print("Checkbox enabled")
-        else:
-            print("Checkbox disabled")
+        inline_rule = stylesModel.StyleUtility.get_inline_rule()
+        if inline_rule:
+            propertyIndex = 0
+            for rule in inline_rule.cssProperties:
+                v.print_checkbox(edit, v.size(), rule.is_enabled(), rule.name + ": " + rule.value + "\n", stylesModel.StyleUtility.toggle_property, { "uid": rule.uid, "propertyIndex": propertyIndex })
+                propertyIndex = propertyIndex + 1
 
 
 class SwiStylesUpdateMatchedCommand(sublime_plugin.TextCommand):
@@ -125,14 +120,14 @@ class SwiStylesUpdateMatchedCommand(sublime_plugin.TextCommand):
     
             if rule.origin == "regular":
                 v.insert(edit, v.size(), "\nFile: ")
-                v.print_click(edit, v.size(), rule.get_stylesheet_name(), open_styleSheet, { "name": rule.get_stylesheet_name(), "line":  })
+                v.print_click(edit, v.size(), rule.get_stylesheet_name(), open_styleSheet, { "name": rule.get_stylesheet_name() })
                 v.insert(edit, v.size(), "\n\n")
             else:
                 v.insert(edit, v.size(), "\n\n")
     
             propertyIndex = 0
             for s in rule.style.cssProperties:
-                v.print_checkbox(edit, v.size(), s.is_enabled(), s.name + ": " + s.value + "\n", stylesModel.StyleUtility.click_handler, { "ruleIndex": ruleIndex, "propertyIndex": propertyIndex})
+                v.print_checkbox(edit, v.size(), s.is_enabled(), s.name + ": " + s.value + "\n", stylesModel.StyleUtility.toggle_property, { "ruleIndex": ruleIndex, "propertyIndex": propertyIndex})
                 propertyIndex = propertyIndex + 1
 
 

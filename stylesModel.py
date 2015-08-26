@@ -118,25 +118,27 @@ class StyleUtility:
     __pending_property_updates_map = {}
 
     __all_rules = []
-    __inline_rules = []
+    __inline_rule = None
     __matched_rules = []
     __inherited_rules = []
 
     current_node_id = None
+    inline_style_prefix = "inlineWebKitStylePrefix#"
 
     @staticmethod
-    def get_inline_rules():
-        return StyleUtility.__inline_rules
+    def get_inline_rule():
+        return StyleUtility.__inline_rule
         
     @staticmethod
-    def set_inline_rules(inline_rules):
+    def set_inline_rule(inline_rule):
         # Since inline properties are not part of any rules, 
         # we assign uids when we set it here
-        StyleUtility.__inline_rules = inline_rules
+        StyleUtility.__inline_rule = inline_rule
         uid = 1
-        for prop in StyleUtility.__inline_rules:
-            prop.uid = "inline#" + str(uid)
-            uid = uid + 1
+        if StyleUtility.__inline_rule:
+            for prop in StyleUtility.__inline_rule.cssProperties:
+                prop.uid =  StyleUtility.inline_style_prefix + str(uid)
+                uid = uid + 1
 
     @staticmethod
     def get_matched_rules():
@@ -165,12 +167,11 @@ class StyleUtility:
         StyleUtility.__all_rules = []
 
     @staticmethod
-    def set_property_enabled_state(ruleIndex, propertyIndex, enabled):
-        if (ruleIndex >= len(StyleUtility.__all_rules) or propertyIndex >= len(StyleUtility.__all_rules[ruleIndex].rule.style.cssProperties)):
+    def set_property_enabled_state(style, propertyIndex, enabled):
+        if propertyIndex >= len(style.cssProperties):
             return
 
-        rule = StyleUtility.__all_rules[ruleIndex].rule
-        prop_item = rule.style.cssProperties[propertyIndex]
+        prop_item = style.cssProperties[propertyIndex]
 
         text = ""
         if (prop_item.sourceRange) and len(prop_item.text):
@@ -179,8 +180,8 @@ class StyleUtility:
 
         if len(text) > 0:
             # Store this in a map, to update the styles when we get a response back from the target.
-            StyleUtility.__pending_property_updates_map[rule.style.styleSheetId] = rule.style
-            protocol.Channel.channel.send(webkit.CSS.setPropertyText(rule.styleSheetId, prop_item.sourceRange.value, text), StyleUtility.update_style_change)
+            StyleUtility.__pending_property_updates_map[style.styleSheetId] = style
+            protocol.Channel.channel.send(webkit.CSS.setPropertyText(style.styleSheetId, prop_item.sourceRange.value, text), StyleUtility.update_style_change)
 
     @staticmethod
     def update_style_change(command):
@@ -221,11 +222,12 @@ class StyleUtility:
 
     @staticmethod
     def calculate_applied_style(property_name):
-        inline_prop = [p for p in StyleUtility.__inline_rules if p.name == property_name]
-        if len(inline_prop) > 0:
-            inline_prop[0].enabled = True
-            StyleUtility.__style_cache[property_name] = inline_prop[0].uid
-            return
+        if StyleUtility.__inline_rule:
+            inline_prop = [p for p in StyleUtility.__inline_rule.cssProperties if p.name == property_name]
+            if len(inline_prop) > 0:
+                inline_prop[0].enabled = True
+                StyleUtility.__style_cache[property_name] = inline_prop[0].uid
+                return
 
         for item in StyleUtility.__all_rules:
             # Search for property name in the selectorList
@@ -242,6 +244,12 @@ class StyleUtility:
                 return
 
     @staticmethod
-    def click_handler(enabled, args):
+    def toggle_property(enabled, args):
         # Toggle the property state
-        StyleUtility.set_property_enabled_state(args["ruleIndex"], args["propertyIndex"], not enabled)
+        propertyIndex = args["propertyIndex"]
+        if "uid" in args and args["uid"].index(StyleUtility.inline_style_prefix) == 0:
+                StyleUtility.set_property_enabled_state(StyleUtility.__inline_rule, propertyIndex, not enabled)
+        else:
+            ruleIndex = args["ruleIndex"]
+            if ruleIndex < len(StyleUtility.__all_rules):
+                StyleUtility.set_property_enabled_state(StyleUtility.__all_rules[ruleIndex].style, propertyIndex, not enabled)
