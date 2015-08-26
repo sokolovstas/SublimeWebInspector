@@ -1335,7 +1335,7 @@ def set_selection(view, start_line, start_column, end_line, end_column):
 
 
 def get_authored_position_if_necessary(file_name, line_number, column_number):
-    if is_source_map_enabled():
+    if is_source_map_enabled() and projectsystem.DocumentMapping.MappingsManager.is_generated_file(file_name):
         mapping = projectsystem.DocumentMapping.MappingsManager.get_mapping(file_name)
         if mapping.is_valid():
             return mapping.get_authored_position(line_number, column_number)
