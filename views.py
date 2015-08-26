@@ -30,7 +30,8 @@ class SwiDebugView(object):
 
     def on_deactivated(self):
         if self.view.name() == "File mapping":
-            self.view.close()
+            # cannot close view during its own event handler
+            sublime.set_timeout(lambda: self.view.close())
 
     def file_name(self):
         return self.view.file_name()
