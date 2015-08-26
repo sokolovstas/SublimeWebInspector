@@ -1077,11 +1077,13 @@ class SwiConsolePrintPropertiesInternalCommand(sublime_plugin.TextCommand):
 
         for prop in command.data:
             v.insert(edit, v.size(), prop.name + ': ')
-            if(prop.value):
+            if (prop.value):
                 if prop.value.type == 'object':
                     v.print_click(edit, v.size(), str(prop.value) + '\n', channel.send, webkit.Runtime.getProperties(prop.value.objectId, True), console_add_properties, {'objectId': prop.value.objectId, 'file': file, 'line': line, 'name': prop.name, 'prev': prev})
                 else:
                     v.insert(edit, v.size(), str(prop.value) + '\n')
+            else:
+                v.insert(edit, v.size(), '\n')
 
 call_frames_queue = []
 def console_show_stack(callFrames):
