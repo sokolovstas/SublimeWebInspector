@@ -143,7 +143,6 @@ class SwiDebugStartChromeCommand(sublime_plugin.WindowCommand):
 
     def run(self):
         utils.assert_main_thread()
-        close_all_our_windows()
 
         window = sublime.active_window()
         key = sublime.platform()
@@ -204,8 +203,6 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
         window.set_layout(utils.get_setting('console_layout'))
 
         load_breaks()
-
-        close_all_our_windows()
 
         global debugger_enabled
         debugger_enabled = False
@@ -607,6 +604,7 @@ class SwiDebugStopCommand(sublime_plugin.WindowCommand):
         active_view = self.window.active_view()
 
         close_all_our_windows()
+        clear_all_views()
 
         disable_all_breakpoints()
 
