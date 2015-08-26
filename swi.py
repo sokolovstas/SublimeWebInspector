@@ -874,7 +874,7 @@ def change_to_call_frame(callFrame):
     file_name = find_script(str(scriptId))
     first_scope = callFrame.scopeChain[0]
 
-    params = {'objectId': first_scope.object.objectId, 'name': "%s:%s (%s)" % (file_name, line_number, first_scope.type)}
+    params = {'objectId': first_scope.object.objectId, 'name': "%s:(%s, %s) (%s)" % (file_name, line_number, callFrame.location.columnNumber, first_scope.type)}
     channel.send(webkit.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, params)
 
     position = get_authored_position_if_necessary(file_name, callFrame.location.lineNumber, callFrame.location.columnNumber)
@@ -1047,14 +1047,16 @@ class SwiConsolePrintPropertiesInternalCommand(sublime_plugin.TextCommand):
         if 'file' in command.options and 'line' in command.options:
             file = command.options['file']
             line = command.options['line']
+            column = command.options['column'] if 'column' in command.options else "0"
         else:
             # eg., name can be
             #     c:\foo\bar\baz.js:422 (local)
-            p = re.compile("^\s*(?P<file>.+)\s*:\s*(?P<line>\d+)(?P<remainder>\s+.*)$")
+            p = re.compile("^\s*(?P<file>.+)\s*:\(\s*(?P<line>\d+),\s*(?P<column>\d+)\)(?P<remainder>\s+.*)$")
             m = p.search(name)
             if m:
                 file = m.group('file')
                 line = m.group('line')
+                column = m.group('column')
                 name = m.group('remainder')
             else:
                 file = ""
@@ -1068,7 +1070,7 @@ class SwiConsolePrintPropertiesInternalCommand(sublime_plugin.TextCommand):
         v.erase(edit, sublime.Region(0, v.size()))
 
         if file and line:
-            position = get_authored_position_if_necessary(file, int(line), 0)
+            position = get_authored_position_if_necessary(file, int(line), int(column))
             if position:
                 file = position.file_name()
                 line = position.one_based_line() 
