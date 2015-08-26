@@ -1068,6 +1068,13 @@ class SwiConsolePrintPropertiesInternalCommand(sublime_plugin.TextCommand):
         v.erase(edit, sublime.Region(0, v.size()))
 
         if file and line:
+            position = get_authored_position_if_necessary(file, int(line), 0)
+            if position:
+                file = position.file_name()
+                line = position.one_based_line() 
+
+            file = file.split('/')[-1]
+
             callback = lambda: open_script_and_focus_line_by_filename(file, line)
             v.print_click(edit, v.size(), "%s:%s" % (file, line), callback)
 
