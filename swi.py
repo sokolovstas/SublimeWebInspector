@@ -394,7 +394,7 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
 
                          position = mapping.get_generated_position(file_name, int(line), column)
                          if position:
-                             location = webkit.Debugger.Location({'lineNumber': position.zero_based_line(), 'scriptId': scriptId})
+                             location = webkit.Debugger.Location({'lineNumber': position.zero_based_line(), 'columnNumber': position.zero_based_column(), 'scriptId': scriptId})
                              channel.send(webkit.Debugger.setBreakpoint(location), self.updateAuthoredDocument)
         else:
             breakpoints = get_breakpoints_by_full_path(file)
@@ -404,7 +404,7 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
                     if 'column' in breakpoints[line] and int(breakpoints[line]['column']) >= 0:
                         column = int(breakpoints[line]['column'])
                     
-                    location = webkit.Debugger.Location({'lineNumber': int(line), 'scriptId': scriptId})
+                    location = webkit.Debugger.Location({'lineNumber': int(line), 'columnNumber': column, 'scriptId': scriptId})
                     channel.send(webkit.Debugger.setBreakpoint(location), self.breakpointAdded)
 
     def updateAuthoredDocument(self, command):
@@ -876,6 +876,7 @@ def change_to_call_frame(callFrame):
 
     scriptId = callFrame.location.scriptId
     line_number = callFrame.location.lineNumber
+    column_number = callFrame.location.columnNumber
     display_line_number = line_number + 1
     file_name = find_script(str(scriptId))
     first_scope = callFrame.scopeChain[0]
