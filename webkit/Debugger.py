@@ -75,9 +75,10 @@ def removeBreakpoint(breakpointId):
 
 
 def setBreakpoint(location, condition=None):
+    """ Line and column are zero based """
     params = {}
     
-    location.lineNumber = location.lineNumber-1
+    location.lineNumber = location.lineNumber
     params['location'] = location()
 
     if condition:
@@ -88,10 +89,11 @@ def setBreakpoint(location, condition=None):
 
 
 def setBreakpoint_parser(result):
+    """ Line and column are zero based """
     data = {}
     data['breakpointId'] = BreakpointId(result['breakpointId'])
     data['actualLocation'] = Location(result['actualLocation'])
-    data['actualLocation'].lineNumber = data['actualLocation'].lineNumber+1
+    data['actualLocation'].lineNumber = data['actualLocation'].lineNumber
     return data
 
 
@@ -113,8 +115,9 @@ def setScriptSource_parser(result):
 
 
 def setBreakpointByUrl(lineNumber, url, urlRegex=None, columnNumber=None, condition=None):
+    """ Line and column are zero based """
     params = {}
-    params['lineNumber'] = lineNumber - 1
+    params['lineNumber'] = lineNumber
     params['url'] = restoreQueryString(url)
 
     if urlRegex:
@@ -135,12 +138,13 @@ def setBreakpointByUrl(lineNumber, url, urlRegex=None, columnNumber=None, condit
 
 
 def setBreakpointByUrl_parser(result):
+    """ Line and column are zero based """
     data = {}
     data['breakpointId'] = BreakpointId(result['breakpointId'])
     data['locations'] = []
     for location in result['locations']:
         location_found = Location(location)
-        location_found.lineNumber = location_found.lineNumber + 1
+        location_found.lineNumber = location_found.lineNumber
         data['locations'].append(location_found)
     return data
 
@@ -234,6 +238,7 @@ class Scope(WebkitObject):
 
 
 class Location(WebkitObject):
+    """ Line and column are zero based """
     def __init__(self, value):
         self.set(value, 'columnNumber')
         self.set(value, 'lineNumber')

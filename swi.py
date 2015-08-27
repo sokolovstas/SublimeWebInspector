@@ -588,8 +588,7 @@ class SwiDebugToggleBreakpointCommand(sublime_plugin.WindowCommand):
 
             file_name = find_script(str(scriptId))
             if projectsystem.DocumentMapping.MappingsManager.is_generated_file(file_name):
-                # Only line number is one-based. TODO: Fix this next
-                position = get_authored_position_if_necessary(file_name, lineNumber - 1, columnNumber)
+                position = get_authored_position_if_necessary(file_name, lineNumber, columnNumber)
 
                 if position:
                     lineNumber = position.zero_based_line()
@@ -1133,8 +1132,7 @@ class SwiConsoleShowStackInternalCommand(sublime_plugin.TextCommand):
         v.insert(edit, v.size(), "\n\n")
 
         for callFrame in callFrames:
-            # Location indexes are zero-based, so add one to them
-            line = str(callFrame.location.lineNumber + 1)
+            line = str(callFrame.location.lineNumber)
             file_name = find_script(str(callFrame.location.scriptId))
 
             if file_name:

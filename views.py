@@ -70,7 +70,8 @@ class SwiDebugView(object):
         return self.view.rowcol(tp)
 
     def lines(self, data=None):
-        """ Takes a list of line numbers, regions, or else uses the selection.
+        """ Takes a list of line numbers (zero based), 
+            regions, or else uses the selection.
             Returns regions, each covering one complete line, 
             representing the lines included in the supplied input.
         """ 
@@ -83,7 +84,7 @@ class SwiDebugView(object):
             regions = []
             for item in data:
                 if type(item) == int or item.isdigit():
-                    regions.append(self.view.line(self.view.text_point(int(item) - 1, 0)))
+                    regions.append(self.view.line(self.view.text_point(int(item), 0)))
                 else:
                     regions.append(item)
 
@@ -92,12 +93,12 @@ class SwiDebugView(object):
         return [self.view.line(line) for line in lines]
 
     def rows(self, lines):
-        """ Takes one or more lines and returns the 1-based (?)
+        """ Takes one or more lines and returns the 0-based
             line and column of the first character in the line.
         """
         if not type(lines) == list:
             lines = [lines]
-        return [self.view.rowcol(line.begin())[0] + 1 for line in lines]
+        return [self.view.rowcol(line.begin())[0] for line in lines]
 
     def print_click(self, edit, position, text, callback, *args):
         """ Inserts the specified text and creates a clickable "button"
