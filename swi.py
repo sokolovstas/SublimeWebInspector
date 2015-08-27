@@ -876,31 +876,34 @@ def change_to_call_frame(callFrame):
 
     scriptId = callFrame.location.scriptId
     line_number = callFrame.location.lineNumber
-    display_line_number = line_number + 1
+    column_number = callFrame.location.columnNumber
     file_name = find_script(str(scriptId))
     first_scope = callFrame.scopeChain[0]
 
-    params = {'objectId': first_scope.object.objectId, 'name': "%s:(%s, %s) (%s)" % (file_name, line_number, callFrame.location.columnNumber, first_scope.type)}
-    channel.send(webkit.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, params)
-
-    position = get_authored_position_if_necessary(file_name, callFrame.location.lineNumber, callFrame.location.columnNumber)
+    position = get_authored_position_if_necessary(file_name, line_number, column_number)
     if position:
         file_name = position.file_name()
-        display_line_number = position.zero_based_line()
+        line_number = position.zero_based_line() 
+        column_number = position.zero_based_column()
 
     global current_call_frame
     current_call_frame = callFrame.callFrameId
 
     global current_call_frame_position
+    display_line_number = line_number + 1
     current_call_frame_position = "%s:%s" % (file_name, display_line_number)
 
     global current_file
     current_file = file_name
 
     global current_line
-    current_line = display_line_number
+    current_line = line_number
 
-    open_script_and_focus_line_by_filename(file_name, display_line_number)
+    open_script_and_focus_line_by_filename(file_name, line_number)
+
+    params = {'objectId': first_scope.object.objectId, 'name': "%s:(%s, %s) (%s)" % (file_name, line_number, column_number, first_scope.type)}
+    channel.send(webkit.Runtime.getProperties(first_scope.object.objectId, True), console_add_properties, params)
+
 
 def console_repeat_message(count):
     v = views.find_or_create_view('console')
@@ -1061,12 +1064,13 @@ class SwiConsolePrintPropertiesInternalCommand(sublime_plugin.TextCommand):
             m = p.search(name)
             if m:
                 file = m.group('file')
-                line = m.group('line')
-                column = m.group('column')
+                line = int(m.group('line'))
+                column = int(m.group('column'))
                 name = m.group('remainder')
             else:
                 file = ""
-                line = ""
+                line = 0
+                column = 0
 
         if 'prev' in command.options:
             prev = command.options['prev'] + ' -> ' + name
@@ -1080,11 +1084,13 @@ class SwiConsolePrintPropertiesInternalCommand(sublime_plugin.TextCommand):
             if position:
                 file = position.file_name()
                 line = position.zero_based_line() 
+                column = position.zero_based_column()
 
             file = file.split('/')[-1]
 
             callback = lambda: open_script_and_focus_line_by_filename(file, line)
-            v.print_click(edit, v.size(), "%s:%s" % (file, line), callback)
+            display_line = line + 1
+            v.print_click(edit, v.size(), "%s:%s" % (file, display_line), callback)
 
         v.insert(edit, v.size(), prev)
 
@@ -1094,7 +1100,8 @@ class SwiConsolePrintPropertiesInternalCommand(sublime_plugin.TextCommand):
             v.insert(edit, v.size(), prop.name + ': ')
             if (prop.value):
                 if prop.value.type == 'object':
-                    v.print_click(edit, v.size(), str(prop.value) + '\n', channel.send, webkit.Runtime.getProperties(prop.value.objectId, True), console_add_properties, {'objectId': prop.value.objectId, 'file': file, 'line': line, 'name': prop.name, 'prev': prev})
+                    params = {'objectId': prop.value.objectId, 'file': file, 'line': line, 'name': prop.name, 'prev': prev}
+                    v.print_click(edit, v.size(), str(prop.value) + '\n', channel.send, webkit.Runtime.getProperties(prop.value.objectId, True), console_add_properties, params)
                 else:
                     v.insert(edit, v.size(), str(prop.value) + '\n')
             else:
@@ -1132,30 +1139,35 @@ class SwiConsoleShowStackInternalCommand(sublime_plugin.TextCommand):
         v.insert(edit, v.size(), "\n\n")
 
         for callFrame in callFrames:
-            line = str(callFrame.location.lineNumber)
+            line = callFrame.location.lineNumber
+            column = callFrame.location.columnNumber
             file_name = find_script(str(callFrame.location.scriptId))
 
             if file_name:
-                position = get_authored_position_if_necessary(file_name, callFrame.location.lineNumber, callFrame.location.columnNumber)
+                position = get_authored_position_if_necessary(file_name, line, column)
                 if position:
                     file_name = position.file_name()
                     line = position.zero_based_line() 
+                    column = position.zero_based_column()
 
                 file_name = file_name.split('/')[-1]
             else:
                 file_name = '-'
 
+            display_line_number = line + 1
+
             if file_name != '-':
-                v.print_click(edit, v.size(),  "%s:%s" % (file_name, line), change_to_call_frame, callFrame)
+                v.print_click(edit, v.size(),  "%s:%s" % (file_name, display_line_number), change_to_call_frame, callFrame)
             else:
-                v.insert(edit, v.size(), "%s:%s" % (file_name, line))
+                v.insert(edit, v.size(), "%s:%s" % (file_name, display_line_number))
 
             v.insert(edit, v.size(), " %s\n" % (callFrame.functionName))
 
             for scope in callFrame.scopeChain:
                 v.insert(edit, v.size(), "\t")
                 if scope.object.type == 'object':
-                    v.print_click(edit, v.size(), "%s\n" % (scope.type), channel.send, webkit.Runtime.getProperties(scope.object.objectId, True), console_add_properties, {'objectId': scope.object.objectId, 'name': "%s:%s (%s)" % (file_name, line, scope.type)})
+                    params = {'objectId': scope.object.objectId, 'name': "%s:(%s, %s) (%s)" % (file_name, line, column, scope.type)}
+                    v.print_click(edit, v.size(), "%s\n" % (scope.type), channel.send, webkit.Runtime.getProperties(scope.object.objectId, True), console_add_properties, params)
                 else:
                     v.insert(edit, v.size(), "%s\n" % (scope.type))
 
@@ -1333,7 +1345,8 @@ def open_script_and_focus_line_by_filename(file_name, line_number):
         do_when(lambda: not v.is_loading(), lambda: open_script_and_focus_line_callback(v, line_number))
 
 def open_script_and_focus_line_callback(v, line_number):
-    v.run_command("goto_line", {"line": line_number})
+    goto_line_number = line_number + 1 # goto_line is 1-based
+    v.run_command("goto_line", {"line": goto_line_number}) 
     update_overlays()
 
 def set_selection(view, start_line, start_column, end_line, end_column):
