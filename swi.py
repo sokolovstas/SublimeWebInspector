@@ -388,15 +388,22 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
                  breakpoints = get_breakpoints_by_full_path(file_name)
                  if breakpoints:
                      for line in list(breakpoints.keys()):
-                         if breakpoints[line]['column'] and int(breakpoints[line]['column']) >= 0:
-                             position = mapping.get_generated_position(file_name, int(line), int(breakpoints[line]['column']))
-                             if position:
-                                location = webkit.Debugger.Location({'lineNumber': position.zero_based_line(), 'scriptId': scriptId})
-                                channel.send(webkit.Debugger.setBreakpoint(location), self.updateAuthoredDocument)
+                         column = 0
+                         if 'column' in breakpoints[line] and int(breakpoints[line]['column']) >= 0:
+                             column = int(breakpoints[line]['column'])
+
+                         position = mapping.get_generated_position(file_name, int(line), column)
+                         if position:
+                             location = webkit.Debugger.Location({'lineNumber': position.zero_based_line(), 'scriptId': scriptId})
+                             channel.send(webkit.Debugger.setBreakpoint(location), self.updateAuthoredDocument)
         else:
             breakpoints = get_breakpoints_by_full_path(file)
             if breakpoints:
                 for line in list(breakpoints.keys()):
+                    column = 0
+                    if 'column' in breakpoints[line] and int(breakpoints[line]['column']) >= 0:
+                        column = int(breakpoints[line]['column'])
+                    
                     location = webkit.Debugger.Location({'lineNumber': int(line), 'scriptId': scriptId})
                     channel.send(webkit.Debugger.setBreakpoint(location), self.breakpointAdded)
 
