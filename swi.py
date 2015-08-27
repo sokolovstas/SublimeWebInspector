@@ -394,8 +394,9 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
 
                          position = mapping.get_generated_position(file_name, int(line), column)
                          if position:
-                             location = webkit.Debugger.Location({'lineNumber': position.zero_based_line(), 'scriptId': scriptId})
-                             channel.send(webkit.Debugger.setBreakpoint(location), self.updateAuthoredDocument)
+                             location = webkit.Debugger.Location({'lineNumber': position.zero_based_line(), 'columnNumber': position.zero_based_column(), 'scriptId': scriptId})
+                             params = {'authoredLocation': { 'lineNumber': line, 'columnNumber': column, 'file': file_name }}
+                             channel.send(webkit.Debugger.setBreakpoint(location), self.breakpointAdded, params)
         else:
             breakpoints = get_breakpoints_by_full_path(file)
             if breakpoints:
@@ -404,7 +405,7 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
                     if 'column' in breakpoints[line] and int(breakpoints[line]['column']) >= 0:
                         column = int(breakpoints[line]['column'])
                     
-                    location = webkit.Debugger.Location({'lineNumber': int(line), 'scriptId': scriptId})
+                    location = webkit.Debugger.Location({'lineNumber': int(line), 'columnNumber': int(column), 'scriptId': scriptId})
                     channel.send(webkit.Debugger.setBreakpoint(location), self.breakpointAdded)
 
     def updateAuthoredDocument(self, command):
@@ -419,25 +420,46 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
 
         breakpointId = command.data['breakpointId']
         scriptId = command.data['actualLocation'].scriptId
-        lineNumber = command.data['actualLocation'].lineNumber
-        try:
-            breakpoint = get_breakpoints_by_scriptId(str(scriptId))[str(lineNumber)]
-            breakpoint['status'] = 'enabled'
-            breakpoint['breakpointId'] = str(breakpointId)
-        except:
-            pass
+        file = find_script(str(scriptId))
 
-        try:
-            breaks = get_breakpoints_by_scriptId(str(scriptId))
-            lineNumber = str(lineNumber)
-            lineNumberSend = str(command.params['location']['lineNumber'])
-            if lineNumberSend in breaks and lineNumber != lineNumberSend:
-                breaks[lineNumber] = breaks[lineNumberSend].copy()
-                del breaks[lineNumberSend]
-            breaks[lineNumber]['status'] = 'enabled'
-            breaks[lineNumber]['breakpointId'] = str(breakpointId)
-        except:
-            pass
+        lineNumberActual = command.data['actualLocation'].lineNumber
+        columnNumberActual = command.data['actualLocation'].columnNumber
+
+        # we persist in terms of the authored file if any, so translate
+        positionActual = get_authored_position_if_necessary(file, lineNumberActual, columnNumberActual)
+        if positionActual:
+            file = positionActual.file_name()
+            lineNumberActual = str(positionActual.zero_based_line())
+            columnNumberActual = str(positionActual.zero_based_column())
+
+        # the breakpoint might have been set before debugging starts
+        # in that case it might be stored under a different line number
+        # to the true actual number we get back. check both.
+
+        lineNumberSent = command.params['location']['lineNumber']
+        columnNumberSent = command.params['location']['columnNumber']
+
+        # again, prefer the authored location.
+        # we could use the source maps again to get it, but those don't
+        # always round trip to the original location. instead, pass them through
+        if 'authoredLocation' in command.options:
+            assert(file == command.options['authoredLocation']['file'])
+            lineNumberSent = command.options['authoredLocation']['lineNumber']
+            columnNumberSent = command.options['authoredLocation']['columnNumber']
+
+        breakpoints = get_breakpoints_by_full_path(file)
+
+        # delete anything persisted under the original line number and
+        # move it to the correct line number
+        if lineNumberSent != lineNumberActual:
+            if lineNumberSent in breakpoints:
+                breakpoints[lineNumberActual] = breakpoints[lineNumberSent].copy()
+                del breakpoints[lineNumberSent]
+
+        # finish updating the persisted breakpoint
+        breakpoints[lineNumberActual]['status'] = 'enabled'
+        breakpoints[lineNumberActual]['breakpointId'] = str(breakpointId)
+
         save_breaks()
         update_overlays()
 
