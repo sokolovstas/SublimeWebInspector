@@ -391,7 +391,7 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
                          if breakpoints[line]['column'] and int(breakpoints[line]['column']) >= 0:
                              position = mapping.get_generated_position(file_name, int(line), int(breakpoints[line]['column']))
                              if position:
-                                location = webkit.Debugger.Location({'lineNumber': position.one_based_line(), 'scriptId': scriptId})
+                                location = webkit.Debugger.Location({'lineNumber': position.zero_based_line(), 'scriptId': scriptId})
                                 channel.send(webkit.Debugger.setBreakpoint(location), self.updateAuthoredDocument)
         else:
             breakpoints = get_breakpoints_by_full_path(file)
@@ -552,7 +552,7 @@ class SwiDebugToggleBreakpointCommand(sublime_plugin.WindowCommand):
         
                     position = mapping.get_generated_position(view_name, start[0], start[1])
                     scriptUrl = find_script_url(position.file_name())
-                    row = str(position.one_based_line())
+                    row = str(position.zero_based_line())
                     scriptUrl = find_script_url(position.file_name())
 
                 if not scriptUrl:
@@ -585,7 +585,7 @@ class SwiDebugToggleBreakpointCommand(sublime_plugin.WindowCommand):
                 position = get_authored_position_if_necessary(file_name, lineNumber - 1, columnNumber)
 
                 if position:
-                    lineNumber = position.one_based_line()
+                    lineNumber = position.zero_based_line()
                     columnNumber = position.zero_based_column()
                     file_name = position.file_name()
                     init_breakpoint_for_file(file_name)
@@ -880,7 +880,7 @@ def change_to_call_frame(callFrame):
     position = get_authored_position_if_necessary(file_name, callFrame.location.lineNumber, callFrame.location.columnNumber)
     if position:
         file_name = position.file_name()
-        display_line_number = position.one_based_line()
+        display_line_number = position.zero_based_line()
 
     global current_call_frame
     current_call_frame = callFrame.callFrameId
@@ -1073,7 +1073,7 @@ class SwiConsolePrintPropertiesInternalCommand(sublime_plugin.TextCommand):
             position = get_authored_position_if_necessary(file, int(line), int(column))
             if position:
                 file = position.file_name()
-                line = position.one_based_line() 
+                line = position.zero_based_line() 
 
             file = file.split('/')[-1]
 
@@ -1134,7 +1134,7 @@ class SwiConsoleShowStackInternalCommand(sublime_plugin.TextCommand):
                 position = get_authored_position_if_necessary(file_name, callFrame.location.lineNumber, callFrame.location.columnNumber)
                 if position:
                     file_name = position.file_name()
-                    line = position.one_based_line() 
+                    line = position.zero_based_line() 
 
                 file_name = file_name.split('/')[-1]
             else:

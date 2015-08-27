@@ -41,12 +41,6 @@ class PositionTests(unittest.TestCase):
         self.assertEqual(position.zero_based_line(), 1)
         self.assertEqual(position.zero_based_column(), 1)
 
-    def test_one_based_position(self):
-        position = DocumentMapping.Position("app.js", 1, 1)
-        self.assertEqual(position.file_name(), "app.js")
-        self.assertEqual(position.one_based_line(), 2)
-        self.assertEqual(position.one_based_column(), 2)
-
 class MappingInfoTests(unittest.TestCase):
     def test_invalid_generated_file_does_not_throw(self):
         mapping = DocumentMapping.MappingInfo("foobar.js")

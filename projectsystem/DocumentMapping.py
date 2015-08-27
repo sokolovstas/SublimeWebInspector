@@ -1,6 +1,10 @@
 from projectsystem import Sourcemap
 
 class Position:
+    """ All lines and columns in Sublime, in source maps,
+        and in the WebKit protocol are explicitly specified to be
+        zero-based
+    """
     def __init__(self, file_name, line, column):
         if (line < 0 or column < 0):
              raise ValueError("Invalid arguments")
@@ -9,12 +13,6 @@ class Position:
         self.__file_name = file_name
         self.__line = line
         self.__column = column
-
-    def one_based_line(self):
-        return self.__line + 1
-
-    def one_based_column(self):
-        return self.__column + 1
 
     def zero_based_line(self):
         return self.__line
