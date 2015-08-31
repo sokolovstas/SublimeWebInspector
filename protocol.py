@@ -47,7 +47,7 @@ class Protocol(object):
         command.options = options
         self.commands[command.id] = command
         self.next_id += 1
-        if utils.get_setting('debug_mode'):
+        if utils.get_setting('ws_debug_mode'):
             print ('SWI: ->> ' + json.dumps(command.request, sort_keys=True, indent=4, separators=(',', ': ')))
         self.socket.send(json.dumps(command.request))
 
@@ -65,7 +65,7 @@ class Protocol(object):
             Parse it and call matching callback.
         """
         parsed = json.loads(message)
-        if utils.get_setting('debug_mode'):
+        if utils.get_setting('ws_debug_mode'):
             print ('SWI: <<- ' + json.dumps(parsed, sort_keys=True, indent=4, separators=(',', ': ')))
         if 'method' in parsed:
             if parsed['method'] in self.notifications:

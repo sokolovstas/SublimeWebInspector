@@ -1,20 +1,30 @@
 import json
 import os
+import logging
 from projectsystem import VLQDecoder
+
+logger = logging.getLogger("SWI")
 
 def get_sourcemap_file(file_name):
     sourcemap_prefix = "//# sourceMappingURL="
     map_file = ""
+
+    logger.info('    Looking for source map in %s' % (file_name))
+
     try:
-        with open(file_name, "r") as f:
+        with open(file_name, "r", encoding="utf8") as f:
             # Read the last line of the file containing sourcemap information
             sourcemap_info = f.readlines()[-1]
-            if (sourcemap_info and len(sourcemap_info) > 0 and sourcemap_info.index(sourcemap_prefix) is 0):
-                map_file = sourcemap_info[len(sourcemap_prefix):].strip()
-                map_file = os.path.dirname(file_name) + os.path.sep + map_file
+            if sourcemap_info and len(sourcemap_info) > 0:
+                sourcemap_info.strip()
+                index = sourcemap_info.find(sourcemap_prefix)
+                if index == 0:
+                    map_file = sourcemap_info[len(sourcemap_prefix):]
+                    map_file = os.path.dirname(file_name) + os.path.sep + map_file
+                    logger.info('    Found sourcemap comment %s' % (sourcemap_info))
             f.close()
     except Exception as e:
-        print('Could not read %s: %s' % (file_name, str(e)))
+        logger.info('    Could not read %s for source map info: %s' % (file_name, str(e)))
         pass
 
     return map_file
@@ -22,9 +32,14 @@ def get_sourcemap_file(file_name):
 
 class ParsedSourceMap:
     def __init__(self, file_name):
+        self.authored_sources = None
+        self.line_mappings = None
+        
+        logger.info('    Reading source map %s' % (file_name))
+
         try:
             self.content = None
-            with open(file_name, "r") as f:
+            with open(file_name, "r", encoding="utf8") as f:
                 self.content = json.loads(f.read())
                 f.close()
     
@@ -34,7 +49,7 @@ class ParsedSourceMap:
                 self.authored_sources = self.content["sources"]
                 self.line_mappings = SourceMapParser.calculate_line_mappings(self.content)
         except Exception as e:
-            print('Could not read %s: %s' % (file_name, str(e)))
+            logger.info('    Could not read source map %s: %s' % (file_name, str(e)))
             pass
 
     def is_valid(self):

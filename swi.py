@@ -13,6 +13,7 @@ import time
 import sys
 import imp
 import re
+import logging
 
 swi_folder = os.path.dirname(os.path.realpath(__file__))
 if not swi_folder in sys.path:
@@ -56,7 +57,14 @@ breakpoint_active_icon = 'Packages/Web Inspector/icons/breakpoint_active.png'
 breakpoint_inactive_icon = 'Packages/Web Inspector/icons/breakpoint_inactive.png'
 breakpoint_current_icon = 'Packages/Web Inspector/icons/breakpoint_current.png'
 
+logger = logging.getLogger("SWI")
+logger.propagate = False
+
 def plugin_loaded():
+
+    if not logger.handlers and utils.get_setting('debug_mode'):
+        logger.addHandler(logging.StreamHandler())
+        logger.setLevel(logging.INFO)
 
     close_all_our_windows()
     clear_all_views()
@@ -281,6 +289,8 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
             file_name = ''
             script = get_script(data['url'])
 
+            logger.info('====Notified of url %s====' % url)
+
             if script:
                 if int(scriptId) > int(script['scriptId']):
                     script['scriptId'] = str(scriptId)
@@ -296,22 +306,30 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
                             # eg., folder is c:\site and url is http://localhost/app.js
                             # glob for c:\site\app.js (primary) and c:\site\*\app.js (fallback only - there may be a c:\site\foo\app.js)
                             try:
-                                files =  glob.glob(folder + "\\" + "\\".join(url_parts)) + glob.glob(folder + "\\*\\" + "\\".join(url_parts))
+                                glob1 = folder + "\\" + "\\".join(url_parts)
+                                glob2 = folder + "\\*\\" + "\\".join(url_parts)
+                                logger.info('    Glob for files at %s and %s' % (glob1, glob2))
+                                files =  glob.glob(glob1) + glob.glob(glob2)
                             except:
                                 pass
                         else:
-                            files = glob.glob(folder + "/" + "/".join(url_parts)) + glob.glob(folder + "/*/" + "/".join(url_parts))
+                            glob1 = folder + "/" + "/".join(url_parts)
+                            glob2 = folder + "/*/" + "/".join(url_parts)
+                            logger.info('    Glob for files at %s and %s' % (glob1, glob2))
+                            files = glob.glob(glob1) + glob.glob(glob2)
 
                         if len(files) > 0 and files[0] != '':
                             file_name = files[0]
 
                             if (file_name):
+                                logger.info('    Matched %s to %s' % (url, file_name))
                                 # Create a file mapping to look for mapped source code 
                                 projectsystem.DocumentMapping.MappingsManager.create_mapping(file_name)
 
-                            file_to_scriptId.append({'file': file_name, 'scriptId': str(scriptId), 'url': data['url']})
+                                file_to_scriptId.append({'file': file_name, 'scriptId': str(scriptId), 'url': data['url']})
                             # don't try to match shorter fragments, we already found a match
                             url_parts = []
+
                     if len(url_parts) > 0:
                         del url_parts[0]
 

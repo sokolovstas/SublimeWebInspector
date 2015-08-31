@@ -1,4 +1,8 @@
+import os
+import logging
 from projectsystem import Sourcemap
+
+logger = logging.getLogger("SWI")
 
 class Position:
     """ All lines and columns in Sublime, in source maps,
@@ -89,6 +93,7 @@ class MappingInfo:
     line_mappings = []
  
     def __init__(self, generated_file):
+
         source_map_file = Sourcemap.get_sourcemap_file(generated_file)
         if not len(source_map_file):
             return
@@ -97,8 +102,13 @@ class MappingInfo:
         if not self.parsed_source_map.is_valid():
             return
 
+        logger.info('    Source map is valid')
+
         self.generated_file = generated_file
         self.authored_sources = self.parsed_source_map.get_authored_sources_path()
+
+        [logger.info('    Found authored source %s which exists? %s' % (s, str(os.path.isfile(s)))) for s in self.authored_sources]
+
         self.line_mappings = self.parsed_source_map.line_mappings
 
     def is_valid(self):
