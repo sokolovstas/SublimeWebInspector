@@ -45,29 +45,33 @@ Please help us prioritize. We would welcome collaboration. You can add feature r
 If Chrome was already open when Sublime launches it with the debugger flag, Chrome won't open the port, so the debugger can't attach. Close all instances of Chrome and try again. 
  
 ### Controlling debugger
-- Web Inspector>Pause execution (or F8 to toggle)
-- Web Inspector>Resume execution (or F8 or F5)
-- Web Inspector>Step into (or F11)
-- Web Inspector>Step out (or Shift+F11)
-- Web Inspector>Step over (or F10)
-- Web Inspector>Evaluate selection (if paused on call frame)
+CTRL+SHIFT+R (⌘ + SHIFT + R) and:
+- Pause execution (or F8 to toggle)
+- Resume execution (or F8 or F5)
+- Step into (or F11)
+- Step out (or Shift+F11)
+- Step over (or F10)
+- Evaluate selection (if paused on call frame)
 
 ### Breakpoints
-- Web Inspector>Toggle breakpoints
+CTRL+SHIFT+R (⌘ + SHIFT + R) and Toggle breakpoints
+
+Breakpoints toggled when not debugging should bind when you start debugging. Breakpoints are persisted between sessions in your user settings.
 
 ### Page
-- Web Inspector>Reload connected page
+CTRL+SHIFT+R (⌘ + SHIFT + R) and Reload page
 
 ### Start-stop
-- Web Inspector>Start debugging (.. and then choose your page)
-- Web Inspector>Stop debugging
+CTRL+SHIFT+R (⌘ + SHIFT + R) and:
+- Start debugging (may offer a choice of page)
+- Stop debugging
 
   You may stop and start debugging without restarting your browser.
 
-#### If it won't bind breakpoints
+#### If Web Inspector won't bind breakpoints
 Currently Web Inspector requires that you have access to the Javascript file -- it can't yet retrieve the Javascript from the browser, as browser tools do. Just opening the file directly isn't sufficient either. To help it find the JavaScript in Sublime, open the folder at the root of your local copy of the website. Web Inspector will then match up files in that folder with URLs the browser tells it about. Sometimes it is helpful to press CTRL+SHIFT+R and choose "Dump Mappings" to see if it did this successfully. 
 
-#### If it can't resolve original sources
+#### If Web Inspector can't resolve original sources
 To debug original sources, Web Inspector must find a 
 
          //# sourceMappingURL=
