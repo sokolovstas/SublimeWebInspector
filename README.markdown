@@ -4,7 +4,7 @@ __Adds a basic Javascript Console and Debugger to Sublime Text.__
 
 This means you can stay in Sublime, in your code, while debugging your Javascript on the page.
 
-!(overview.jpg)
+!(overview.jpg?raw=true)
 
 Because of the nature of Sublime, all information is presented as text, however this turns out to work well enough. You can click on objects from console or stack trace to evaluate them. You can also click on a file name to goto the file and line. All clickable zones have borders to appear like buttons. Because it supports Source Maps, you can step in your originally authored code, such as Coffeescript or Typescript.
 
