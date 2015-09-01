@@ -344,7 +344,6 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
 
         views.clear_view('stack')
         views.clear_view('scope')
-        views.clear_view('styles')
 
         protocol.Channel.channel.send(webkit.Debugger.setOverlayMessage())
 
