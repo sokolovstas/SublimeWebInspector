@@ -906,10 +906,13 @@ def update_stack(data):
 
     window.set_layout(utils.get_setting('stack_layout'))
 
-    console_show_stack(data['callFrames'])
+    callFrames = data['callFrames']
 
-    callFrame = data['callFrames'][0];
-    change_to_call_frame(callFrame)
+    console_show_stack(callFrames)
+    
+    if len(callFrames) > 0: # Chrome can return none
+        callFrame = callFrames[0]
+        change_to_call_frame(callFrame)
 
 
 def change_to_call_frame(callFrame):
