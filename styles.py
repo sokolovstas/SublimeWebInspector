@@ -136,6 +136,7 @@ class SwiStylesWindowInternalCommand(sublime_plugin.TextCommand):
 
     def run(self, edit):
         v = views.wrap_view(self.view)
+        v.insert(edit, v.size(), "\n")
         v.print_click(edit, v.size(), "  Inspect Element  ", self.view.window().run_command, 'swi_styles_inspect_element')
 
 
