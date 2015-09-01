@@ -38,7 +38,7 @@ class ParsedSourceMap:
             pass
 
     def is_valid(self):
-        return not self.content is None
+        return not self.content is None and not self.authored_sources is None and not self.line_mappings is None
 
     def get_authored_sources_path(self):
         return [os.path.abspath(self.root_path + os.path.sep + x).lower() for x in self.authored_sources] if self.is_valid() else []

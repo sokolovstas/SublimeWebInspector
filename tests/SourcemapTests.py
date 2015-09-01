@@ -23,8 +23,8 @@ class SourceMapParserTests(unittest.TestCase):
         file_name = Sourcemap.get_sourcemap_file("NotExistentFile")
         self.assertFalse(file_name)
 
-    def test_invalid_file_does_not_throw(self):
-        file_name = Sourcemap.get_sourcemap_file("app.js") # exists, but not valid map file
+    def test_valid_json_invalid_map_does_not_throw(self):
+        file_name = Sourcemap.get_sourcemap_file("randomjson.js") # exists, but not valid map file
         self.assertFalse(file_name)
 
     def test_version_check(self):
@@ -42,19 +42,26 @@ class SourceMapParserTests(unittest.TestCase):
 class ParsedSourceMapTests(unittest.TestCase):
     def test_invalid_file_does_not_throw(self):
         parsed_map = Sourcemap.ParsedSourceMap("")
+        self.assertFalse(parsed_map.is_valid())
         self.assertFalse(parsed_map.content)
+
+    def test_valid_json_invalid_map_does_not_throw(self):
+        parsed_map = Sourcemap.ParsedSourceMap(assets_path + "randomjson.js.map") # exists, but not valid map file
+        self.assertFalse(parsed_map.is_valid())
 
     def test_invalid_file_returns_empty_authored_list(self):
         parsed_map = Sourcemap.ParsedSourceMap("")
+        self.assertFalse(parsed_map.is_valid())
         self.assertEqual(len(parsed_map.get_authored_sources_path()), 0)
 
     def test_valid_map_file_parsing(self):
         parsed_map = Sourcemap.ParsedSourceMap(assets_path + "app.js.map")  
+        self.assertTrue(parsed_map.is_valid())
         self.assertTrue(parsed_map.content)
 
     def test_valid_map_authored_list(self):
         parsed_map = Sourcemap.ParsedSourceMap(assets_path + "app.js.map")
-
+        self.assertTrue(parsed_map.is_valid())
         self.assertEqual(parsed_map.version, 3)
         self.assertEqual(len(parsed_map.get_authored_sources_path()), 1)
         self.assertEqual(parsed_map.get_authored_sources_path(), [assets_path + "app.ts"])

@@ -20,3 +20,5 @@ registerAndRunTests(SourcemapTests.LineMappingsTests)
 registerAndRunTests(DocumentMappingTests.PositionTests)
 registerAndRunTests(DocumentMappingTests.MappingInfoTests)
 registerAndRunTests(DocumentMappingTests.MappingsManagerTests)
+
+print("Done tests...")
