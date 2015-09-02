@@ -9,8 +9,6 @@ def get_sourcemap_file(file_name):
     sourcemap_prefix = "//# sourceMappingURL="
     map_file = ""
 
-    logger.info('    Looking for source map in %s' % (file_name))
-
     try:
         with open(file_name, "r", encoding="utf8") as f:
             # Read the last line of the file containing sourcemap information
@@ -21,10 +19,10 @@ def get_sourcemap_file(file_name):
                 if index == 0:
                     map_file = sourcemap_info[len(sourcemap_prefix):]
                     map_file = os.path.dirname(file_name) + os.path.sep + map_file
-                    logger.info('    Found sourcemap comment %s' % (sourcemap_info))
+                    logger.info('    Found %s' % (sourcemap_info))
             f.close()
     except Exception as e:
-        logger.info('    Could not read %s for source map info: %s' % (file_name, str(e)))
+        logger.info('    Could not read %s for sourceMappingURL: %s' % (file_name, str(e)))
         pass
 
     return map_file
