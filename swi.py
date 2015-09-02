@@ -307,22 +307,25 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
                             # glob for c:\site\app.js (primary) and c:\site\*\app.js (fallback only - there may be a c:\site\foo\app.js)
                             try:
                                 glob1 = folder + "\\" + "\\".join(url_parts)
-                                glob2 = folder + "\\*\\" + "\\".join(url_parts)
-                                logger.info('    Glob for files at %s and %s' % (glob1, glob2))
-                                files =  glob.glob(glob1) + glob.glob(glob2)
+                                if os.path.exists(glob1) and os.path.isfile(glob1): # literal match (url is directly relative to project folder root)
+                                    files = [ glob1 ]
+                                else:
+                                    glob2 = folder + "\\*\\" + "\\".join(url_parts)
+                                    logger.info('    Glob in %s and %s' % (glob1, glob2))
+                                    files =  glob.glob(glob1) + glob.glob(glob2)
                             except:
                                 pass
                         else:
                             glob1 = folder + "/" + "/".join(url_parts)
                             glob2 = folder + "/*/" + "/".join(url_parts)
-                            logger.info('    Glob for files at %s and %s' % (glob1, glob2))
+                            logger.info('    Glob in %s and %s' % (glob1, glob2))
                             files = glob.glob(glob1) + glob.glob(glob2)
 
                         if len(files) > 0 and files[0] != '':
                             file_name = files[0]
 
                             if (file_name):
-                                logger.info('    Matched %s to %s' % (url, file_name))
+                                logger.info('    Matched %s' % file_name)
                                 # Create a file mapping to look for mapped source code 
                                 projectsystem.DocumentMapping.MappingsManager.create_mapping(file_name)
 
@@ -334,6 +337,9 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
 
                     if len(url_parts) > 0:
                         del url_parts[0]
+
+            if not file_name:
+                logger.info('    Found no local match')
 
             if debugger_enabled and not file_name:
                 self.add_breakpoints_to_file(file_name)
