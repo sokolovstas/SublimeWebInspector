@@ -218,19 +218,29 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
         file_to_scriptId = []
 
         # Look in the folders opened in Sublime first
-        self.project_folders = [s.lower() for s in self.window.folders()]
+        folders = [s.lower() for s in self.window.folders()]
+        [logger.info('Current open folder is %s' % s) for s in folders]
 
         # Then also look at the folders containing currently open files
         for v in window.views():
             file = v.file_name()
             if file and os.path.isfile(file): 
                 dir = os.path.dirname(file).lower()
-                # simple protection against disk root - we're going to recurse below
-                if len(dir) > 3 and not dir in self.project_folders:
-                    self.project_folders.append(dir)
+                logger.info('Currently open file is in folder %s' % dir)
+                folders.append(dir)
 
-        [logger.info('Aware of folder %s' % s) for s in self.project_folders]
+        # Remove redundant folders. Eg., c:\a\b would be redundant if we also have c:\a
+        folders.sort(key=len)  # now c:\a is before (and adjacent to) c:\a\b
+        for i, s in reversed(list(enumerate(folders))):  # go from long to short entries
+            if i - 1 >= 0:
+                if folders[i].find(folders[i-1]) == 0:  # if current contains (or matches) immediately previous
+                    folders[i] = None                   # remove current 
 
+        folders = [s for s in folders if s and len(s) > 3]  # filter out removed entries, and drive roots like "c:\"  (we're going to recurse..)
+
+        [logger.info('Using folder %s' % s) for s in folders]
+
+        self.project_folders = folders
         self.url = url
 
         global channel
