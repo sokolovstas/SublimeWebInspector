@@ -28,4 +28,5 @@ window.onload = function () {
     var greeter = new Clock.App(el);
     greeter.start();
 };
+// Newline after map here to check we strip()
 //# sourceMappingURL=app.js.map

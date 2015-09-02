@@ -17,7 +17,7 @@ def get_sourcemap_file(file_name):
                 sourcemap_info.strip()
                 index = sourcemap_info.find(sourcemap_prefix)
                 if index == 0:
-                    map_file = sourcemap_info[len(sourcemap_prefix):]
+                    map_file = sourcemap_info[len(sourcemap_prefix):].strip()
                     map_file = os.path.dirname(file_name) + os.path.sep + map_file
                     logger.info('    Found %s' % (sourcemap_info))
             f.close()
