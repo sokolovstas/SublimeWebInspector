@@ -327,8 +327,10 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
                                 projectsystem.DocumentMapping.MappingsManager.create_mapping(file_name)
 
                                 file_to_scriptId.append({'file': file_name, 'scriptId': str(scriptId), 'url': data['url']})
-                            # don't try to match shorter fragments, we already found a match
-                            url_parts = []
+
+                                # don't try to match shorter fragments, we already found a match
+                                url_parts = []
+                                break
 
                     if len(url_parts) > 0:
                         del url_parts[0]
