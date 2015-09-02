@@ -216,7 +216,21 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
         debugger_enabled = False
         global file_to_scriptId
         file_to_scriptId = []
-        self.project_folders = self.window.folders()
+
+        # Look in the folders opened in Sublime first
+        self.project_folders = [s.lower() for s in self.window.folders()]
+
+        # Then also look at the folders containing currently open files
+        for v in window.views():
+            file = v.file_name()
+            if file and os.path.isfile(file): 
+                dir = os.path.dirname(file).lower()
+                # simple protection against disk root - we're going to recurse below
+                if len(dir) > 3 and not dir in self.project_folders:
+                    self.project_folders.append(dir)
+
+        [logger.info('Aware of folder %s' % s) for s in self.project_folders]
+
         self.url = url
 
         global channel
