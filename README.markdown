@@ -71,14 +71,14 @@ CTRL+SHIFT+R (⌘ + SHIFT + R) and:
   You may stop and start debugging without restarting your browser.
 
 #### If Web Inspector won't bind breakpoints
-Currently Web Inspector requires that you have access to the Javascript file -- it can't yet retrieve the Javascript from the browser, as browser tools do. Just opening the file directly isn't sufficient either. To help it find the JavaScript in Sublime, open the folder at the root of your local copy of the website. Web Inspector will then match up files in that folder with URLs the browser tells it about. Sometimes it is helpful to press CTRL+SHIFT+R and choose "Dump Mappings" to see if it did this successfully. 
+Currently Web Inspector requires that you have access to the Javascript file -- it can't yet retrieve the Javascript from the browser, as browser tools do. To find the local file, Web Inspector will recurse within any folders you have opened, and any files you have opened. Web Inspector will then match up files in that folder with URLs the browser tells it about. Sometimes it is helpful to press CTRL+SHIFT+R and choose "Dump Mappings" to see if it did this successfully. Also, try setting "debug_mode": "true" in your web inspector settings, and restarting debugging. This will dump detailed information to the Sublime Console (Ctrl-`) showing where it's looked.
 
 #### If Web Inspector can't resolve original sources
 To debug original sources, Web Inspector must find a 
 
          //# sourceMappingURL=
 
-comment at the end of the JavaScript file. That comment must contain a relative path to a local source map file. The source map must in turn have path(s) to original source files. Check for error messages in the Sublime console. Or, disable source maps from the menu.
+comment at the end of the JavaScript file. That comment must contain a relative path to a local source map file. The source map must in turn have path(s) to original source files. As above, set "debug_mode": "true" and restart to get details about the search for source maps and authored files dumped to the Sublime Console (Ctrl-`).  
 
 ## Settings
 You can change layouts for the debugger, color options, and path to Google Chrome in settings. See [list of settings here](https://github.com/sokolovstas/SublimeWebInspector/wiki/User-Settings).
