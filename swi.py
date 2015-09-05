@@ -518,8 +518,10 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
             during debugging
         """
         utils.assert_main_thread()
-        global set_script_source
-        set_script_source = command.data['result']
+        global set_script_source 
+        set_script_source = False
+        if 'result' in command.data:
+            set_script_source = command.data['result']
 
 class SwiDebugPauseResumeCommand(sublime_plugin.WindowCommand):
     def run(self):
