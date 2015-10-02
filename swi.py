@@ -219,14 +219,14 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
 
         # Look in the folders opened in Sublime first
         folders = [s.lower() for s in self.window.folders()]
-        [logger.info('Current open folder is %s' % s) for s in folders]
+        [logger.info('====Currently open folder is %s, will search there' % s) for s in folders]
 
         # Then also look at the folders containing currently open files
         for v in window.views():
             file = v.file_name()
             if file and os.path.isfile(file): 
                 dir = os.path.dirname(file).lower()
-                logger.info('Currently open file is in folder %s' % dir)
+                logger.info('====Currently open file is in folder %s, will search there' % dir)
                 folders.append(dir)
 
         # Remove redundant folders. Eg., c:\a\b would be redundant if we also have c:\a
@@ -238,7 +238,7 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
 
         folders = [s for s in folders if s and len(s) > 3]  # filter out removed entries, and drive roots like "c:\"  (we're going to recurse..)
 
-        [logger.info('Using folder %s' % s) for s in folders]
+        [logger.info('====Using folder %s' % s) for s in folders]
 
         self.project_folders = folders
         self.url = url
