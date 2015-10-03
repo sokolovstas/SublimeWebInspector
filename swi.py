@@ -430,10 +430,17 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
         if not file:
             return
 
+        found_authored_file = False
+
         scriptId = find_script(file)
+
+        # Authored files preferred
         if is_source_map_enabled():
             mapping = projectsystem.DocumentMapping.MappingsManager.get_mapping(file)
             authored_files = mapping.get_authored_files()
+            if authored_files:
+                found_authored_file = True
+
             for file_name in authored_files:
                  breakpoints = get_breakpoints_by_full_path(file_name)
                  if breakpoints:
@@ -447,7 +454,9 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
                              location = webkit.Debugger.Location({'lineNumber': position.zero_based_line(), 'columnNumber': position.zero_based_column(), 'scriptId': scriptId})
                              params = {'authoredLocation': { 'lineNumber': line, 'columnNumber': column, 'file': file_name }}
                              channel.send(webkit.Debugger.setBreakpoint(location), self.breakpointAdded, params)
-        else:
+
+        # Fall back to raw file
+        if not found_authored_file:
             breakpoints = get_breakpoints_by_full_path(file)
             if breakpoints:
                 for line in list(breakpoints.keys()):
