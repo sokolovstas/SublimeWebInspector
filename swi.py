@@ -365,7 +365,7 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
             if not file_name:
                 logger.info('    Found no local match')
 
-            if debugger_enabled and not file_name:
+            if debugger_enabled and file_name:
                 self.add_breakpoints_to_file(file_name)
 
     def paused(self, data, notification):
