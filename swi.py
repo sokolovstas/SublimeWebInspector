@@ -159,16 +159,18 @@ class SwiDebugStartChromeCommand(sublime_plugin.WindowCommand):
         if key == "windows" and (sublime.arch() == "x64" or sublime.executable_path().find('(x86)') >= 0):
             key += "_x64"
 
-        url = utils.get_setting('chrome_url')
-        if url == None:
-            url = ''
+        cmd = [os.getenv('GOOGLE_CHROME_PATH', '') + utils.get_setting('chrome_path')[key], '--remote-debugging-port=' + utils.get_setting('chrome_remote_port')]
 
         profile = utils.get_setting('chrome_profile') or ''
         if profile:
             profile = '--user-data-dir=' + profile
+            cmd.append(profile)
+        
+        url = utils.get_setting('chrome_url') or ''
+        cmd.append(url)        
 
         self.window.run_command('exec', {
-            "cmd": [os.getenv('GOOGLE_CHROME_PATH', '') + utils.get_setting('chrome_path')[key], '--remote-debugging-port=' + utils.get_setting('chrome_remote_port'), profile, url]
+            "cmd": cmd
         })
 
 
