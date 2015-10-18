@@ -6,8 +6,6 @@
         "windows_x64": "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
         "linux": "/usr/bin/google-chrome"
     },
-    // Chrome profile
-    "chrome_profile": "Default",
     // Chrome remote port
     "chrome_remote_port": "9222",
     "breakpoint_scope": "swi.breakpoint",

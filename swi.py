@@ -163,8 +163,12 @@ class SwiDebugStartChromeCommand(sublime_plugin.WindowCommand):
         if url == None:
             url = ''
 
+        profile = utils.get_setting('chrome_profile') or ''
+        if profile:
+            profile = '--user-data-dir=' + profile
+
         self.window.run_command('exec', {
-            "cmd": [os.getenv('GOOGLE_CHROME_PATH', '') + utils.get_setting('chrome_path')[key], '--remote-debugging-port=' + utils.get_setting('chrome_remote_port'), '--profile-directory=' + utils.get_setting('chrome_profile'), url]
+            "cmd": [os.getenv('GOOGLE_CHROME_PATH', '') + utils.get_setting('chrome_path')[key], '--remote-debugging-port=' + utils.get_setting('chrome_remote_port'), profile, url]
         })
 
 
