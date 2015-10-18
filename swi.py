@@ -934,7 +934,8 @@ def update_stack(data):
     if not channel: # race with shutdown
         return
     
-    channel.send(webkit.Debugger.setOverlayMessage('Paused in Sublime Web Inspector'))
+    if utils.get_setting('enable_pause_overlay'):
+        channel.send(webkit.Debugger.setOverlayMessage('Paused in Sublime Web Inspector'))
 
     window.set_layout(utils.get_setting('stack_layout'))
 
