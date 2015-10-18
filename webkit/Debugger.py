@@ -249,8 +249,7 @@ class Location(WebkitObject):
 
     def __call__(self):
         obj = {}
-        if self.columnNumber:
-            obj['columnNumber'] = self.columnNumber
+        obj['columnNumber'] = self.columnNumber
         obj['lineNumber'] = self.lineNumber
         obj['scriptId'] = self.scriptId()
         return obj

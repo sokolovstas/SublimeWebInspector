@@ -163,8 +163,12 @@ class SwiDebugStartChromeCommand(sublime_plugin.WindowCommand):
         if url == None:
             url = ''
 
+        profile = utils.get_setting('chrome_profile') or ''
+        if profile:
+            profile = '--user-data-dir=' + profile
+
         self.window.run_command('exec', {
-            "cmd": [os.getenv('GOOGLE_CHROME_PATH', '') + utils.get_setting('chrome_path')[key], '--remote-debugging-port=' + utils.get_setting('chrome_remote_port'), '--profile-directory=' + utils.get_setting('chrome_profile'), url]
+            "cmd": [os.getenv('GOOGLE_CHROME_PATH', '') + utils.get_setting('chrome_path')[key], '--remote-debugging-port=' + utils.get_setting('chrome_remote_port'), profile, url]
         })
 
 
@@ -219,14 +223,14 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
 
         # Look in the folders opened in Sublime first
         folders = [s.lower() for s in self.window.folders()]
-        [logger.info('Current open folder is %s' % s) for s in folders]
+        [logger.info('====Currently open folder is %s, will search there' % s) for s in folders]
 
         # Then also look at the folders containing currently open files
         for v in window.views():
             file = v.file_name()
             if file and os.path.isfile(file): 
                 dir = os.path.dirname(file).lower()
-                logger.info('Currently open file is in folder %s' % dir)
+                logger.info('====Currently open file is in folder %s, will search there' % dir)
                 folders.append(dir)
 
         # Remove redundant folders. Eg., c:\a\b would be redundant if we also have c:\a
@@ -238,7 +242,7 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
 
         folders = [s for s in folders if s and len(s) > 3]  # filter out removed entries, and drive roots like "c:\"  (we're going to recurse..)
 
-        [logger.info('Using folder %s' % s) for s in folders]
+        [logger.info('====Using folder %s' % s) for s in folders]
 
         self.project_folders = folders
         self.url = url
@@ -365,7 +369,7 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
             if not file_name:
                 logger.info('    Found no local match')
 
-            if debugger_enabled and not file_name:
+            if debugger_enabled and file_name:
                 self.add_breakpoints_to_file(file_name)
 
     def paused(self, data, notification):
@@ -430,10 +434,17 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
         if not file:
             return
 
+        found_authored_file = False
+
         scriptId = find_script(file)
+
+        # Authored files preferred
         if is_source_map_enabled():
             mapping = projectsystem.DocumentMapping.MappingsManager.get_mapping(file)
             authored_files = mapping.get_authored_files()
+            if authored_files:
+                found_authored_file = True
+
             for file_name in authored_files:
                  breakpoints = get_breakpoints_by_full_path(file_name)
                  if breakpoints:
@@ -447,7 +458,9 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
                              location = webkit.Debugger.Location({'lineNumber': position.zero_based_line(), 'columnNumber': position.zero_based_column(), 'scriptId': scriptId})
                              params = {'authoredLocation': { 'lineNumber': line, 'columnNumber': column, 'file': file_name }}
                              channel.send(webkit.Debugger.setBreakpoint(location), self.breakpointAdded, params)
-        else:
+
+        # Fall back to raw file
+        if not found_authored_file:
             breakpoints = get_breakpoints_by_full_path(file)
             if breakpoints:
                 for line in list(breakpoints.keys()):
@@ -472,8 +485,8 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
         scriptId = command.data['actualLocation'].scriptId
         file = find_script(str(scriptId))
 
-        lineNumberActual = command.data['actualLocation'].lineNumber
-        columnNumberActual = command.data['actualLocation'].columnNumber
+        lineNumberActual = str(command.data['actualLocation'].lineNumber)
+        columnNumberActual = str(command.data['actualLocation'].columnNumber)
 
         # we persist in terms of the authored file if any, so translate
         positionActual = get_authored_position_if_necessary(file, lineNumberActual, columnNumberActual)
@@ -486,16 +499,16 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
         # in that case it might be stored under a different line number
         # to the true actual number we get back. check both.
 
-        lineNumberSent = command.params['location']['lineNumber']
-        columnNumberSent = command.params['location']['columnNumber']
+        lineNumberSent = str(command.params['location']['lineNumber'])
+        columnNumberSent = str(command.params['location']['columnNumber'])
 
         # again, prefer the authored location.
         # we could use the source maps again to get it, but those don't
         # always round trip to the original location. instead, pass them through
-        if 'authoredLocation' in command.options:
+        if command.options and 'authoredLocation' in command.options:
             assert(file == command.options['authoredLocation']['file'])
-            lineNumberSent = command.options['authoredLocation']['lineNumber']
-            columnNumberSent = command.options['authoredLocation']['columnNumber']
+            lineNumberSent = str(command.options['authoredLocation']['lineNumber'])
+            columnNumberSent = str(command.options['authoredLocation']['columnNumber'])
 
         breakpoints = get_breakpoints_by_full_path(file)
 
@@ -518,8 +531,10 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
             during debugging
         """
         utils.assert_main_thread()
-        global set_script_source
-        set_script_source = command.data['result']
+        global set_script_source 
+        set_script_source = False
+        if 'result' in command.data:
+            set_script_source = command.data['result']
 
 class SwiDebugPauseResumeCommand(sublime_plugin.WindowCommand):
     def run(self):

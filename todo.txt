@@ -1,0 +1,2 @@
+Somehow map http://localhost/ to index.htm etc. (Heuristic?)
+Filter unknown protocols from URL picker
