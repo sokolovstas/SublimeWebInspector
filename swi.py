@@ -924,10 +924,14 @@ def close_all_our_windows():
 
 def update_stack(data):
 
-    if (not 'callFrames' in data):
-        return;
-
     if not channel: # race with shutdown
+        return
+
+    if (not 'callFrames' in data):
+        return
+
+    callFrames = data['callFrames']
+    if len(callFrames) == 0: # Chrome can return none eg on setScriptSource when not broken
         return
     
     if utils.get_setting('enable_pause_overlay'):
@@ -935,13 +939,9 @@ def update_stack(data):
 
     window.set_layout(utils.get_setting('stack_layout'))
 
-    callFrames = data['callFrames']
-
     console_show_stack(callFrames)
-    
-    if len(callFrames) > 0: # Chrome can return none
-        callFrame = callFrames[0]
-        change_to_call_frame(callFrame)
+
+    change_to_call_frame(callFrames[0])
 
 
 def change_to_call_frame(callFrame):
