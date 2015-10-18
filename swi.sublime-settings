@@ -44,5 +44,7 @@
     // Plugin debug mode
     "debug_mode": false,
     // Breakpoints
-    "breaks": {}
+    "breaks": { },
+    // Show "Paused in Sublime Web Inspector" overlay
+    "enable_pause_overlay":  true
 }

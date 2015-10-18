@@ -627,6 +627,7 @@ class SwiDebugToggleBreakpointCommand(sublime_plugin.WindowCommand):
             if channel:
                 if row in breaks:
                     try:
+                        logger.info('Removing breakpoint in %s at %s' % (view_name, row))
                         channel.send(webkit.Debugger.removeBreakpoint(breaks[row]['breakpointId']))
                     except KeyError:
                         print("SWI: A key error occurred while removing the breakpoint")
@@ -649,8 +650,10 @@ class SwiDebugToggleBreakpointCommand(sublime_plugin.WindowCommand):
                     scriptUrl = find_script_url(view_name)
 
                 if scriptUrl:
+                    logger.info('Setting breakpoint by url for %s at %s' % (scriptUrl, row))
                     channel.send(webkit.Debugger.setBreakpointByUrl(int(row), scriptUrl), self.breakpointAdded, view_name)
             else:
+                logger.info('Pending breakpoint for %s at %s' % (view_name, row))
                 set_breakpoint_by_full_path(view_name, row)
 
         update_overlays()
@@ -684,6 +687,8 @@ class SwiDebugToggleBreakpointCommand(sublime_plugin.WindowCommand):
                 set_breakpoint_by_full_path(file_name, str(lineNumber), -1, 'enabled', breakpointId)
             else:
                 set_breakpoint_by_full_path(file_name, str(lineNumber), columnNumber, 'enabled', breakpointId)
+
+            logger.info('Breakpoint set in %s %s at (%s,%s)' % (scriptId, file_name, lineNumber, columnNumber))
 
         update_overlays()
 
@@ -851,12 +856,6 @@ class EventListener(sublime_plugin.EventListener):
     def reload_styles(self):
         channel.send(webkit.Runtime.evaluate("var files = document.getElementsByTagName('link');var links = [];for (var a = 0, l = files.length; a < l; a++) {var elem = files[a];var rel = elem.rel;if (typeof rel != 'string' || rel.length === 0 || rel === 'stylesheet') {links.push({'elem': elem,'href': elem.getAttribute('href').split('?')[0],'last': false});}}for ( a = 0, l = links.length; a < l; a++) {var link = links[a];link.elem.setAttribute('href', (link.href + '?x=' + Math.random()));}"))
 
-    def reload_set_script_source(self, scriptId, scriptSource):
-        """ Calls update_stack because script can be edited when debugger is paused, and
-            by this means potentially update the callstack.
-        """
-        channel.send(webkit.Debugger.setScriptSource(scriptId, scriptSource), self.update_stack)
-
     def reload_page(self):
         channel.send(webkit.Page.reload(), on_reload)
 
@@ -869,7 +868,10 @@ class EventListener(sublime_plugin.EventListener):
                 scriptId = find_script(v.file_name())
                 if scriptId and set_script_source:
                     scriptSource = v.substr(sublime.Region(0, v.size()))
-                    self.reload_set_script_source(scriptId, scriptSource)
+                    # Editing script can potentially modify the callstack
+                    logger.info('Live updating script source %s %s' % (scriptId, find_script_url(scriptId)))
+                    channel.send(webkit.Debugger.setScriptSource(scriptId, scriptSource), self.update_stack)
+
                 else:
                     sublime.set_timeout(lambda: self.reload_page(), utils.get_setting('reload_timeout'))
             else:
@@ -939,23 +941,24 @@ def close_all_our_windows():
 
 def update_stack(data):
 
-    if (not 'callFrames' in data):
-        return;
-
     if not channel: # race with shutdown
         return
+
+    if (not 'callFrames' in data):
+        return
+
+    callFrames = data['callFrames']
+    if len(callFrames) == 0: # Chrome can return none eg on setScriptSource when not broken
+        return
     
-    channel.send(webkit.Debugger.setOverlayMessage('Paused in Sublime Web Inspector'))
+    if utils.get_setting('enable_pause_overlay'):
+        channel.send(webkit.Debugger.setOverlayMessage('Paused in Sublime Web Inspector'))
 
     window.set_layout(utils.get_setting('stack_layout'))
 
-    callFrames = data['callFrames']
-
     console_show_stack(callFrames)
-    
-    if len(callFrames) > 0: # Chrome can return none
-        callFrame = callFrames[0]
-        change_to_call_frame(callFrame)
+
+    change_to_call_frame(callFrames[0])
 
 
 def change_to_call_frame(callFrame):
