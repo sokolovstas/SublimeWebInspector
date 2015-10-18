@@ -537,6 +537,7 @@ class SwiDebugPauseResumeCommand(sublime_plugin.WindowCommand):
             channel.send(webkit.Debugger.resume())
         else:
             logger.info('Pausing...')
+            channel.send(webkit.Debugger.setSkipAllPauses(False))
             channel.send(webkit.Debugger.pause())
 
 class SwiDebugStepIntoCommand(sublime_plugin.WindowCommand):

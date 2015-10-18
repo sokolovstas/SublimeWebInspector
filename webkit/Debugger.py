@@ -42,6 +42,9 @@ def disable():
     command = Command('Debugger.disable', {}) 
     return command
 
+def setSkipAllPauses(state):
+    command = Command('Debugger.setSkipAllPauses', {"skipped": state})
+    return command
 
 def pause():
     command = Command('Debugger.pause', {})
