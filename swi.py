@@ -655,7 +655,6 @@ class SwiDebugToggleBreakpointCommand(sublime_plugin.WindowCommand):
                     position = mapping.get_generated_position(view_name, start[0], start[1])
                     scriptUrl = find_script_url(position.file_name())
                     row = str(position.zero_based_line())
-                    scriptUrl = find_script_url(position.file_name())
 
                 if not scriptUrl:
                     scriptUrl = find_script_url(view_name)
