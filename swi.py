@@ -840,12 +840,6 @@ class EventListener(sublime_plugin.EventListener):
     def reload_styles(self):
         channel.send(webkit.Runtime.evaluate("var files = document.getElementsByTagName('link');var links = [];for (var a = 0, l = files.length; a < l; a++) {var elem = files[a];var rel = elem.rel;if (typeof rel != 'string' || rel.length === 0 || rel === 'stylesheet') {links.push({'elem': elem,'href': elem.getAttribute('href').split('?')[0],'last': false});}}for ( a = 0, l = links.length; a < l; a++) {var link = links[a];link.elem.setAttribute('href', (link.href + '?x=' + Math.random()));}"))
 
-    def reload_set_script_source(self, scriptId, scriptSource):
-        """ Calls update_stack because script can be edited when debugger is paused, and
-            by this means potentially update the callstack.
-        """
-        channel.send(webkit.Debugger.setScriptSource(scriptId, scriptSource), self.update_stack)
-
     def reload_page(self):
         channel.send(webkit.Page.reload(), on_reload)
 
@@ -858,7 +852,9 @@ class EventListener(sublime_plugin.EventListener):
                 scriptId = find_script(v.file_name())
                 if scriptId and set_script_source:
                     scriptSource = v.substr(sublime.Region(0, v.size()))
-                    self.reload_set_script_source(scriptId, scriptSource)
+                    # Editing script can potentially modify the callstack
+                    channel.send(webkit.Debugger.setScriptSource(scriptId, scriptSource), self.update_stack)
+
                 else:
                     sublime.set_timeout(lambda: self.reload_page(), utils.get_setting('reload_timeout'))
             else:
