@@ -188,8 +188,13 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
         for page in pages:
             if 'webSocketDebuggerUrl' in page:
                 url = page['url']
-                if url.find('chrome-extension://') == -1:
-                    mapping[page['webSocketDebuggerUrl']] = page['url']
+                if (url.find('chrome-extension://') == 0 or
+                        url.find('about:blank') == 0 or
+                        url.find('res:') == 0 or
+                        url.lower().find('windows/inetcache') != -1):  # some Outlook goo exposed by IE adapter
+                    continue
+
+                mapping[page['webSocketDebuggerUrl']] = page['url']
 
         self.urls = list(mapping.keys())
         items = list(mapping.values())
