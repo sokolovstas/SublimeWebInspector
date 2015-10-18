@@ -481,8 +481,8 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
         scriptId = command.data['actualLocation'].scriptId
         file = find_script(str(scriptId))
 
-        lineNumberActual = command.data['actualLocation'].lineNumber
-        columnNumberActual = command.data['actualLocation'].columnNumber
+        lineNumberActual = str(command.data['actualLocation'].lineNumber)
+        columnNumberActual = str(command.data['actualLocation'].columnNumber)
 
         # we persist in terms of the authored file if any, so translate
         positionActual = get_authored_position_if_necessary(file, lineNumberActual, columnNumberActual)
@@ -495,16 +495,16 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
         # in that case it might be stored under a different line number
         # to the true actual number we get back. check both.
 
-        lineNumberSent = command.params['location']['lineNumber']
-        columnNumberSent = command.params['location']['columnNumber']
+        lineNumberSent = str(command.params['location']['lineNumber'])
+        columnNumberSent = str(command.params['location']['columnNumber'])
 
         # again, prefer the authored location.
         # we could use the source maps again to get it, but those don't
         # always round trip to the original location. instead, pass them through
-        if 'authoredLocation' in command.options:
+        if command.options and 'authoredLocation' in command.options:
             assert(file == command.options['authoredLocation']['file'])
-            lineNumberSent = command.options['authoredLocation']['lineNumber']
-            columnNumberSent = command.options['authoredLocation']['columnNumber']
+            lineNumberSent = str(command.options['authoredLocation']['lineNumber'])
+            columnNumberSent = str(command.options['authoredLocation']['columnNumber'])
 
         breakpoints = get_breakpoints_by_full_path(file)
 
