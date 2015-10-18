@@ -616,6 +616,7 @@ class SwiDebugToggleBreakpointCommand(sublime_plugin.WindowCommand):
             if channel:
                 if row in breaks:
                     try:
+                        logger.info('Removing breakpoint in %s at %s' % (view_name, row))
                         channel.send(webkit.Debugger.removeBreakpoint(breaks[row]['breakpointId']))
                     except KeyError:
                         print("SWI: A key error occurred while removing the breakpoint")
@@ -638,8 +639,10 @@ class SwiDebugToggleBreakpointCommand(sublime_plugin.WindowCommand):
                     scriptUrl = find_script_url(view_name)
 
                 if scriptUrl:
+                    logger.info('Setting breakpoint by url for %s at %s' % (scriptUrl, row))
                     channel.send(webkit.Debugger.setBreakpointByUrl(int(row), scriptUrl), self.breakpointAdded, view_name)
             else:
+                logger.info('Pending breakpoint for %s at %s' % (view_name, row))
                 set_breakpoint_by_full_path(view_name, row)
 
         update_overlays()
@@ -673,6 +676,8 @@ class SwiDebugToggleBreakpointCommand(sublime_plugin.WindowCommand):
                 set_breakpoint_by_full_path(file_name, str(lineNumber), -1, 'enabled', breakpointId)
             else:
                 set_breakpoint_by_full_path(file_name, str(lineNumber), columnNumber, 'enabled', breakpointId)
+
+            logger.info('Breakpoint set in %s %s at (%s,%s)' % (scriptId, file_name, lineNumber, columnNumber))
 
         update_overlays()
 
@@ -853,6 +858,7 @@ class EventListener(sublime_plugin.EventListener):
                 if scriptId and set_script_source:
                     scriptSource = v.substr(sublime.Region(0, v.size()))
                     # Editing script can potentially modify the callstack
+                    logger.info('Live updating script source %s %s' % (scriptId, find_script_url(scriptId)))
                     channel.send(webkit.Debugger.setScriptSource(scriptId, scriptSource), self.update_stack)
 
                 else:
