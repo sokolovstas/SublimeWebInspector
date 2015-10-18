@@ -664,7 +664,7 @@ class SwiDebugToggleBreakpointCommand(sublime_plugin.WindowCommand):
                     channel.send(webkit.Debugger.setBreakpointByUrl(int(row), scriptUrl), self.breakpointAdded, view_name)
             else:
                 logger.info('Pending breakpoint for %s at %s' % (view_name, row))
-                set_breakpoint_by_full_path(view_name, row)
+                record_breakpoint_by_full_path(view_name, row)
 
         update_overlays()
 
@@ -694,9 +694,9 @@ class SwiDebugToggleBreakpointCommand(sublime_plugin.WindowCommand):
 
             # If this breakpoint is in TS file, then store the column number as well for future restoration
             if projectsystem.DocumentMapping.MappingsManager.is_generated_file(file_name):
-                set_breakpoint_by_full_path(file_name, str(lineNumber), -1, 'enabled', breakpointId)
+                record_breakpoint_by_full_path(file_name, str(lineNumber), -1, 'enabled', breakpointId)
             else:
-                set_breakpoint_by_full_path(file_name, str(lineNumber), columnNumber, 'enabled', breakpointId)
+                record_breakpoint_by_full_path(file_name, str(lineNumber), columnNumber, 'enabled', breakpointId)
 
             logger.info('Breakpoint set in %s %s at (%s,%s)' % (scriptId, file_name, lineNumber, columnNumber))
 
@@ -1329,7 +1329,8 @@ def save_breaks():
 def full_path_to_file_name(path):
     return os.path.basename(os.path.realpath(path))
 
-def set_breakpoint_by_full_path(file_name, line, column=-1, status='disabled', breakpointId=None):
+def record_breakpoint_by_full_path(file_name, line, column=-1, status='disabled', breakpointId=None):
+    """ Add breakpoint to our persisted settings """
     breaks = get_breakpoints_by_full_path(file_name)
 
     if not line in breaks:
