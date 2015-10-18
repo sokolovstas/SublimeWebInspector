@@ -459,6 +459,7 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
                          if position:
                              location = webkit.Debugger.Location({'lineNumber': position.zero_based_line(), 'columnNumber': position.zero_based_column(), 'scriptId': scriptId})
                              params = {'authoredLocation': { 'lineNumber': line, 'columnNumber': column, 'file': file_name }}
+                             logger.info('Setting breakpoint in %s at %s,%s mapped from %s at %s,%s' % (scriptId, position.file_name, location.lineNumber, location.columnNumber, file_name, line, column))
                              channel.send(webkit.Debugger.setBreakpoint(location), self.breakpointAdded, params)
 
         # Fall back to raw file
@@ -471,6 +472,7 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
                         column = int(breakpoints[line]['column'])
                     
                     location = webkit.Debugger.Location({'lineNumber': int(line), 'columnNumber': int(column), 'scriptId': scriptId})
+                    logger.info('Setting breakpoint in %s %s at %s,%s' % (scriptId, file, line, column))
                     channel.send(webkit.Debugger.setBreakpoint(location), self.breakpointAdded)
 
     def updateAuthoredDocument(self, command):
