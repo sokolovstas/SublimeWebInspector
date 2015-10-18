@@ -533,8 +533,10 @@ class SwiDebugPauseResumeCommand(sublime_plugin.WindowCommand):
             else:
                 self.window.run_command('swi_debug_start')
         elif paused:
+            logger.info('Resuming...')
             channel.send(webkit.Debugger.resume())
         else:
+            logger.info('Pausing...')
             channel.send(webkit.Debugger.pause())
 
 class SwiDebugStepIntoCommand(sublime_plugin.WindowCommand):
@@ -718,6 +720,7 @@ class SwiDebugStopCommand(sublime_plugin.WindowCommand):
 class SwiDebugReloadCommand(sublime_plugin.WindowCommand):
     def run(self):
         if channel:
+            logger.info('Reloading page')
             channel.send(webkit.Network.clearBrowserCache())
             channel.send(webkit.Page.reload(), on_reload)
 
