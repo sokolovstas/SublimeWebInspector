@@ -200,7 +200,9 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
         self.urls = list(mapping.keys())
         items = list(mapping.values())
 
-        if len(self.urls) == 1:
+        if len(self.urls) == 0:
+            print('No urls proferred by debuggee. Cannot start debugging')
+        elif len(self.urls) == 1:
             # just one URL - pick it automatically
             print('Connecting to ' + str(items[0]) + " as it's the only URL offered by the debuggee")
             self.remote_debug_url_selected(0)
