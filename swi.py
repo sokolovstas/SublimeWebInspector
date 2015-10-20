@@ -191,6 +191,7 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
                 if (url.find('chrome-extension://') == 0 or
                         url.find('about:blank') == 0 or
                         url.find('res:') == 0 or
+                        url.find('x-mvwit:') == 0 or # seen this on a Windows machine
                         url.lower().find('windows/inetcache') != -1):  # some Outlook goo exposed by IE adapter
                     continue
 
