@@ -1454,7 +1454,7 @@ def open_script_and_focus_line_by_filename(file_name, line_number):
         do_when(lambda: not v.is_loading(), lambda: open_script_and_focus_line_callback(v, line_number))
 
 def open_script_and_focus_line_callback(v, line_number):
-    goto_line_number = line_number + 1 # goto_line is 1-based
+    goto_line_number = int(line_number) + 1 # goto_line is 1-based
     v.run_command("goto_line", {"line": goto_line_number}) 
     update_overlays()
 
