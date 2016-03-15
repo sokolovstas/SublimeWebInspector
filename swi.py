@@ -52,6 +52,8 @@ set_script_source = False
 current_call_frame = None
 current_call_frame_position = None
 source_map_state = None
+hostname = utils.get_setting('hostname', 'localhost')
+port = str(utils.get_setting('chrome_remote_port'))
 
 breakpoint_active_icon = 'Packages/Web Inspector/icons/breakpoint_active.png'
 breakpoint_inactive_icon = 'Packages/Web Inspector/icons/breakpoint_inactive.png'
@@ -108,7 +110,7 @@ class SwiDebugCommand(sublime_plugin.WindowCommand):
                 mapping.append(['swi_debug_clear_breakpoints', 'Clear all Breakpoints'])
                 mapping.append(['swi_dump_file_mappings', 'Dump file mappings'])
         else:
-            mapping.append(['swi_debug_start_chrome', 'Start Google Chrome with remote debug port ' + utils.get_setting('chrome_remote_port')])
+            mapping.append(['swi_debug_start_chrome', 'Start Google Chrome with remote debug port ' + port])
 
         self.cmds = [entry[0] for entry in mapping]
         self.items = [entry[1] for entry in mapping]
@@ -139,7 +141,7 @@ def chrome_launched():
         proxy = urllib.request.ProxyHandler({})
         opener = urllib.request.build_opener(proxy)
         urllib.request.install_opener(opener)
-        urllib.request.urlopen('http://127.0.0.1:' + utils.get_setting('chrome_remote_port') + '/json')
+        urllib.request.urlopen('http://' + hostname + ':' + port + '/json')
         return True
     except:
         pass
@@ -159,7 +161,7 @@ class SwiDebugStartChromeCommand(sublime_plugin.WindowCommand):
         if key == "windows" and (sublime.arch() == "x64" or sublime.executable_path().find('(x86)') >= 0):
             key += "_x64"
 
-        cmd = [os.getenv('GOOGLE_CHROME_PATH', '') + utils.get_setting('chrome_path')[key], '--remote-debugging-port=' + utils.get_setting('chrome_remote_port')]
+        cmd = [os.getenv('GOOGLE_CHROME_PATH', '') + utils.get_setting('chrome_path')[key], '--remote-debugging-port=' + port]
 
         profile = utils.get_setting('chrome_profile') or ''
         if profile:
@@ -182,7 +184,7 @@ class SwiDebugStartCommand(sublime_plugin.WindowCommand):
         proxy = urllib.request.ProxyHandler({})
         opener = urllib.request.build_opener(proxy)
         urllib.request.install_opener(opener)
-        response = urllib.request.urlopen('http://127.0.0.1:' + utils.get_setting('chrome_remote_port') + '/json')
+        response = urllib.request.urlopen('http://' + hostname + ':' + port + '/json')
         pages = json.loads(response.read().decode('utf-8'))
         mapping = {}
         for page in pages:

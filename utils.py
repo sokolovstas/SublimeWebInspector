@@ -8,7 +8,9 @@ def assert_main_thread():
 
 main_thread = threading.current_thread()
 
-def get_setting(key):
+def get_setting(key, default = None):
     s = sublime.load_settings("swi.sublime-settings")
     if s and s.has(key):
         return s.get(key)
+    else:
+    	return default
