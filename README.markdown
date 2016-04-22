@@ -14,7 +14,7 @@ To use against:
 
 * __Chrome__ -- just works
 * __Internet Explorer 11__ -- start up IE, then start the [IE Diagnostics Adapter](https://github.com/Microsoft/IEDiagnosticsAdapter/releases). Web Inspector should detect it and offer to Start Debugging. Soon, Web Inspector will detect IE and offer to launch it as well. Note that you cannot use the Chrome tools and Web Inspector at the same time, but you /can/ use the Internet Explorer F12 tools (perhaps for the DOM explorer) and Web Inspector (for debugging) at the same time.
-* __Edge__ -- pending IE Diagnostics Adapter support.
+* __Edge__ -- start up Edge, then start the [Edge Diagnostics Adapter](https://github.com/Microsoft/edge-diagnostics-adapter/releases). Web Inspector should detect it and offer to Start Debugging. Soon, Web Inspector will detect Edge and offer to launch it as well
 
 # Features
 - Debugger stepping and breakpoints.
